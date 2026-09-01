@@ -2,6 +2,13 @@ import type { Loader } from "astro/loaders";
 import { z } from "zod4";
 import { overcastRepo } from "./overcast-source";
 import { rewriteLegacyOrgReferences } from "../lib/github-links";
+import { changelogCategories } from "../lib/release-schema";
+import type {
+  ChangelogBulletEntry,
+  ChangelogCategory,
+  ChangelogSection,
+  OvercastReleaseData,
+} from "../lib/release-schema";
 
 // -- Changelog structure -----------------------------------------------------
 //
@@ -21,40 +28,13 @@ import { rewriteLegacyOrgReferences } from "../lib/github-links";
 // is deliberately per-entry: a category heading is recognized independently
 // of whether its bullets match the bracket grammar, and a bullet that doesn't
 // match renders through the exact same markdown pipeline as today, unchanged.
+//
+// The shape this loader emits is defined by the zod schemas in src/lib/release-schema.ts —
+// the same ones the `releases` collection validates against — so a field added here but not
+// declared there is a type error rather than a value that silently vanishes.
 
-export type ChangelogCategory = "added" | "changed" | "deprecated" | "removed" | "fixed" | "security";
-
-export type ChangelogBulletEntry =
-  | {
-      kind: "entry";
-      breaking: boolean;
-      areas: string[];
-      proseHtml: string;
-      proseText: string;
-      migrationHtml: string | null;
-    }
-  | { kind: "raw"; html: string };
-
-export type ChangelogSection =
-  | { kind: "category"; category: ChangelogCategory; label: string; entries: ChangelogBulletEntry[] }
-  | { kind: "raw"; html: string };
-
-export type OvercastReleaseData = {
-  tagName: string;
-  name: string;
-  url: string;
-  publishedAt: string | null;
-  prerelease: boolean;
-  body: string;
-  summary: string;
-  changelogSections: ChangelogSection[];
-  assets: Array<{
-    name: string;
-    size: number;
-    downloadUrl: string;
-  }>;
-};
-
+// Two zod instances are in play in this file: `zod4` validates the GitHub API response and
+// is the loader's own business, while the collection schemas have to be Astro's zod 3.
 const githubReleaseSchema = z.object({
   tag_name: z.string(),
   name: z.string().nullable(),
@@ -166,14 +146,12 @@ function summarizeMarkdown(markdown: string): string {
 
 type MarkdownRenderer = (markdown: string) => Promise<{ html: string }>;
 
-const changelogCategoriesByHeading: Record<string, ChangelogCategory> = {
-  added: "added",
-  changed: "changed",
-  deprecated: "deprecated",
-  removed: "removed",
-  fixed: "fixed",
-  security: "security",
-};
+/** Matches a `### Heading` against the known categories, so adding one to the schema is all
+ * it takes for its heading to be recognized here. */
+function categoryForHeading(headingText: string): ChangelogCategory | undefined {
+  const normalized = headingText.replace(/:$/, "").toLowerCase();
+  return changelogCategories.find((category) => category === normalized);
+}
 
 const changelogCategoryLabels: Record<ChangelogCategory, string> = {
   added: "Added",
@@ -371,7 +349,7 @@ async function parseChangelogSections(
   const sections: ChangelogSection[] = [];
 
   for (const block of splitHeadingBlocks(releaseNotesLines)) {
-    const category = block.headingText ? changelogCategoriesByHeading[block.headingText.replace(/:$/, "").toLowerCase()] : undefined;
+    const category = block.headingText ? categoryForHeading(block.headingText) : undefined;
 
     if (!category) {
       const markdownSlice = [block.headingText ? `### ${block.headingText}` : null, ...block.content]
@@ -422,7 +400,10 @@ async function fetchGitHubReleases(renderMarkdown: MarkdownRenderer): Promise<Ov
 
   const data = githubReleasesSchema.parse(await response.json());
   return Promise.all(
-    data.slice(0, 30).map(async (release) => {
+    // The explicit return type is what makes the schema binding load-bearing: it puts the
+    // object literal below under excess-property checking, so a field this loader starts
+    // emitting has to be declared in the schema before it will compile.
+    data.slice(0, 30).map(async (release): Promise<OvercastReleaseData> => {
       // Old release bodies reference the pre-rename `Neaox` GitHub org / `ghcr.io/neaox`
       // image namespace. Those releases will never be edited upstream, so rewrite the
       // stale org references before summarizing/rendering, so both the raw body and the

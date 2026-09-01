@@ -1,12 +1,13 @@
 ---
 // Structured renderer for a release's "## Release Notes" section, built from
-// `ChangelogSection[]` (src/loaders/overcast-releases.ts does the parsing at build time).
+// `ChangelogSection[]` (src/lib/release-schema.ts defines the shape; the parsing happens at
+// build time in src/loaders/overcast-releases.ts).
 // A "category" section gets a colored Chip heading and per-entry area/breaking chips; a "raw"
 // section/entry is content the parser didn't recognize, rendered through the exact same
 // markdown pipeline as the rest of the site — never mangled, just undecorated.
 import Chip from "./Chip.astro";
 import Callout from "./Callout.astro";
-import type { ChangelogSection } from "../loaders/overcast-releases";
+import type { ChangelogSection } from "../lib/release-schema";
 import { changelogCategoryTone } from "../lib/releases";
 
 interface Props {
