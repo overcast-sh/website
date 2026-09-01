@@ -1,7 +1,7 @@
 ---
 import SiteLayout from "../components/SiteLayout.astro";
 import CodeBlock from "../components/CodeBlock.astro";
-import { Binary, Container, Download, FileText, PackageOpen, RotateCcwClock } from "@lucide/astro";
+import { ArrowRight, Binary, Container, Download, FileText, PackageOpen, RotateCcwClock } from "@lucide/astro";
 import { getCollection, type CollectionEntry } from "astro:content";
 import { repositoryUrl } from "../lib/github-links";
 import { newestReleaseWithAssets, sortReleasesNewestFirst } from "../lib/releases";
@@ -25,7 +25,6 @@ const dockerSlim = `docker run --rm \\
   ghcr.io/overcast-sh/overcast-slim:alpha`;
 const assets: ReleaseAsset[] = latestWithAssets?.data.assets || [];
 const releasesUrl = latestWithAssets?.data.url || `${repositoryUrl()}/releases`;
-const latestChangelogHtml = latestRelease?.rendered?.html || "";
 const latestReleaseDate = formatReleaseDate(latestRelease?.data.publishedAt);
 const assetsReleaseDate = formatReleaseDate(latestWithAssets?.data.publishedAt);
 ---
@@ -69,10 +68,9 @@ const assetsReleaseDate = formatReleaseDate(latestWithAssets?.data.publishedAt);
           </a>
         </div>
         <p class="mt-1 text-sm text-muted">
-          Release asset metadata is fetched from GitHub at build time.
           {latestWithAssets && (
             <>
-              {" "}Showing assets from <a href={latestWithAssets.data.url}>{latestWithAssets.data.name}</a>
+              Showing assets from <a href={latestWithAssets.data.url}>{latestWithAssets.data.name}</a>
               {assetsReleaseDate && <> published <time datetime={latestWithAssets.data.publishedAt || undefined}>{assetsReleaseDate}</time></>}.
             </>
           )}
@@ -117,8 +115,13 @@ const assetsReleaseDate = formatReleaseDate(latestWithAssets?.data.publishedAt);
           </a>
         )}
       </div>
-      {latestRelease && latestChangelogHtml ? (
-        <div class="prose mt-5" set:html={latestChangelogHtml}></div>
+      {latestRelease && latestRelease.data.summary ? (
+        <>
+          <p class="mt-5 text-sm leading-6 text-body">{latestRelease.data.summary}</p>
+          <a class="mt-1 inline-flex items-center gap-1.5 font-mono text-xs" href="/releases/">
+            Full changelog<ArrowRight class="icon" />
+          </a>
+        </>
       ) : (
         <p class="mt-5 text-sm leading-6 text-body">
           GitHub release notes could not be loaded for this build. Check the

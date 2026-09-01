@@ -21,8 +21,8 @@ const latestDate = formatReleaseDate(latest?.data.publishedAt);
     <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><RotateCcwClock class="icon" />release history</p>
     <h1 class="mt-2 font-mono text-3xl font-bold">Overcast releases</h1>
     <p class="mt-4 leading-7 text-body">
-      Release notes and asset metadata are fetched from GitHub at build time. Download native binaries directly from
-      any listed release below, or follow a release to its GitHub page for the full change details.
+      Download native binaries directly from any listed release below, or open a release on GitHub for full change
+      details.
     </p>
 
     {latest && (
@@ -60,10 +60,13 @@ const latestDate = formatReleaseDate(latest?.data.publishedAt);
         </div>
 
         {latest.rendered?.html && (
-          <>
-            <p class="mt-6 font-mono text-xs uppercase tracking-[0.16em] text-muted">Changelog</p>
-            <div class="prose mt-3" set:html={latest.rendered.html}></div>
-          </>
+          <details class="group mt-6 rounded-lg border border-oc">
+            <summary class="flex cursor-pointer list-none items-center gap-2 px-4 py-3 font-mono text-xs uppercase tracking-[0.16em] text-muted [&::-webkit-details-marker]:hidden">
+              <ChevronDown class="icon shrink-0 transition-transform duration-150 group-open:rotate-180" />
+              Full changelog
+            </summary>
+            <div class="prose border-t border-oc px-4 py-4" set:html={latest.rendered.html}></div>
+          </details>
         )}
       </article>
     )}
