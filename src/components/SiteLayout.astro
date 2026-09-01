@@ -4,7 +4,7 @@ import { BookOpen, Download, FileText, GitCompare, Menu, Monitor, PencilLine, Ro
 import GitHubIcon from "./GitHubIcon.astro";
 import { repositoryUrl, starsUrl, websiteEditUrlFromRoute } from "../lib/github-links";
 import { getSourceManifest } from "../lib/generated-content";
-import { formatDate, toIsoDate } from "../lib/format-date";
+import { formatDate, formatDateTimeTitle, toIsoDate } from "../lib/format-date";
 
 interface Props {
   title?: string;
@@ -38,6 +38,7 @@ const socialImageUrl = new URL("/brand/social-card.png", Astro.site || "https://
 const sourceManifest = await getSourceManifest();
 const builtDate = formatDate(sourceManifest.generatedAt);
 const builtIso = toIsoDate(sourceManifest.generatedAt);
+const builtTitle = formatDateTimeTitle(sourceManifest.generatedAt);
 const sourceRef = sourceManifest.sourceRef;
 const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/releases/tag/${sourceRef}` : "";
 ---
@@ -87,8 +88,8 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
       <div class="mx-auto flex max-w-7xl items-center gap-5 px-4 py-3 sm:px-6 lg:px-8">
         <a href="/" class="flex shrink-0 items-center gap-2 no-underline" aria-label="Overcast home">
           <span class="relative h-8 w-8 shrink-0">
-            <img src="/brand/mark-light.svg" alt="" class="brand-logo-light h-8 w-8" />
-            <img src="/brand/mark-dark.svg" alt="" class="brand-logo-dark h-8 w-8" />
+            <img src="/brand/mark-light.svg" alt="" class="theme-light-only h-8 w-8" />
+            <img src="/brand/mark-dark.svg" alt="" class="theme-dark-only h-8 w-8" />
           </span>
           <span class="leading-none">
             <span class="block font-mono text-xl font-bold text-(--oc-text)">overcast</span>
@@ -235,8 +236,8 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
           <div class="max-w-sm">
             <a href="/" class="inline-flex items-center gap-2 no-underline" aria-label="Overcast home">
               <span class="relative h-7 w-7 shrink-0">
-                <img src="/brand/mark-light.svg" alt="" class="brand-logo-light h-7 w-7" />
-                <img src="/brand/mark-dark.svg" alt="" class="brand-logo-dark h-7 w-7" />
+                <img src="/brand/mark-light.svg" alt="" class="theme-light-only h-7 w-7" />
+                <img src="/brand/mark-dark.svg" alt="" class="theme-dark-only h-7 w-7" />
               </span>
               <span class="font-mono text-lg font-bold text-(--oc-text)">overcast</span>
             </a>
@@ -280,7 +281,7 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
           </p>
           {builtDate && (
             <p class="m-0 shrink-0 font-mono text-xs text-muted">
-              Built <time datetime={builtIso}>{builtDate}</time>{sourceRef && (
+              Built <time datetime={builtIso} title={builtTitle}>{builtDate}</time>{sourceRef && (
                 <> from <a href={sourceReleaseUrl}>Overcast {sourceRef}</a></>
               )}
             </p>
@@ -668,8 +669,14 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
         if (Number.isNaN(value.getTime())) return;
         try {
           element.textContent = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(value);
+          // dateStyle/timeStyle can't be combined with timeZoneName in the same
+          // options object (throws "Invalid option"), so compose from two formatters.
+          const dateTimeText = new Intl.DateTimeFormat(undefined, { dateStyle: "long", timeStyle: "short" }).format(value);
+          const zoneParts = new Intl.DateTimeFormat(undefined, { timeZoneName: "short" }).formatToParts(value);
+          const zoneName = zoneParts.find((part) => part.type === "timeZoneName")?.value;
+          element.title = zoneName ? `${dateTimeText} ${zoneName}` : dateTimeText;
         } catch {
-          // Leave the build-time text in place.
+          // Leave the build-time text (and title) in place.
         }
       });
     </script>

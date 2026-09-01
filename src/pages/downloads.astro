@@ -6,7 +6,7 @@ import Chip from "../components/Chip.astro";
 import { ArrowRight, Binary, Container, Download, FileText, Monitor, PackageOpen, RotateCcwClock } from "@lucide/astro";
 import { getCollection, type CollectionEntry } from "astro:content";
 import { repositoryUrl } from "../lib/github-links";
-import { formatDate, toIsoDate } from "../lib/format-date";
+import { formatDate, formatDateTimeTitle, toIsoDate } from "../lib/format-date";
 import { changelogCategoryTone, changelogRollup, firstChangelogEntries, newestReleaseWithAssets, sortReleasesNewestFirst } from "../lib/releases";
 
 type ReleaseEntry = CollectionEntry<"releases">;
@@ -75,7 +75,7 @@ const topRollup = latestRelease ? changelogRollup(latestRelease.data.changelogSe
           {latestWithAssets && (
             <>
               Showing assets from <a href={latestWithAssets.data.url}>{latestWithAssets.data.name}</a>
-              {assetsReleaseDate && <> published <time datetime={toIsoDate(latestWithAssets.data.publishedAt)}>{assetsReleaseDate}</time></>}.
+              {assetsReleaseDate && <> published <time datetime={toIsoDate(latestWithAssets.data.publishedAt)} title={formatDateTimeTitle(latestWithAssets.data.publishedAt)}>{assetsReleaseDate}</time></>}.
             </>
           )}
         </p>
@@ -101,7 +101,7 @@ const topRollup = latestRelease ? changelogRollup(latestRelease.data.changelogSe
           <h2 class="mt-2 font-mono text-xl font-bold">{latestRelease?.data.name || "Latest release"}</h2>
           {latestReleaseDate && (
             <p class="mt-1 text-sm text-muted">
-              Published <time datetime={toIsoDate(latestRelease?.data.publishedAt)}>{latestReleaseDate}</time>
+              Published <time datetime={toIsoDate(latestRelease?.data.publishedAt)} title={formatDateTimeTitle(latestRelease?.data.publishedAt)}>{latestReleaseDate}</time>
             </p>
           )}
         </div>

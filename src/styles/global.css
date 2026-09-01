@@ -39,32 +39,37 @@ kbd {
   border: 1px solid var(--oc-line);
 }
 
-.brand-logo-dark {
+/* Generic theme-paired visibility: pair a `.theme-light-only` element with a
+ * `.theme-dark-only` one and exactly one shows, in all three theme states —
+ * explicit dark, explicit light, and system preference (an explicit light
+ * override always wins over a dark-preferring system). Used for anything
+ * that needs a different asset per theme (brand marks, screenshots, ...). */
+.theme-dark-only {
   display: none;
 }
 
-:root[data-theme="dark"] .brand-logo-light {
+:root[data-theme="dark"] .theme-light-only {
   display: none;
 }
 
-:root[data-theme="dark"] .brand-logo-dark {
+:root[data-theme="dark"] .theme-dark-only {
   display: block;
 }
 
-:root[data-theme="light"] .brand-logo-light {
+:root[data-theme="light"] .theme-light-only {
   display: block;
 }
 
-:root[data-theme="light"] .brand-logo-dark {
+:root[data-theme="light"] .theme-dark-only {
   display: none;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .brand-logo-light {
+  :root:not([data-theme="light"]) .theme-light-only {
     display: none;
   }
 
-  :root:not([data-theme="light"]) .brand-logo-dark {
+  :root:not([data-theme="light"]) .theme-dark-only {
     display: block;
   }
 }
