@@ -60,9 +60,30 @@ GitHub links are configurable:
 
 ## Generated content
 
-`src/generated/` is ignored and rebuilt by `npm run content:sync`.
+One command regenerates everything a script owns:
 
-`designs/` is treated as local reference material and is intentionally ignored by git.
+```powershell
+npm run content:sync
+```
+
+`predev` and `prebuild` already run it, so `npm run dev` / `npm run build` need nothing extra.
+
+What it writes, and whether git tracks it:
+
+| Output | Tracked | Why |
+| --- | --- | --- |
+| `src/generated/` | no | Derived from the Overcast checkout on every build; carries a `generatedAt` stamp, so tracking it would churn on every run. |
+| `dist/`, `.astro/` | no | Build output, including the pagefind index. |
+| `designs/` | no | Local reference material only. |
+| `src/styles/brand-tokens.css`, `public/brand/*`, `public/fonts/*` | **yes** | Vendored from [`overcast-sh/branding`](https://github.com/overcast-sh/branding). The deploy workflow doesn't check that repo out, so the site could not render without the committed copies. |
+
+Because the brand assets are a copy of someone else's file, `npm run content:check` compares
+them against a branding checkout and fails on drift; the `brand-drift` CI job runs it on every
+PR. To take an update: set `OVERCAST_BRANDING_PATH`, run `npm run content:sync`, commit.
+
+`src/styles/brand-tokens.css` is overwritten byte-for-byte by that sync. **Site-only tokens go in
+`src/styles/site-tokens.css`**, which the sync never touches. Everything else under `public/brand`
+(notably `social-card.png`, the Open Graph image) is site-owned and likewise left alone.
 
 Published docs exclude internal planning and contributor-only areas:
 

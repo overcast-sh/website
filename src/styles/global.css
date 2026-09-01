@@ -1,5 +1,9 @@
 @import "tailwindcss";
+/* brand-tokens.css is a vendored copy of overcast-sh/branding's design-system/tokens.css
+ * and is rewritten byte-for-byte by `npm run content:sync`. Site-only tokens go in
+ * site-tokens.css, which the sync never touches. */
 @import "./brand-tokens.css";
+@import "./site-tokens.css";
 @plugin "@tailwindcss/typography";
 
 @theme {

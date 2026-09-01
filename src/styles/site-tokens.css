@@ -1,0 +1,72 @@
+/* Site-owned design tokens.
+ *
+ * `brand-tokens.css` next door is a *vendored* copy of overcast-sh/branding's
+ * design-system/tokens.css — `npm run content:sync` overwrites it byte-for-byte and CI
+ * fails if it drifts, so anything added there is lost on the next sync. Tokens the
+ * website needs that the brand system doesn't define live here instead.
+ *
+ * Same theming contract as the vendored file: the media query carries the OS
+ * preference, a data-theme attribute on <html> overrides it in both directions. */
+
+:root {
+  --oc-scrim: rgb(22 34 46 / 0.45);   /* ink, behind modal surfaces */
+
+  /* categorical ramp — the ten service-identity slots, mirrored from the web
+   * console's --cat-* ramp (overcast web/src/styles/global.css) so a service
+   * keeps the colour users already know it by. Same OKLCH hues, same two
+   * lightness steps: 0.5 on light, 0.75 on dark. Assignment per service lives
+   * in src/lib/service-catalog.ts. */
+  --oc-cat-1: oklch(0.5 0.149 25);    /* red */
+  --oc-cat-2: oklch(0.5 0.117 60);    /* orange */
+  --oc-cat-3: oklch(0.5 0.102 95);    /* amber */
+  --oc-cat-4: oklch(0.5 0.149 140);   /* green */
+  --oc-cat-5: oklch(0.5 0.099 170);   /* teal */
+  --oc-cat-6: oklch(0.5 0.089 218);   /* cyan */
+  --oc-cat-7: oklch(0.5 0.149 252);   /* blue */
+  --oc-cat-8: oklch(0.5 0.149 288);   /* violet */
+  --oc-cat-9: oklch(0.5 0.149 320);   /* magenta */
+  --oc-cat-10: oklch(0.5 0.149 355);  /* rose */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --oc-scrim: rgb(4 8 12 / 0.62);
+  }
+}
+:root[data-theme="dark"] {
+  --oc-scrim: rgb(4 8 12 / 0.62);
+}
+:root[data-theme="light"] {
+  --oc-scrim: rgb(22 34 46 / 0.45);
+}
+
+/* Dark values for the categorical ramp — the same hues one lightness step up,
+ * exactly as the console does it. Kept in its own guarded pair of rules rather
+ * than the surface blocks above so an explicit light theme on a dark OS keeps
+ * the light ramp without a third copy of the values. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --oc-cat-1: oklch(0.75 0.144 25);
+    --oc-cat-2: oklch(0.75 0.144 60);
+    --oc-cat-3: oklch(0.75 0.144 95);
+    --oc-cat-4: oklch(0.75 0.144 140);
+    --oc-cat-5: oklch(0.75 0.144 170);
+    --oc-cat-6: oklch(0.75 0.134 218);
+    --oc-cat-7: oklch(0.75 0.132 252);
+    --oc-cat-8: oklch(0.75 0.136 288);
+    --oc-cat-9: oklch(0.75 0.144 320);
+    --oc-cat-10: oklch(0.75 0.144 355);
+  }
+}
+:root[data-theme="dark"] {
+  --oc-cat-1: oklch(0.75 0.144 25);
+  --oc-cat-2: oklch(0.75 0.144 60);
+  --oc-cat-3: oklch(0.75 0.144 95);
+  --oc-cat-4: oklch(0.75 0.144 140);
+  --oc-cat-5: oklch(0.75 0.144 170);
+  --oc-cat-6: oklch(0.75 0.134 218);
+  --oc-cat-7: oklch(0.75 0.132 252);
+  --oc-cat-8: oklch(0.75 0.136 288);
+  --oc-cat-9: oklch(0.75 0.144 320);
+  --oc-cat-10: oklch(0.75 0.144 355);
+}

@@ -15,8 +15,6 @@ const generatedDir = path.join(cwd, "src", "generated");
 const obsoleteGeneratedDocsDir = path.join(generatedDir, "docs-html");
 const obsoleteGeneratedDocsManifest = path.join(generatedDir, "docs-manifest.json");
 const obsoleteGeneratedReleases = path.join(generatedDir, "releases.json");
-const publicBrandDir = path.join(cwd, "public", "brand");
-const publicFontsDir = path.join(cwd, "public", "fonts");
 
 type ServiceSupport = {
   service: string;
@@ -161,31 +159,92 @@ async function syncSupport(sourceRoot: string): Promise<ServiceSupport[]> {
   return services;
 }
 
-async function copyFile(source: string, target: string): Promise<void> {
-  await fs.mkdir(path.dirname(target), { recursive: true });
-  await fs.copyFile(source, target);
+// The vendored brand assets: [path inside the branding repo, path inside this repo].
+//
+// These stay *tracked* in git even though a script writes them. The deploy workflow never
+// checks out overcast-sh/branding — untracking them would make every build depend on a
+// second repo to render a logo. Instead `npm run content:check` compares them against the
+// branding repo and CI fails on drift, so the tracked copies can't quietly rot.
+//
+// Anything under public/brand or public/fonts that is NOT listed here is site-owned and
+// must survive a sync — public/brand/social-card.png (the OG image) is the current case.
+// That is why nothing in here deletes a directory.
+const brandAssets: Array<[string, string]> = [
+  ["design-system/tokens.css", "src/styles/brand-tokens.css"],
+  ["favicon/favicon.svg", "public/brand/favicon.svg"],
+  ["favicon/favicon.ico", "public/brand/favicon.ico"],
+  ["logo/overcast-logo-light.svg", "public/brand/overcast-logo-light.svg"],
+  ["logo/overcast-logo-dark.svg", "public/brand/overcast-logo-dark.svg"],
+  ["mark/mark-light.svg", "public/brand/mark-light.svg"],
+  ["mark/mark-dark.svg", "public/brand/mark-dark.svg"],
+  ["loading/overcast-loader.svg", "public/brand/overcast-loader.svg"],
+  ["social/github-social-card.svg", "public/brand/github-social-card.svg"],
+  ["fonts/JetBrainsMono-Regular.ttf", "public/fonts/JetBrainsMono-Regular.ttf"],
+  ["fonts/JetBrainsMono-Bold.ttf", "public/fonts/JetBrainsMono-Bold.ttf"],
+];
+
+const textAssetExtensions = new Set([".css", ".svg"]);
+
+// Read a branding-repo asset exactly as it should land in this repo. Text assets get their
+// line endings normalised to LF: .gitattributes stores them as LF, so copying a CRLF working
+// copy straight through leaves every SVG permanently "modified" in `git status` even though
+// git normalises the content back to identical on checkin.
+async function readBrandAsset(brandingRoot: string, source: string): Promise<Buffer> {
+  const raw = await fs.readFile(path.join(brandingRoot, source));
+  if (!textAssetExtensions.has(path.extname(source))) return raw;
+  return Buffer.from(raw.toString("utf8").replaceAll("\r\n", "\n"), "utf8");
 }
 
 async function syncBranding(brandingRoot: string): Promise<void> {
-  await fs.rm(publicBrandDir, { recursive: true, force: true });
-  await fs.rm(publicFontsDir, { recursive: true, force: true });
-  await fs.mkdir(publicBrandDir, { recursive: true });
-  await fs.mkdir(publicFontsDir, { recursive: true });
+  for (const [source, target] of brandAssets) {
+    const targetPath = path.join(cwd, target);
+    const next = await readBrandAsset(brandingRoot, source);
+    // Skip the write when the bytes already match, so a sync leaves mtimes (and any
+    // watcher hanging off them) alone on the common no-change path.
+    const current = await fs.readFile(targetPath).catch(() => null);
+    if (current && current.equals(next)) continue;
+    await fs.mkdir(path.dirname(targetPath), { recursive: true });
+    await fs.writeFile(targetPath, next);
+  }
+}
 
-  await copyFile(path.join(brandingRoot, "design-system", "tokens.css"), path.join(cwd, "src", "styles", "brand-tokens.css"));
-  await copyFile(path.join(brandingRoot, "favicon", "favicon.svg"), path.join(publicBrandDir, "favicon.svg"));
-  await copyFile(path.join(brandingRoot, "favicon", "favicon.ico"), path.join(publicBrandDir, "favicon.ico"));
-  await copyFile(path.join(brandingRoot, "logo", "overcast-logo-light.svg"), path.join(publicBrandDir, "overcast-logo-light.svg"));
-  await copyFile(path.join(brandingRoot, "logo", "overcast-logo-dark.svg"), path.join(publicBrandDir, "overcast-logo-dark.svg"));
-  await copyFile(path.join(brandingRoot, "mark", "mark-light.svg"), path.join(publicBrandDir, "mark-light.svg"));
-  await copyFile(path.join(brandingRoot, "mark", "mark-dark.svg"), path.join(publicBrandDir, "mark-dark.svg"));
-  await copyFile(path.join(brandingRoot, "loading", "overcast-loader.svg"), path.join(publicBrandDir, "overcast-loader.svg"));
-  await copyFile(path.join(brandingRoot, "social", "github-social-card.svg"), path.join(publicBrandDir, "github-social-card.svg"));
-  await copyFile(path.join(brandingRoot, "fonts", "JetBrainsMono-Regular.ttf"), path.join(publicFontsDir, "JetBrainsMono-Regular.ttf"));
-  await copyFile(path.join(brandingRoot, "fonts", "JetBrainsMono-Bold.ttf"), path.join(publicFontsDir, "JetBrainsMono-Bold.ttf"));
+// `--check`: report drift between the tracked brand assets and the branding repo without
+// writing anything. Exits non-zero on drift so CI can gate on it.
+async function checkBranding(brandingRoot: string | null): Promise<never> {
+  if (!brandingRoot) {
+    console.error(
+      "content:check needs a branding checkout. Set OVERCAST_BRANDING_PATH, or check out overcast-sh/branding next to this repo.",
+    );
+    process.exit(1);
+  }
+
+  const drifted: string[] = [];
+  for (const [source, target] of brandAssets) {
+    const expected = await readBrandAsset(brandingRoot, source).catch(() => null);
+    if (!expected) {
+      drifted.push(`${target} — ${source} is missing from the branding checkout`);
+      continue;
+    }
+    const actual = await fs.readFile(path.join(cwd, target)).catch(() => null);
+    if (!actual) drifted.push(`${target} — missing`);
+    else if (!actual.equals(expected)) drifted.push(`${target} — differs from branding/${source}`);
+  }
+
+  if (drifted.length === 0) {
+    console.log(`Brand assets match ${brandingRoot} (${brandAssets.length} files).`);
+    process.exit(0);
+  }
+
+  console.error("Vendored brand assets have drifted from overcast-sh/branding:\n");
+  for (const line of drifted) console.error(`  - ${line}`);
+  console.error("\nRun `npm run content:sync` with OVERCAST_BRANDING_PATH set and commit the result.");
+  console.error("Site-only tokens belong in src/styles/site-tokens.css, which this check ignores.");
+  process.exit(1);
 }
 
 async function main() {
+  if (process.argv.includes("--check")) await checkBranding(await resolveBrandingRoot());
+
   const sourceRoot = await resolveSourceRoot();
   const brandingRoot = await resolveBrandingRoot();
   await fs.mkdir(generatedDir, { recursive: true });

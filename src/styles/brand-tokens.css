@@ -11,7 +11,6 @@
   --oc-line: #D5E2EE;
   --oc-accent-soft: #E3F0FB;
   --oc-tile: #16222E;          /* icon tile is ink on every surface */
-  --oc-scrim: rgb(22 34 46 / 0.45);   /* ink, behind modal surfaces */
 
   /* text */
   --oc-text: #16222E;
@@ -28,22 +27,6 @@
   --oc-success: #2E9E6B;
   --oc-warning: #C08A2D;
   --oc-danger: #C9564A;
-
-  /* categorical ramp — the ten service-identity slots, mirrored from the web
-   * console's --cat-* ramp (overcast web/src/styles/global.css) so a service
-   * keeps the colour users already know it by. Same OKLCH hues, same two
-   * lightness steps: 0.5 on light, 0.75 on dark. Assignment per service lives
-   * in src/lib/service-catalog.ts. */
-  --oc-cat-1: oklch(0.5 0.149 25);    /* red */
-  --oc-cat-2: oklch(0.5 0.117 60);    /* orange */
-  --oc-cat-3: oklch(0.5 0.102 95);    /* amber */
-  --oc-cat-4: oklch(0.5 0.149 140);   /* green */
-  --oc-cat-5: oklch(0.5 0.099 170);   /* teal */
-  --oc-cat-6: oklch(0.5 0.089 218);   /* cyan */
-  --oc-cat-7: oklch(0.5 0.149 252);   /* blue */
-  --oc-cat-8: oklch(0.5 0.149 288);   /* violet */
-  --oc-cat-9: oklch(0.5 0.149 320);   /* magenta */
-  --oc-cat-10: oklch(0.5 0.149 355);  /* rose */
 
   /* type */
   --oc-font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Consolas, monospace;
@@ -65,7 +48,6 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --oc-bg: #10161D; --oc-card: #16222E; --oc-line: #24384C; --oc-accent-soft: #1A2E42;
-    --oc-scrim: rgb(4 8 12 / 0.62);
     --oc-text: #DCEBF8; --oc-body: #A9C2D8; --oc-muted: #7FA8C9;
     --oc-accent: #5FB8FF; --oc-cursor: #8FD0FF;
     --oc-cloud: #33536F; --oc-cloud-stroke: #89BCE2;
@@ -73,48 +55,15 @@
 }
 :root[data-theme="dark"] {
   --oc-bg: #10161D; --oc-card: #16222E; --oc-line: #24384C; --oc-accent-soft: #1A2E42;
-  --oc-scrim: rgb(4 8 12 / 0.62);
   --oc-text: #DCEBF8; --oc-body: #A9C2D8; --oc-muted: #7FA8C9;
   --oc-accent: #5FB8FF; --oc-cursor: #8FD0FF;
   --oc-cloud: #33536F; --oc-cloud-stroke: #89BCE2;
 }
 :root[data-theme="light"] {
   --oc-bg: #F4F8FC; --oc-card: #FFFFFF; --oc-line: #D5E2EE; --oc-accent-soft: #E3F0FB;
-  --oc-scrim: rgb(22 34 46 / 0.45);
   --oc-text: #16222E; --oc-body: #33465A; --oc-muted: #54718A;
   --oc-accent: #1273C4; --oc-cursor: #3E97DF;
   --oc-cloud: #C4D8EA; --oc-cloud-stroke: #31536F;
-}
-
-/* Dark values for the categorical ramp — the same hues one lightness step up,
- * exactly as the console does it. Kept in its own guarded pair of rules rather
- * than the surface blocks above so an explicit light theme on a dark OS keeps
- * the light ramp without a third copy of the values. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --oc-cat-1: oklch(0.75 0.144 25);
-    --oc-cat-2: oklch(0.75 0.144 60);
-    --oc-cat-3: oklch(0.75 0.144 95);
-    --oc-cat-4: oklch(0.75 0.144 140);
-    --oc-cat-5: oklch(0.75 0.144 170);
-    --oc-cat-6: oklch(0.75 0.134 218);
-    --oc-cat-7: oklch(0.75 0.132 252);
-    --oc-cat-8: oklch(0.75 0.136 288);
-    --oc-cat-9: oklch(0.75 0.144 320);
-    --oc-cat-10: oklch(0.75 0.144 355);
-  }
-}
-:root[data-theme="dark"] {
-  --oc-cat-1: oklch(0.75 0.144 25);
-  --oc-cat-2: oklch(0.75 0.144 60);
-  --oc-cat-3: oklch(0.75 0.144 95);
-  --oc-cat-4: oklch(0.75 0.144 140);
-  --oc-cat-5: oklch(0.75 0.144 170);
-  --oc-cat-6: oklch(0.75 0.134 218);
-  --oc-cat-7: oklch(0.75 0.132 252);
-  --oc-cat-8: oklch(0.75 0.136 288);
-  --oc-cat-9: oklch(0.75 0.144 320);
-  --oc-cat-10: oklch(0.75 0.144 355);
 }
 
 /* The one sanctioned brand animation: the blinking cursor. */
