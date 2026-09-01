@@ -1,5 +1,6 @@
 ---
 import type { CollectionEntry } from "astro:content";
+import Chip from "./Chip.astro";
 
 type ReleaseAsset = CollectionEntry<"releases">["data"]["assets"][number];
 
@@ -10,18 +11,98 @@ interface Props {
 const { assets } = Astro.props;
 
 function formatSize(bytes: number): string {
-  return `${Math.round(bytes / 1024 / 1024)} MB`;
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  const megabytes = bytes / (1024 * 1024);
+  return megabytes < 10 ? `${megabytes.toFixed(1)} MB` : `${Math.round(megabytes)} MB`;
 }
+
+// Asset names follow overcast[d]-{darwin|linux|windows}-{amd64|arm64}[.exe]; anything else
+// (SHA256SUMS, say) just doesn't match and gets no platform chip.
+const platformAssetPattern = /^overcastd?-(darwin|linux|windows)-(amd64|arm64)(?:\.exe)?$/i;
+const checksumsPattern = /^sha256sums/i;
 ---
 
 <div class="divide-y divide-(--oc-line)">
   {
     assets.map((asset) => (
-      <a class="grid gap-2 px-5 py-3 no-underline sm:grid-cols-[1fr_auto_auto]" href={asset.downloadUrl}>
-        <span class="font-mono text-sm text-(--oc-text)">{asset.name}</span>
+      <a class="grid gap-2 px-5 py-3 no-underline sm:grid-cols-[1fr_auto_auto]" href={asset.downloadUrl} data-asset-name={asset.name}>
+        <span class="flex flex-wrap items-center gap-2">
+          <span class="font-mono text-sm text-(--oc-text)">{asset.name}</span>
+          {checksumsPattern.test(asset.name) && <span class="text-xs text-muted">checksums</span>}
+          {platformAssetPattern.test(asset.name) && (
+            <span hidden data-platform-chip>
+              <Chip tone="accent">your system</Chip>
+            </span>
+          )}
+        </span>
         <span class="text-sm text-muted">{formatSize(asset.size)}</span>
         <span class="font-mono text-sm">download</span>
       </a>
     ))
   }
 </div>
+
+<script>
+  // Progressive enhancement: tag the asset row(s) matching the visitor's platform. Never
+  // reorders rows — a predictable list beats a clever one — and shows nothing when detection
+  // is inconclusive, so there's no risk of tagging the wrong download.
+  type Os = "darwin" | "linux" | "windows";
+  type Arch = "amd64" | "arm64";
+
+  async function detectPlatform(): Promise<{ os: Os | null; arch: Arch | null }> {
+    const uaData = (navigator as Navigator & { userAgentData?: { platform: string; getHighEntropyValues: (hints: string[]) => Promise<{ architecture?: string; bitness?: string }> } }).userAgentData;
+
+    if (uaData) {
+      const platform = (uaData.platform || "").toLowerCase();
+      let os: Os | null = null;
+      if (platform.includes("mac")) os = "darwin";
+      else if (platform.includes("win")) os = "windows";
+      else if (platform.includes("linux")) os = "linux";
+
+      // macOS reports the Rosetta-translated architecture (x86) on Apple Silicon too, so arch
+      // is never trustworthy there even when this API is present.
+      if (os === "darwin" || !os) return { os, arch: null };
+
+      try {
+        const highEntropy = await uaData.getHighEntropyValues(["architecture", "bitness"]);
+        if (highEntropy.architecture === "arm") return { os, arch: "arm64" };
+        if (highEntropy.architecture === "x86" && highEntropy.bitness === "64") return { os, arch: "amd64" };
+      } catch {
+        // fall through with arch unknown
+      }
+      return { os, arch: null };
+    }
+
+    const ua = navigator.userAgent || "";
+    const platform = navigator.platform || "";
+
+    if (/mac/i.test(platform) || /macintosh/i.test(ua)) return { os: "darwin", arch: null };
+    if (/win/i.test(platform) || /windows/i.test(ua)) {
+      return { os: "windows", arch: /arm64|aarch64/i.test(ua) ? "arm64" : null };
+    }
+    if (/linux/i.test(platform) || /linux/i.test(ua)) {
+      if (/aarch64|arm64/i.test(ua)) return { os: "linux", arch: "arm64" };
+      if (/x86_64|x64|amd64/i.test(ua)) return { os: "linux", arch: "amd64" };
+      return { os: "linux", arch: null };
+    }
+    return { os: null, arch: null };
+  }
+
+  (async () => {
+    const { os, arch } = await detectPlatform();
+    if (!os) return;
+
+    const platformAssetPattern = /^overcastd?-(darwin|linux|windows)-(amd64|arm64)(?:\.exe)?$/i;
+    document.querySelectorAll<HTMLElement>("[data-asset-name]").forEach((row) => {
+      const match = platformAssetPattern.exec(row.getAttribute("data-asset-name") || "");
+      if (!match) return;
+      const assetOs = match[1].toLowerCase();
+      const assetArch = match[2].toLowerCase();
+      // An uncertain arch matches on OS alone rather than hiding the chip everywhere.
+      if (assetOs === os && (!arch || assetArch === arch)) {
+        row.querySelector<HTMLElement>("[data-platform-chip]")?.removeAttribute("hidden");
+      }
+    });
+  })();
+</script>

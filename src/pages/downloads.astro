@@ -1,10 +1,12 @@
 ---
 import SiteLayout from "../components/SiteLayout.astro";
 import CodeBlock from "../components/CodeBlock.astro";
+import AssetDownloadList from "../components/AssetDownloadList.astro";
+import Chip from "../components/Chip.astro";
 import { ArrowRight, Binary, Container, Download, FileText, PackageOpen, RotateCcwClock } from "@lucide/astro";
 import { getCollection, type CollectionEntry } from "astro:content";
 import { repositoryUrl } from "../lib/github-links";
-import { newestReleaseWithAssets, sortReleasesNewestFirst } from "../lib/releases";
+import { changelogCategoryTone, firstChangelogEntries, newestReleaseWithAssets, sortReleasesNewestFirst } from "../lib/releases";
 
 type ReleaseEntry = CollectionEntry<"releases">;
 type ReleaseAsset = ReleaseEntry["data"]["assets"][number];
@@ -27,6 +29,7 @@ const assets: ReleaseAsset[] = latestWithAssets?.data.assets || [];
 const releasesUrl = latestWithAssets?.data.url || `${repositoryUrl()}/releases`;
 const latestReleaseDate = formatReleaseDate(latestRelease?.data.publishedAt);
 const assetsReleaseDate = formatReleaseDate(latestWithAssets?.data.publishedAt);
+const topChangelogEntries = latestRelease ? firstChangelogEntries(latestRelease.data.changelogSections, 3) : [];
 ---
 
 <SiteLayout title="Downloads" description="Download Overcast Docker images and native binaries.">
@@ -77,15 +80,7 @@ const assetsReleaseDate = formatReleaseDate(latestWithAssets?.data.publishedAt);
         </p>
       </div>
       {assets.length > 0 ? (
-        <div class="divide-y divide-(--oc-line)">
-          {assets.map((asset: ReleaseAsset) => (
-            <a class="grid gap-2 px-5 py-3 no-underline sm:grid-cols-[1fr_auto_auto]" href={asset.downloadUrl}>
-              <span class="font-mono text-sm text-(--oc-text)">{asset.name}</span>
-              <span class="text-sm text-muted">{Math.round(asset.size / 1024 / 1024)} MB</span>
-              <span class="font-mono text-sm">download</span>
-            </a>
-          ))}
-        </div>
+        <AssetDownloadList assets={assets} />
       ) : (
         <div class="px-5 py-8 text-sm text-body">
           Native binary links could not be loaded for this build. Use the
@@ -115,7 +110,27 @@ const assetsReleaseDate = formatReleaseDate(latestWithAssets?.data.publishedAt);
           </a>
         )}
       </div>
-      {latestRelease && latestRelease.data.summary ? (
+      {latestRelease && topChangelogEntries.length > 0 ? (
+        <>
+          <div class="mt-5 space-y-3">
+            {topChangelogEntries.map((entry) => (
+              <div class="border-b border-oc pb-3 last:border-0 last:pb-0">
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <Chip tone={changelogCategoryTone[entry.category]}>{entry.label}</Chip>
+                  {entry.breaking && <Chip tone="danger">Breaking</Chip>}
+                  {entry.areas.map((area) => (
+                    <Chip tone="muted">{area}</Chip>
+                  ))}
+                </div>
+                <p class="mt-1.5 text-sm leading-6 text-body">{entry.proseText}</p>
+              </div>
+            ))}
+          </div>
+          <a class="mt-3 inline-flex items-center gap-1.5 font-mono text-xs" href="/releases/">
+            Full changelog<ArrowRight class="icon" />
+          </a>
+        </>
+      ) : latestRelease && latestRelease.data.summary ? (
         <>
           <p class="mt-5 text-sm leading-6 text-body">{latestRelease.data.summary}</p>
           <a class="mt-1 inline-flex items-center gap-1.5 font-mono text-xs" href="/releases/">

@@ -1,0 +1,74 @@
+---
+// Structured renderer for a release's "## Release Notes" section, built from
+// `ChangelogSection[]` (src/loaders/overcast-releases.ts does the parsing at build time).
+// A "category" section gets a colored Chip heading and per-entry area/breaking chips; a "raw"
+// section/entry is content the parser didn't recognize, rendered through the exact same
+// markdown pipeline as the rest of the site — never mangled, just undecorated.
+import Chip from "./Chip.astro";
+import Callout from "./Callout.astro";
+import type { ChangelogSection } from "../loaders/overcast-releases";
+import { changelogCategoryTone } from "../lib/releases";
+
+interface Props {
+  sections: ChangelogSection[];
+}
+
+const { sections } = Astro.props;
+---
+
+<div class="changelog space-y-6">
+  {
+    sections.map((section) =>
+      section.kind === "raw" ? (
+        <div class="prose prose-sm max-w-none" set:html={section.html} />
+      ) : (
+        <section>
+          <h3 class="flex items-center gap-2">
+            <Chip tone={changelogCategoryTone[section.category]}>{section.label}</Chip>
+          </h3>
+          <ul class="mt-3 list-none space-y-3 pl-0">
+            {section.entries.map((entry) =>
+              entry.kind === "raw" ? (
+                <li class="changelog-raw text-sm leading-6 text-body" set:html={entry.html} />
+              ) : (
+                <li class="text-sm leading-6 text-body">
+                  {(entry.breaking || entry.areas.length > 0) && (
+                    <div class="flex flex-wrap items-center gap-1.5">
+                      {entry.breaking && <Chip tone="danger">Breaking</Chip>}
+                      {entry.areas.map((area) => (
+                        <Chip tone="muted">{area}</Chip>
+                      ))}
+                    </div>
+                  )}
+                  <div class="changelog-prose mt-1" set:html={entry.proseHtml} />
+                  {entry.migrationHtml && (
+                    <div class="mt-2">
+                      <Callout kind="warning" title="Migration">
+                        <Fragment set:html={entry.migrationHtml} />
+                      </Callout>
+                    </div>
+                  )}
+                </li>
+              ),
+            )}
+          </ul>
+        </section>
+      ),
+    )
+  }
+</div>
+
+<style>
+  /* Entry/migration prose is rendered from a single markdown line: it's always one <p>,
+   * so drop the block margin the site's markdown pipeline normally gives paragraphs. */
+  .changelog-prose :global(p) {
+    margin: 0;
+  }
+  .changelog-raw :global(p) {
+    margin: 0;
+  }
+  .changelog-raw :global(ul) {
+    margin: 0.25rem 0 0;
+    padding-left: 1.25rem;
+  }
+</style>

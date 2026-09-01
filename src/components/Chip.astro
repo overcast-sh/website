@@ -3,11 +3,13 @@
 // /releases/ (`rounded soft px-2 py-1 font-mono text-xs text-accent`) so other pages can
 // reuse the same shape instead of inventing new chip styling per page.
 interface Props {
-  tone?: "accent" | "success" | "warning" | "muted";
+  tone?: "accent" | "success" | "warning" | "danger" | "muted";
 }
 
 const { tone = "accent" } = Astro.props;
-const toneVar = { accent: "--oc-accent", success: "--oc-success", warning: "--oc-warning", muted: "--oc-muted" }[tone];
+const toneVar = { accent: "--oc-accent", success: "--oc-success", warning: "--oc-warning", danger: "--oc-danger", muted: "--oc-muted" }[
+  tone
+];
 ---
 
 <span
