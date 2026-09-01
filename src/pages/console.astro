@@ -224,7 +224,10 @@ const alsoInside: { icon: typeof ScanSearch; service?: string; title: string; bo
         have to poll it with a CLI command to find out what happened.
       </p>
       <div class="mt-8 grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
-        <div>
+        {/* `min-w-0`: a grid item sizes itself to its content unless told otherwise, so
+            the code block inside could not shrink, and on a phone whose browser default
+            font is larger than 16px it took the page into a horizontal scroll. */}
+        <div class="min-w-0">
           <CodeBlock code={dockerFull} label="full image, console included" language="bash" />
           <p class="mt-4 text-sm text-muted">
             Then open <code>http://localhost:4567</code>. Jump to

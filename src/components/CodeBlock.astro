@@ -19,8 +19,11 @@ const highlightedCode = await codeToHtml(code, {
 ---
 
 <div class="surface overflow-hidden rounded-lg">
-  <div class="flex items-center justify-between border-b border-oc px-4 py-2 font-mono text-xs text-muted">
-    <span>&gt;_ {label}</span>
+  {/* The label truncates rather than pushing the row wider than the phone it is on: at
+      a 20px browser default font, ">_ full image with web UI" plus the button ran 65px
+      past a 375px viewport and took the whole page into a horizontal scroll. */}
+  <div class="flex items-center justify-between gap-2 border-b border-oc px-4 py-2 font-mono text-xs text-muted">
+    <span class="min-w-0 truncate">&gt;_ {label}</span>
     {/* "copy" is the same accessible name on every code block a page shows, so the
         label says which one. The click handler is SiteLayout's single delegated
         `[data-copy]` listener — it announces the copy through #copy-status. */}
