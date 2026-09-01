@@ -19,6 +19,7 @@ type ServiceSupport = {
   totalOps: number;
   implementedOps: number;
   coverage: number;
+  coverageTier: string | null;
   operations: unknown[];
 };
 
@@ -138,6 +139,37 @@ async function cleanupObsoleteGeneratedDocs(): Promise<void> {
   await fs.rm(obsoleteGeneratedReleases, { force: true });
 }
 
+// docs/README.md's "Services" table (machine-generated between the overcast:service-index
+// markers, one row per service) carries a "Coverage tier" column — Comprehensive / Core CRUD
+// / Minimal / IaC-stub — that the raw operation-coverage JSON doesn't. The website's docs
+// sidebar uses it to cluster the 50-item Service Reference list into a handful of labeled
+// groups instead of one flat alphabetical scroll (see docs/[...slug].astro). Reading this
+// table is a build-time parse of upstream *generated* content, the same category of thing
+// countDocs()/shouldPublishDoc() already do — not an edit to upstream docs.
+async function parseCoverageTiers(sourceRoot: string): Promise<Map<string, string>> {
+  const tiers = new Map<string, string>();
+  const readmePath = path.join(sourceRoot, "docs", "README.md");
+  const content = await fs.readFile(readmePath, "utf8").catch(() => "");
+  const start = content.indexOf("<!-- BEGIN overcast:service-index -->");
+  const end = content.indexOf("<!-- END overcast:service-index -->");
+  if (start === -1 || end === -1 || end <= start) return tiers;
+
+  const tableBlock = content.slice(start, end);
+  for (const line of tableBlock.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("|") || !trimmed.endsWith("|")) continue;
+    const cells = trimmed
+      .slice(1, -1)
+      .split("|")
+      .map((cell) => cell.trim());
+    if (cells.length < 4) continue;
+    const [displayName, , , tier] = cells;
+    if (!displayName || displayName === "Service" || /^-+$/.test(displayName.replaceAll(" ", ""))) continue;
+    if (tier) tiers.set(displayName, tier);
+  }
+  return tiers;
+}
+
 async function syncSupport(sourceRoot: string): Promise<ServiceSupport[]> {
   const supportPath = path.join(sourceRoot, "docs", "generated", "service-support.json");
   const raw = await readJsonIfExists<{
@@ -151,6 +183,7 @@ async function syncSupport(sourceRoot: string): Promise<ServiceSupport[]> {
       operations?: unknown[];
     }>;
   }>(supportPath, { total_ops: 0, services: [] });
+  const coverageTiers = await parseCoverageTiers(sourceRoot);
   const services = (raw.services || []).map((service) => ({
     service: service.service,
     docSlug: serviceDocAliases[service.service] || service.service,
@@ -158,6 +191,7 @@ async function syncSupport(sourceRoot: string): Promise<ServiceSupport[]> {
     totalOps: service.total_ops || 0,
     implementedOps: service.implemented_ops || 0,
     coverage: service.total_ops ? Math.round(((service.implemented_ops || 0) / service.total_ops) * 100) : 0,
+    coverageTier: coverageTiers.get(service.display_name) || null,
     operations: service.operations || [],
   }));
 

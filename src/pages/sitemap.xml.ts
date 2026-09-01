@@ -3,7 +3,7 @@ import { getCollection, type CollectionEntry } from "astro:content";
 
 const staticRoutes = [
   "/",
-  "/compare/localstack/",
+  "/docs/",
   "/contributing/",
   "/downloads/",
   "/releases/",

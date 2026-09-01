@@ -65,6 +65,23 @@ Gotchas:
 - `.github/workflows/deploy.yml` — GitHub Pages deploy workflow, tracking the latest
   Overcast release.
 
+## Writing published, non-docs pages
+
+Doc content edits belong upstream (see above), but this repo owns and writes its own
+prose on every non-docs page — home, downloads, releases, support, docs chrome, and
+what used to be `/compare/localstack/`. That prose follows the same content charter as
+the docs repo (source of truth: `overcast-sh/overcast`'s `AGENTS.md` / `CONTRIBUTING.md`
+§ "Writing docs", once added there — see the content-and-IA audit that motivated it):
+
+- No build-pipeline narration ("fetched from GitHub at build time", "generated from",
+  "the source ref is") and no meta-commentary about how content is sourced or published.
+  A version stamp belongs in the footer's "Built {date} from Overcast {ref}" line, nowhere
+  else.
+- Intro budget: 2 sentences before the first actionable thing (a command, a table, a
+  linked next step).
+- Don't inline a full changelog, config table, or other L3/L4 reference material on an L1
+  page (home, downloads, docs index) — link out to the dedicated reference page instead.
+
 ## Before finishing a change
 
 - Run `npm run check` (Astro diagnostics/type check).

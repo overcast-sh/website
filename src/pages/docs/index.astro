@@ -1,0 +1,134 @@
+---
+// The docs L1 landing page. Deliberately hand-authored here rather than rendering synced
+// markdown: docs/README.md used to double as this page (and, before that, was the full
+// ~650-line reference manual — see overcast-docs.ts, which now relocates it to
+// /docs/reference/). This page's only job is orientation — get to a working command fast,
+// then route to the guide or reference page that actually answers the reader's question.
+import SiteLayout from "../../components/SiteLayout.astro";
+import CodeBlock from "../../components/CodeBlock.astro";
+import LayerMapDiagram from "../../components/diagrams/LayerMapDiagram.astro";
+import SearchPromo from "../../components/SearchPromo.astro";
+import Chip from "../../components/Chip.astro";
+import { BookOpen, Compass, FileStack, Network, ShieldCheck, Terminal } from "@lucide/astro";
+import { getCollection, type CollectionEntry } from "astro:content";
+
+type DocEntry = CollectionEntry<"docs">;
+
+const docs: DocEntry[] = await getCollection("docs");
+const bySlug = (slug: string): DocEntry | undefined => docs.find((doc) => doc.data.slug === slug);
+
+const primaryGuides = [
+  { slug: "docs/sdk-cli", icon: Terminal },
+  { slug: "docs/cdk", icon: Network },
+  { slug: "docs/migration-from-localstack", icon: ShieldCheck },
+]
+  .map(({ slug, icon }) => {
+    const doc = bySlug(slug);
+    return doc && { doc, icon };
+  })
+  .filter((entry): entry is { doc: DocEntry; icon: typeof Terminal } => Boolean(entry));
+
+const moreGuideSlugs = ["docs/networking", "docs/local-dev", "docs/https", "docs/testcontainers", "docs/performance", "docs/storage"];
+const moreGuides = moreGuideSlugs.map(bySlug).filter((doc): doc is DocEntry => Boolean(doc));
+
+const quickStart = `docker run --rm \\
+  -p 4566:4566 \\
+  -p 4567:4567 \\
+  ghcr.io/overcast-sh/overcast:alpha`;
+
+const referenceDoc = bySlug("docs/reference");
+
+const supportLevels: Array<{ label: string; tone: "success" | "accent" | "warning" | "muted" }> = [
+  { label: "✅ Supported", tone: "success" },
+  { label: "⚠️ Partial", tone: "warning" },
+  { label: "🚧 WIP", tone: "accent" },
+  { label: "❌ Unsupported", tone: "muted" },
+];
+---
+
+<SiteLayout
+  title="Documentation"
+  description="Start with the quickstart, then route to task guides, the service reference, or the full config/debug reference."
+>
+  <div class="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
+    <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><Compass class="icon" />documentation</p>
+    <h1 class="mt-2 font-mono text-3xl font-bold">Start here, go deeper if you need to.</h1>
+    <p class="mt-4 max-w-2xl leading-7 text-body">
+      Run the container, point your tooling at <code>localhost:4566</code>, and check the support matrix for gaps.
+      Everything below routes somewhere more specific.
+    </p>
+
+    <div class="mt-8 grid gap-6 lg:grid-cols-[minmax(0,320px)_1fr]">
+      <CodeBlock code={quickStart} label="start overcast" />
+      <div class="surface flex items-center rounded-lg p-4">
+        <LayerMapDiagram />
+      </div>
+    </div>
+
+    <section class="mt-12">
+      <h2 class="font-mono text-lg font-bold">Common first steps</h2>
+      <div class="mt-4 grid gap-3 sm:grid-cols-3">
+        {primaryGuides.map(({ doc, icon: Icon }) => (
+          <a class="surface rounded-lg p-4 no-underline" href={`/${doc.data.slug}/`}>
+            <div class="flex items-center gap-2">
+              <Icon class="icon text-accent" />
+              <strong class="font-mono text-sm text-(--oc-text)">{doc.data.title}</strong>
+            </div>
+            {doc.data.description && <p class="mt-2 text-xs leading-5 text-muted">{doc.data.description}</p>}
+          </a>
+        ))}
+      </div>
+    </section>
+
+    {moreGuides.length > 0 && (
+      <section class="mt-10">
+        <h2 class="font-mono text-lg font-bold">More guides</h2>
+        <div class="mt-4 grid gap-x-6 gap-y-2 sm:grid-cols-2">
+          {moreGuides.map((doc) => (
+            <a class="flex items-center gap-2 rounded-md px-2 py-2 text-sm no-underline hover:bg-(--oc-accent-soft)" href={`/${doc.data.slug}/`}>
+              <BookOpen class="icon shrink-0 text-muted" />
+              <span class="text-(--oc-text)">{doc.data.title}</span>
+            </a>
+          ))}
+        </div>
+      </section>
+    )}
+
+    <section class="mt-10">
+      <h2 class="font-mono text-lg font-bold">Reference</h2>
+      <p class="mt-2 max-w-2xl text-sm leading-6 text-body">
+        Exhaustive and table-first, meant for looking one thing up — not reading start to finish.
+      </p>
+      <div class="mt-4 grid gap-3 sm:grid-cols-2">
+        {referenceDoc && (
+          <a class="surface rounded-lg p-4 no-underline" href={`/${referenceDoc.data.slug}/`}>
+            <div class="flex items-center gap-2">
+              <FileStack class="icon text-accent" />
+              <strong class="font-mono text-sm text-(--oc-text)">Full reference</strong>
+            </div>
+            <p class="mt-2 text-xs leading-5 text-muted">
+              Config variables, debug endpoints, persistence, multi-container networking, troubleshooting.
+            </p>
+          </a>
+        )}
+        <a class="surface rounded-lg p-4 no-underline" href="/support/">
+          <div class="flex items-center gap-2">
+            <ShieldCheck class="icon text-accent" />
+            <strong class="font-mono text-sm text-(--oc-text)">Support matrix</strong>
+          </div>
+          <p class="mt-2 text-xs leading-5 text-muted">Every service, every operation, implemented or not — one table.</p>
+        </a>
+      </div>
+      <div class="mt-4 flex flex-wrap items-center gap-2">
+        <span class="font-mono text-xs text-muted">Status legend:</span>
+        {supportLevels.map((level) => (
+          <Chip tone={level.tone}>{level.label}</Chip>
+        ))}
+      </div>
+    </section>
+
+    <div class="mt-10">
+      <SearchPromo label="Looking for a specific operation? Search the docs" />
+    </div>
+  </div>
+</SiteLayout>

@@ -65,16 +65,33 @@ function titleFromPath(docPath: string): string {
 }
 
 function sectionFor(docPath: string, frontmatter: Record<string, unknown>): string {
+  // docs/README.md is the full config/debug/persistence/troubleshooting reference — it's
+  // relocated off the L1 landing page (see slugFor) to its own L3 reference page, and
+  // grouped in the sidebar accordingly rather than under its own frontmatter section
+  // ("Getting Started", inherited from when it doubled as the index).
+  if (docPath === "docs/README.md") return "Reference";
   if (frontmatter.section) return String(frontmatter.section);
   if (docPath === "README.md") return "Overview";
-  if (docPath.startsWith("docs/services/")) return "Services";
+  // Every individual docs/services/*.md file sets its own frontmatter section to
+  // "Service Reference" already (caught by the check above); this fallback only ever
+  // fires for docs/services/README.md, which doesn't. Match the same label so the
+  // sidebar shows one "Service Reference" group instead of two near-duplicate headings.
+  if (docPath.startsWith("docs/services/")) return "Service Reference";
   if (docPath.startsWith("docs/cdk")) return "CDK";
   return "Guides";
 }
 
+// docs/README.md is the full ~650-line reference manual (config vars, debug endpoints,
+// persistence, multi-container networking, troubleshooting) — historically it also
+// rendered at `/docs/`, making the docs landing page the reference manual instead of an
+// orientation page. It now lives at its own stable URL, `/docs/reference/`, so `/docs/`
+// is free for a hand-authored L1 index (src/pages/docs/index.astro) and every existing
+// internal anchor (`#configuration-reference`, `#persistence`, etc.) and cross-file link
+// into this document keeps resolving, unmodified, at the new location — rewriteMarkdownLinks
+// below re-targets every such link automatically since it also calls slugFor().
 function slugFor(docPath: string): string {
   if (docPath === "README.md") return "docs/overview";
-  if (docPath === "docs/README.md") return "docs";
+  if (docPath === "docs/README.md") return "docs/reference";
   if (docPath === "docs/cdk/README.md") return "docs/cdk/overview";
   return docPath.replace(/^docs\//, "docs/").replace(/README\.md$/, "").replace(/\.md$/, "");
 }
@@ -259,8 +276,17 @@ export function overcastDocsLoader(): Loader {
         const absolute = path.join(sourceRoot, sourcePath);
         const raw = await fs.readFile(absolute, "utf8");
         const parsed = matter(raw);
-        const title = String(parsed.data.title || titleFromPath(sourcePath));
-        const description = String(parsed.data.description || "");
+        // docs/README.md's own frontmatter title/description ("Documentation" / "This
+        // directory contains the full Overcast documentation...") were written for when
+        // this file doubled as the site's docs index. Now that it's the L3 reference page
+        // (see slugFor/sectionFor above), override both so the page chrome describes what's
+        // actually on the page instead of pointing back at itself.
+        const title =
+          sourcePath === "docs/README.md" ? "Full reference" : String(parsed.data.title || titleFromPath(sourcePath));
+        const description =
+          sourcePath === "docs/README.md"
+            ? "Configuration variables, debug endpoints, persistence backends, multi-container networking, and startup troubleshooting — everything in one scannable page."
+            : String(parsed.data.description || "");
         const slug = slugFor(sourcePath).replace(/\/$/, "");
         const body = normalizeMarkdownTables(rewriteMarkdownLinks(rewriteLegacyOrgReferences(parsed.content), sourcePath));
         const data = await parseData({

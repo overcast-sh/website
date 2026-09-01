@@ -12,6 +12,7 @@ export type ServiceSupport = {
   totalOps: number;
   implementedOps: number;
   coverage: number;
+  coverageTier: string | null;
   operations: unknown[];
 };
 
