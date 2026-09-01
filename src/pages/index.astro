@@ -1,11 +1,11 @@
 ---
 import SiteLayout from "../components/SiteLayout.astro";
 import CodeBlock from "../components/CodeBlock.astro";
+import ArchitectureDiagram from "../components/diagrams/ArchitectureDiagram.astro";
 import { ArrowRight, BookOpen, CloudOff, GitCompare, Network, Route, ScanSearch, ShieldCheck, Terminal } from "@lucide/astro";
-import { getServiceSupport, getSourceManifest } from "../lib/generated-content";
+import { getServiceSupport } from "../lib/generated-content";
 
 const support = await getServiceSupport();
-const source = await getSourceManifest();
 const topServices = support.services.slice().sort((a, b) => b.implementedOps - a.implementedOps).slice(0, 8);
 const quickStart = `docker run --rm \\
   -p 4566:4566 \\
@@ -37,6 +37,9 @@ const quickStart = `docker run --rm \\
       </div>
       <div class="space-y-4">
         <CodeBlock code={quickStart} label="start overcast" />
+        <div class="surface rounded-lg p-4">
+          <ArchitectureDiagram />
+        </div>
         <div class="grid grid-cols-3 gap-3">
           <div class="surface rounded-lg p-4">
             <div class="font-mono text-2xl font-bold">{support.services.length}</div>
@@ -116,14 +119,13 @@ const quickStart = `docker run --rm \\
   <section class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
     <div class="grid gap-8 lg:grid-cols-[0.85fr_1.15fr]">
       <div>
-        <p class="font-mono text-xs uppercase tracking-[0.16em] text-muted">docs from release source</p>
+        <p class="font-mono text-xs uppercase tracking-[0.16em] text-muted">documentation</p>
         <h2 class="mt-2 flex items-center gap-3 font-mono text-2xl font-bold">
-          <span class="icon-tile"><BookOpen class="icon" /></span>Documentation follows the tracked Overcast release.
+          <span class="icon-tile"><BookOpen class="icon" /></span>Start with the quickstart, go deeper if you need to.
         </h2>
         <p class="mt-4 leading-7 text-body">
-          This site includes {source.docsCount} public documentation pages from the configured Overcast source ref
-          <code class="mx-1 rounded soft px-1.5 py-0.5">{source.sourceRef}</code>. Published docs stay tied to the
-          release they describe, while internal plans and contributor-only notes stay out of the public site.
+          The docs index routes you to a task guide, the per-service reference, or the full config and debug
+          reference — whichever you actually need.
         </p>
       </div>
       <div class="surface rounded-lg p-5">
@@ -132,7 +134,7 @@ const quickStart = `docker run --rm \\
           <a class="inline-flex items-center gap-2 rounded-md border border-oc p-3 no-underline" href="/docs/sdk-cli/"><Terminal class="icon text-accent" />Configure AWS CLI and SDKs</a>
           <a class="inline-flex items-center gap-2 rounded-md border border-oc p-3 no-underline" href="/docs/cdk/"><Network class="icon text-accent" />Use CDK locally</a>
           <a class="inline-flex items-center gap-2 rounded-md border border-oc p-3 no-underline" href="/docs/networking/"><Route class="icon text-accent" />Host-routed endpoints</a>
-          <a class="inline-flex items-center gap-2 rounded-md border border-oc p-3 no-underline" href="/compare/localstack/"><ShieldCheck class="icon text-accent" />Migrate from LocalStack</a>
+          <a class="inline-flex items-center gap-2 rounded-md border border-oc p-3 no-underline" href="/docs/migration-from-localstack/"><ShieldCheck class="icon text-accent" />Migrate from LocalStack</a>
         </div>
       </div>
     </div>
