@@ -115,10 +115,18 @@ kbd {
   stroke-width: 1.75;
 }
 
+/* Square, always. `flex: none` is the load-bearing line: the tile is used as a
+ * flex item next to a heading, and a shrinkable flex item's width is only a
+ * starting size — it collapses toward its min-content width (the 1rem glyph)
+ * when the row runs out of room, while `height` stays put. That is what made
+ * the docs tile render taller than wide. `aspect-ratio` holds the shape if the
+ * tile ever lands somewhere that overrides one axis. */
 .icon-tile {
   display: inline-flex;
+  flex: none;
   width: 2rem;
   height: 2rem;
+  aspect-ratio: 1;
   align-items: center;
   justify-content: center;
   border-radius: var(--oc-radius-control);
