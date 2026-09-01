@@ -21,8 +21,38 @@ permissions:
 
 env:
   OVERCAST_REPO: overcast-sh/overcast
+  BRANDING_REPO: overcast-sh/branding
 
 jobs:
+  # public/brand, public/fonts and src/styles/brand-tokens.css are vendored copies of
+  # overcast-sh/branding. They stay tracked because this workflow never checks out the
+  # branding repo to build the site — but a tracked copy of someone else's file rots
+  # silently, so flag the drift here instead. Deliberately NOT a dependency of `build`:
+  # stale brand assets are a thing to fix, not a reason to stop shipping the site.
+  brand-drift:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout website
+        uses: actions/checkout@v4
+
+      - name: Checkout branding
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.BRANDING_REPO }}
+          path: .cache/source/branding
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Check vendored brand assets
+        env:
+          OVERCAST_BRANDING_PATH: .cache/source/branding
+        run: npm run content:check
+
   build:
     if: github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip deploy]')
     runs-on: ubuntu-latest

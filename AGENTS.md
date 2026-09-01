@@ -18,8 +18,12 @@ to GitHub Pages.
 - `npm run build` — runs `content:sync`, `astro build`, then `pagefind --site dist` to
   build the search index.
 - `npm run check` — `astro check` (type/diagnostics check).
-- `npm run content:sync` — runs `scripts/sync-overcast-content.ts` directly, without
-  starting a dev/build.
+- `npm run content:sync` — **the one command that regenerates every script-owned file.**
+  Runs `scripts/sync-overcast-content.ts` directly, without starting a dev/build;
+  `predev`/`prebuild` already call it, so `npm run dev`/`build` need nothing extra.
+- `npm run content:check` — verifies the vendored brand assets still match a branding
+  checkout (needs `OVERCAST_BRANDING_PATH`). Writes nothing; exits non-zero on drift.
+  CI runs it as the `brand-drift` job on every PR.
 - `npm run preview` — serves the built `dist/` output.
 
 ## Content-sync architecture (read this before touching docs)
@@ -28,7 +32,21 @@ Documentation content is **not authored in this repo**. `scripts/sync-overcast-c
 reads from a local checkout of `overcast-sh/overcast` (path from `OVERCAST_LOCAL_PATH`,
 falling back to `.cache/source/overcast` or `../../overcast`) and writes derived JSON
 (`service-support.json`, `source-manifest.json`) plus branding assets into `src/generated/`
-and `public/brand` / `public/fonts`. Astro content loaders in `src/loaders/` (notably
+and `public/brand` / `public/fonts`.
+
+The brand assets — `src/styles/brand-tokens.css`, the SVGs/icon in `public/brand`, the fonts
+in `public/fonts` — are **vendored copies of `overcast-sh/branding` that stay tracked in git**.
+The deploy workflow never checks out the branding repo, so without the committed copies the
+site could not render a logo. To stop those copies rotting, `npm run content:check` (CI job
+`brand-drift`) diffs them against a branding checkout and fails on drift. Two consequences:
+
+- `src/styles/brand-tokens.css` is overwritten byte-for-byte. **Site-only tokens belong in
+  `src/styles/site-tokens.css`** (`--oc-scrim`, the `--oc-cat-*` service ramp), which the sync
+  never touches. Adding one to `brand-tokens.css` gets it silently deleted by the next sync.
+- Anything under `public/brand` that is not in the script's `brandAssets` list is site-owned
+  and left alone — `public/brand/social-card.png`, the Open Graph image, is the current case.
+
+Astro content loaders in `src/loaders/` (notably
 `overcast-source.ts`, `overcast-docs.ts`, `overcast-releases.ts`) then read directly from
 that same source checkout to build the docs collection at build time — the sync script
 does not copy markdown docs into this repo.
@@ -52,6 +70,10 @@ Gotchas:
   it rather than failing the build; it only fails if a file that IS present is malformed.
 - `OVERCAST_BRANDING_PATH` is optional; when unset, branding assets are simply not
   refreshed (existing `public/brand`/`public/fonts` output is left alone).
+- **A sync must never dirty the working tree.** `src/generated/` and `dist/` are gitignored;
+  everything else the script writes is a *vendored* file that is expected to already match
+  its source byte-for-byte. If `git status` is dirty after `npm run content:sync`, that is a
+  bug in the script or a genuine upstream update to commit — not normal.
 - Edit-link behavior (`EDIT_LINK_MODE`, `OVERCAST_EDIT_REF`, `WEBSITE_EDIT_REF`, etc.) is
   also driven by env vars in `.env.example` — see `src/lib/github-links.ts`.
 
@@ -66,6 +88,10 @@ Gotchas:
 - `src/plugins/` — remark plugins wired into `astro.config.mjs`'s `markdown` config, so
   they apply to synced docs and release bodies alike.
 - `src/generated/` — gitignored, build-time output of `content:sync`.
+- `src/styles/brand-tokens.css` — vendored from `overcast-sh/branding`; rewritten by
+  `content:sync`, drift-checked in CI. Don't hand-edit.
+- `src/styles/site-tokens.css` — site-owned tokens the brand system doesn't define.
+  This is where a new `--oc-*` custom property goes.
 - `scripts/sync-overcast-content.ts` — the content-sync script described above.
 - `.github/workflows/deploy.yml` — GitHub Pages deploy workflow, tracking the latest
   Overcast release.

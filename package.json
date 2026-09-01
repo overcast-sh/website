@@ -10,6 +10,7 @@
     "build": "node scripts/run-command.ts astro build && node scripts/run-command.ts pagefind --site dist",
     "preview": "node scripts/run-command.ts astro preview",
     "content:sync": "node scripts/sync-overcast-content.ts",
+    "content:check": "node scripts/sync-overcast-content.ts --check",
     "check": "node scripts/run-command.ts astro check"
   },
   "dependencies": {
