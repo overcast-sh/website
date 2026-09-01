@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
-const repo = process.env.OVERCAST_REPO || "Neaox/overcast";
+const repo = process.env.OVERCAST_REPO || "overcast-sh/overcast";
 const sourceRef = process.env.OVERCAST_SOURCE_REF || process.env.OVERCAST_TRACKING_REF || "alpha";
 const cwd = process.cwd();
 const generatedDir = path.join(cwd, "src", "generated");
@@ -75,7 +75,7 @@ async function resolveSourceRoot(): Promise<string> {
   }
 
   throw new Error(
-    "Could not find Overcast source. Set OVERCAST_LOCAL_PATH, or checkout Neaox/overcast into .cache/source/overcast.",
+    "Could not find Overcast source. Set OVERCAST_LOCAL_PATH, or checkout overcast-sh/overcast into .cache/source/overcast.",
   );
 }
 

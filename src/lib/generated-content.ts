@@ -49,8 +49,8 @@ export function getServiceSupport(): Promise<ServiceSupportManifest> {
 
 export function getSourceManifest(): Promise<SourceManifest> {
   return readJson<SourceManifest>("source-manifest.json", {
-    repo: "Neaox/overcast",
-    sourceRef: "alpha",
+    repo: "overcast-sh/overcast",
+    sourceRef: "",
     sourceRoot: "",
     brandingRoot: null,
     generatedAt: "",

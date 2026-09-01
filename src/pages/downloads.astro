@@ -19,10 +19,10 @@ const latestWithAssets = newestReleaseWithAssets(releases);
 const dockerFull = `docker run --rm \\
   -p 4566:4566 \\
   -p 4567:4567 \\
-  ghcr.io/neaox/overcast:latest`;
+  ghcr.io/overcast-sh/overcast:latest`;
 const dockerSlim = `docker run --rm \\
   -p 4566:4566 \\
-  ghcr.io/neaox/overcast-slim:latest`;
+  ghcr.io/overcast-sh/overcast-slim:latest`;
 const assets: ReleaseAsset[] = latestWithAssets?.data.assets || [];
 const releasesUrl = latestWithAssets?.data.url || `${repositoryUrl()}/releases`;
 const latestChangelogHtml = latestRelease?.rendered?.html || "";

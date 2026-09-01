@@ -1,7 +1,7 @@
 import path from "node:path";
 import { resolveOvercastSourceRoot } from "../loaders/overcast-source";
 
-export const overcastGitHubRepo = process.env.OVERCAST_REPO || "Neaox/overcast";
+export const overcastGitHubRepo = process.env.OVERCAST_REPO || "overcast-sh/overcast";
 export const overcastEditRef = process.env.OVERCAST_EDIT_REF || "main";
 export const websiteGitHubRepo = process.env.WEBSITE_REPO || "overcast-sh/website";
 export const websiteEditRef = process.env.WEBSITE_EDIT_REF || "main";

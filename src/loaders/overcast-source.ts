@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-export const overcastRepo = process.env.OVERCAST_REPO || "Neaox/overcast";
+export const overcastRepo = process.env.OVERCAST_REPO || "overcast-sh/overcast";
 export const overcastSourceRef = process.env.OVERCAST_SOURCE_REF || process.env.OVERCAST_TRACKING_REF || "alpha";
 
 function isString(value: string | undefined): value is string {
