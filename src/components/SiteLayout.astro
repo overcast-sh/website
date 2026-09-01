@@ -41,6 +41,27 @@ const builtIso = toIsoDate(sourceManifest.generatedAt);
 const builtTitle = formatDateTimeTitle(sourceManifest.generatedAt);
 const sourceRef = sourceManifest.sourceRef;
 const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/releases/tag/${sourceRef}` : "";
+
+// One list behind the header nav, the mobile drawer and the footer's Product column —
+// they were three hand-kept copies, and only one of them can carry `aria-current`
+// correctly if the "which page am I on" test is written out three times.
+const primaryNav = [
+  { href: "/docs/", label: "Docs", footerLabel: "Docs", Icon: BookOpen },
+  { href: "/console/", label: "Console", footerLabel: "Web Console", Icon: Monitor },
+  { href: "/downloads/", label: "Downloads", footerLabel: "Downloads", Icon: Download },
+  { href: "/releases/", label: "Releases", footerLabel: "Releases", Icon: RotateCcwClock },
+  { href: "/support/", label: "Support Matrix", footerLabel: "Support Matrix", Icon: ShieldCheck },
+  { href: "/docs/migration-from-localstack/", label: "LocalStack Migration", footerLabel: "LocalStack Migration", Icon: GitCompare },
+];
+// `aria-current="page"` is the only thing that tells a screen reader which nav entry is
+// the page being read; the visual nav says it with colour, which is not announced.
+// A docs sub-page marks /docs/ as its section rather than the page itself.
+const pathname = Astro.url.pathname;
+const navCurrent = (href: string): "page" | "true" | undefined => {
+  if (pathname === href) return "page";
+  if (href !== "/" && pathname.startsWith(href)) return "true";
+  return undefined;
+};
 ---
 
 <!doctype html>
@@ -78,14 +99,21 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
   </head>
   <body class="flex min-h-screen flex-col bg-page">
     <a class="skip-link" href="#main-content">Skip to content</a>
-    <div class="soft border-b border-oc">
+    {/* Named region rather than a bare <div>: it sits outside the header, so without a
+        landmark it is content a screen reader can only reach by walking the page from
+        the top — and it is the one line on the site that says "alpha". */}
+    <div class="soft border-b border-oc" role="region" aria-label="Project status">
       <p class="mx-auto max-w-7xl px-4 py-2 text-center font-mono text-xs leading-5 text-body sm:px-6 lg:px-8">
         <strong class="text-(--oc-text)">Overcast is alpha</strong> — behavior and APIs may change between releases.
         Pin your version and <a href="/docs/#alpha-stability">read the changelog</a> before upgrading.
       </p>
     </div>
     <header class="sticky top-0 z-30 border-b border-oc bg-card/95 backdrop-blur">
-      <div class="mx-auto flex max-w-7xl items-center gap-5 px-4 py-3 sm:px-6 lg:px-8">
+      {/* `flex-wrap` is the escape hatch for a reader whose browser default font is
+          larger than 16px: every label in this row grows with it, and without somewhere
+          to go the row pushes the whole page into a horizontal scroll. At the default
+          size nothing wraps. */}
+      <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 sm:px-6 lg:px-8">
         <a href="/" class="flex shrink-0 items-center gap-2 no-underline" aria-label="Overcast home">
           <span class="relative h-8 w-8 shrink-0">
             <img src="/brand/mark-light.svg" alt="" class="theme-light-only h-8 w-8" />
@@ -93,16 +121,23 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
           </span>
           <span class="leading-none">
             <span class="block font-mono text-xl font-bold text-(--oc-text)">overcast</span>
-            <span class="block font-mono text-[10px] uppercase tracking-[0.16em] text-muted">local AWS emulator</span>
+            {/* Hidden on a phone: at the 12px floor the tagline is 164px wide, and
+                brand + tagline + the three controls came to 388px inside a 375px
+                viewport — a horizontal scroll on the whole page for a line that only
+                repeats what the page already says. The wordmark carries it there. */}
+            <span class="hidden font-mono text-2xs uppercase tracking-[0.16em] text-muted sm:block">local AWS emulator</span>
           </span>
         </a>
         <nav class="hidden items-center gap-3.5 font-mono text-xs whitespace-nowrap text-muted xl:flex" aria-label="Main">
-          <a href="/docs/" class="flex items-center gap-1.5 text-muted hover:text-(--oc-text)"><BookOpen class="icon" />Docs</a>
-          <a href="/console/" class="flex items-center gap-1.5 text-muted hover:text-(--oc-text)"><Monitor class="icon" />Console</a>
-          <a href="/downloads/" class="flex items-center gap-1.5 text-muted hover:text-(--oc-text)"><Download class="icon" />Downloads</a>
-          <a href="/releases/" class="flex items-center gap-1.5 text-muted hover:text-(--oc-text)"><RotateCcwClock class="icon" />Releases</a>
-          <a href="/support/" class="flex items-center gap-1.5 text-muted hover:text-(--oc-text)"><ShieldCheck class="icon" />Support Matrix</a>
-          <a href="/docs/migration-from-localstack/" class="flex items-center gap-1.5 text-muted hover:text-(--oc-text)"><GitCompare class="icon" />LocalStack Migration</a>
+          {primaryNav.map(({ href, label, Icon }) => (
+            <a
+              href={href}
+              class={`flex items-center gap-1.5 hover:text-(--oc-text) ${navCurrent(href) === "page" ? "text-(--oc-text)" : "text-muted"}`}
+              aria-current={navCurrent(href)}
+            >
+              <Icon class="icon" />{label}
+            </a>
+          ))}
         </nav>
         <div class="ml-auto flex items-center gap-2">
           <button
@@ -110,10 +145,12 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
             class="copy-button flex h-11 w-11 items-center justify-center gap-1.5 rounded-md font-mono text-xs sm:h-9 sm:w-auto sm:justify-start sm:px-3"
             type="button"
             aria-label="Search"
+            aria-haspopup="dialog"
+            aria-expanded="false"
           >
             <Search class="icon" />
             <span class="hidden sm:inline">search</span>
-            <kbd class="ml-2 hidden text-[10px] sm:inline">/</kbd>
+            <kbd class="ml-2 hidden text-2xs sm:inline">/</kbd>
           </button>
           <a
             href={repositoryUrl()}
@@ -127,11 +164,15 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
           >
             <Star class="icon" />Star
           </a>
+          {/* aria-pressed, not a bare label: the button is a two-state switch, and
+              "Toggle theme" alone never says which state it is in. The inline script
+              below sets the initial value from the resolved theme. */}
           <button
             id="theme-toggle"
             class="copy-button h-11 w-11 rounded-md font-mono text-xs xl:h-9 xl:w-9"
             type="button"
-            aria-label="Toggle theme"
+            aria-label="Dark theme"
+            aria-pressed="false"
           >
             <SunMoon class="mx-auto h-4 w-4" />
           </button>
@@ -152,16 +193,27 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
         id="mobile-menu"
         class="fixed inset-x-4 top-[4.75rem] z-40 hidden rounded-lg border border-oc bg-card p-2 shadow-2xl xl:hidden"
       >
-        <nav class="flex flex-col gap-1 font-mono text-sm" aria-label="Mobile">
-          <a href="/docs/" class="flex items-center gap-2 rounded-md px-3 py-3 text-muted no-underline hover:bg-(--oc-accent-soft)"><BookOpen class="icon" />Docs</a>
-          <a href="/console/" class="flex items-center gap-2 rounded-md px-3 py-3 text-muted no-underline hover:bg-(--oc-accent-soft)"><Monitor class="icon" />Console</a>
-          <a href="/downloads/" class="flex items-center gap-2 rounded-md px-3 py-3 text-muted no-underline hover:bg-(--oc-accent-soft)"><Download class="icon" />Downloads</a>
-          <a href="/releases/" class="flex items-center gap-2 rounded-md px-3 py-3 text-muted no-underline hover:bg-(--oc-accent-soft)"><RotateCcwClock class="icon" />Releases</a>
-          <a href="/support/" class="flex items-center gap-2 rounded-md px-3 py-3 text-muted no-underline hover:bg-(--oc-accent-soft)"><ShieldCheck class="icon" />Support Matrix</a>
-          <a href="/docs/migration-from-localstack/" class="flex items-center gap-2 rounded-md px-3 py-3 text-muted no-underline hover:bg-(--oc-accent-soft)"><GitCompare class="icon" />LocalStack Migration</a>
-          <div class="my-1 border-t border-oc"></div>
-          <a href={repositoryUrl()} class="flex items-center gap-2 rounded-md px-3 py-3 text-muted no-underline hover:bg-(--oc-accent-soft)"><GitHubIcon />GitHub</a>
-          <a href={starsUrl()} class="flex items-center gap-2 rounded-md px-3 py-3 text-muted no-underline hover:bg-(--oc-accent-soft)"><Star class="icon" />Star</a>
+        <nav class="font-mono text-sm" aria-label="Mobile">
+          <ul class="m-0 flex list-none flex-col gap-1 p-0">
+            {primaryNav.map(({ href, label, Icon }) => (
+              <li>
+                <a
+                  href={href}
+                  class={`flex items-center gap-2 rounded-md px-3 py-3 no-underline hover:bg-(--oc-accent-soft) ${navCurrent(href) === "page" ? "soft text-(--oc-text)" : "text-muted"}`}
+                  aria-current={navCurrent(href)}
+                >
+                  <Icon class="icon" />{label}
+                </a>
+              </li>
+            ))}
+            <li aria-hidden="true"><div class="my-1 border-t border-oc"></div></li>
+            <li>
+              <a href={repositoryUrl()} class="flex items-center gap-2 rounded-md px-3 py-3 text-muted no-underline hover:bg-(--oc-accent-soft)"><GitHubIcon />GitHub</a>
+            </li>
+            <li>
+              <a href={starsUrl()} class="flex items-center gap-2 rounded-md px-3 py-3 text-muted no-underline hover:bg-(--oc-accent-soft)"><Star class="icon" />Star</a>
+            </li>
+          </ul>
         </nav>
       </div>
       <div id="search-overlay" class="fixed inset-0 z-50 hidden">
@@ -173,7 +225,10 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
           aria-modal="true"
           aria-labelledby="search-title"
         >
-          <h2 id="search-title" class="sr-only">Search Overcast</h2>
+          {/* Names the dialog through aria-labelledby without being a heading: as an
+              <h2> it sat ahead of every page's <h1> in the document, so heading
+              navigation started in a dialog nobody had opened. */}
+          <p id="search-title" class="sr-only">Search Overcast</p>
           <div class="flex items-center gap-2 border-b border-oc p-3">
             <label class="sr-only" for="search-input">Search</label>
             <div class="relative min-w-0 flex-1">
@@ -209,7 +264,7 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
             </button>
           </div>
           <div id="search-results" class="min-h-0 flex-1 overflow-y-auto p-2 text-sm" role="listbox" aria-label="Search results"></div>
-          <div class="flex items-center justify-between gap-3 border-t border-oc px-3 py-2 font-mono text-[11px] text-muted">
+          <div class="flex items-center justify-between gap-3 border-t border-oc px-3 py-2 font-mono text-2xs text-muted">
             <span id="search-count" aria-hidden="true"></span>
             <span class="hidden gap-3 sm:flex">
               <span><kbd>↑</kbd> <kbd>↓</kbd> move</span>
@@ -254,12 +309,17 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
             <div>
               <p class="m-0 font-mono text-xs uppercase tracking-[0.16em] text-muted">Product</p>
               <ul class="m-0 mt-3 flex list-none flex-col gap-2.5 p-0 text-sm">
-                <li><a class="text-muted no-underline hover:text-(--oc-text)" href="/docs/">Docs</a></li>
-                <li><a class="text-muted no-underline hover:text-(--oc-text)" href="/console/">Web Console</a></li>
-                <li><a class="text-muted no-underline hover:text-(--oc-text)" href="/downloads/">Downloads</a></li>
-                <li><a class="text-muted no-underline hover:text-(--oc-text)" href="/releases/">Releases</a></li>
-                <li><a class="text-muted no-underline hover:text-(--oc-text)" href="/support/">Support Matrix</a></li>
-                <li><a class="text-muted no-underline hover:text-(--oc-text)" href="/docs/migration-from-localstack/">LocalStack Migration</a></li>
+                {primaryNav.map(({ href, footerLabel }) => (
+                  <li>
+                    <a
+                      class={`no-underline hover:text-(--oc-text) ${navCurrent(href) === "page" ? "text-(--oc-text)" : "text-muted"}`}
+                      href={href}
+                      aria-current={navCurrent(href)}
+                    >
+                      {footerLabel}
+                    </a>
+                  </li>
+                ))}
               </ul>
             </div>
             <div>
@@ -291,10 +351,19 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
     </footer>
     <script is:inline>
       const toggle = document.getElementById("theme-toggle");
+      // The toggle reports the theme actually in force, which is the stored choice when
+      // there is one and the OS preference otherwise — `dataset.theme` alone is empty
+      // until the reader has pressed the button once.
+      const resolvedTheme = () =>
+        document.documentElement.dataset.theme ||
+        (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      const syncToggleState = () => toggle?.setAttribute("aria-pressed", String(resolvedTheme() === "dark"));
+      syncToggleState();
       toggle?.addEventListener("click", () => {
-        const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+        const next = resolvedTheme() === "dark" ? "light" : "dark";
         document.documentElement.dataset.theme = next;
         localStorage.setItem("overcast-theme", next);
+        syncToggleState();
       });
 
       const overlay = document.getElementById("search-overlay");
@@ -382,6 +451,17 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
         if (countLabel) countLabel.textContent = message;
       };
 
+      // The panel shows two different things in the same box: a list of options, and
+      // prose (the idle suggestions, "nothing matched", "search is unavailable"). A
+      // listbox may only contain options, and `aria-expanded` on a combobox means
+      // "there are options to move through" — so both follow what is actually rendered
+      // rather than whether the dialog happens to be open.
+      const setListboxMode = (isList) => {
+        if (isList) results.setAttribute("role", "listbox");
+        else results.removeAttribute("role");
+        input?.setAttribute("aria-expanded", String(Boolean(isList)));
+      };
+
       const clearResults = () => {
         results.innerHTML = "";
         activeIndex = -1;
@@ -426,6 +506,7 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
 
       const renderPanelMessage = (html, statusMessage) => {
         clearResults();
+        setListboxMode(false);
         results.innerHTML = `<div class="px-3 py-6 text-center text-sm text-muted">${html}</div>`;
         setCount("");
         if (statusMessage) setStatus(statusMessage);
@@ -433,8 +514,9 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
 
       const renderIdleState = () => {
         clearResults();
+        setListboxMode(false);
         results.innerHTML = `<div class="px-3 py-4">
-            <p class="m-0 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">try searching for</p>
+            <p class="m-0 font-mono text-2xs uppercase tracking-[0.16em] text-muted">try searching for</p>
             <div class="mt-3 flex flex-wrap gap-2">${SUGGESTIONS.map(
               (suggestion) =>
                 `<button type="button" data-suggestion="${escapeHtml(suggestion)}" class="copy-button rounded-md px-2.5 py-1.5 font-mono text-xs">${escapeHtml(suggestion)}</button>`,
@@ -483,26 +565,32 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
                 // Deep links live in a sibling row, never inside the result's own
                 // <a>: a nested anchor is invalid HTML and the parser hoists it
                 // out of the card, which is exactly how it looked.
-                const anchors = (row.sub_results || [])
-                  .filter((sub) => sub.url && sub.url.includes("#"))
-                  .slice(0, 2)
+                // Deep links are options in their own right, in the same arrow-key
+                // rotation as the result above them: a listbox may only contain
+                // options and groups, so a plain <a> sibling made #search-results an
+                // invalid listbox, and the links were unreachable by keyboard anyway.
+                const anchorRows = (row.sub_results || []).filter((sub) => sub.url && sub.url.includes("#")).slice(0, 2);
+                const anchors = anchorRows
                   .map(
                     (sub) =>
-                      `<a class="search-anchor" tabindex="-1" href="${escapeHtml(sub.url)}"># ${escapeHtml(sub.title)}</a>`,
+                      `<a id="search-result-${index++}" data-result role="option" aria-selected="false" class="search-anchor" tabindex="-1" href="${escapeHtml(sub.url)}"># ${escapeHtml(sub.title)}</a>`,
                   )
                   .join("");
                 return `<a id="search-result-${id}" data-result role="option" aria-selected="false" tabindex="-1" class="search-result" href="${escapeHtml(row.url)}">
                     <span class="search-result-title">${escapeHtml(row.meta?.title ?? row.url)}</span>
                     <span class="search-result-url">${escapeHtml(row.url)}</span>
                     <span class="search-result-excerpt">${row.excerpt}</span>
-                  </a>${anchors ? `<span class="search-anchors">${anchors}</span>` : ""}`;
+                  </a>${anchors ? `<span class="search-anchors" role="group" aria-label="Sections of ${escapeHtml(row.meta?.title ?? row.url)}">${anchors}</span>` : ""}`;
               })
               .join("");
-            return `<div role="group" aria-label="${escapeHtml(group.name)}"><p class="search-group">${escapeHtml(group.name)}</p>${rows}</div>`;
+            // The visible heading is the group's name, so it is announced through the
+            // group rather than a second time as a stray text child of the listbox.
+            return `<div role="group" aria-label="${escapeHtml(group.name)}"><p class="search-group" aria-hidden="true">${escapeHtml(group.name)}</p>${rows}</div>`;
           })
           .join("");
 
         results.innerHTML = html;
+        setListboxMode(true);
         activeIndex = -1;
         const total = ranked.length;
         setCount(total > shown.length ? `${shown.length} of ${total} results` : `${total} result${total === 1 ? "" : "s"}`);
@@ -554,7 +642,7 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
         closeMenu();
         overlay?.classList.remove("hidden");
         document.documentElement.classList.add("search-open");
-        input?.setAttribute("aria-expanded", "true");
+        trigger?.setAttribute("aria-expanded", "true");
         loadPagefind().catch(() => {});
         if (!input?.value.trim()) renderIdleState();
         input?.focus();
@@ -564,7 +652,8 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
         if (overlay?.classList.contains("hidden")) return;
         overlay?.classList.add("hidden");
         document.documentElement.classList.remove("search-open");
-        input?.setAttribute("aria-expanded", "false");
+        trigger?.setAttribute("aria-expanded", "false");
+        setListboxMode(false);
         requestId++;
         setLoading(false);
         if (returnFocus) trigger?.focus();
@@ -594,9 +683,13 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
         if (event.key === "Escape" && searchIsOpen()) {
           closeSearch({ returnFocus: true });
         }
-        // The panel is aria-modal, so keep Tab inside it while it is open.
+        // The panel is aria-modal, so keep Tab inside it while it is open. Every result
+        // row is an <a href> with tabindex="-1" — reachable by arrow key, never by Tab —
+        // so the trap has to exclude them or shift-Tab lands on the last search hit.
         if (event.key === "Tab" && searchIsOpen() && panel) {
-          const focusable = panel.querySelectorAll("a[href], button, input, [tabindex]:not([tabindex='-1'])");
+          const focusable = [...panel.querySelectorAll("a[href], button, input, select, textarea, [tabindex]")].filter(
+            (element) => element.getAttribute("tabindex") !== "-1" && !element.hasAttribute("disabled"),
+          );
           if (!focusable.length) return;
           const first = focusable[0];
           const last = focusable[focusable.length - 1];
@@ -680,7 +773,45 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
         }
       });
     </script>
+    {/* One live region for every copy control on the page — the code-block buttons
+        wired up below, and the `copy` buttons in CodeBlock/DockerImageRefs. Swapping a
+        button's own label or text is not reliably announced while that button holds
+        focus, which is exactly when a copy happens. */}
+    <p id="copy-status" class="sr-only" role="status" aria-live="polite"></p>
     <script is:inline>
+      const announceCopy = (message) => {
+        const region = document.getElementById("copy-status");
+        if (!region) return;
+        region.textContent = "";
+        window.setTimeout(() => {
+          region.textContent = message;
+        }, 60);
+      };
+      // One delegated handler for every `[data-copy]` button on the page (CodeBlock,
+      // DockerImageRefs). Each component used to bind its own, and each of those bound
+      // every button on the page — so on /releases/ a single click ran the handler once
+      // per release and announced the copy that many times.
+      document.addEventListener("click", async (event) => {
+        const button = event.target.closest?.("[data-copy]");
+        if (!button) return;
+        const label = button.getAttribute("data-copy-label") || "";
+        const original = button.textContent;
+        try {
+          await navigator.clipboard.writeText(button.getAttribute("data-copy") || "");
+          button.textContent = "copied";
+          announceCopy(label ? `${label} copied to clipboard` : "Copied to clipboard");
+        } catch {
+          button.textContent = "copy failed";
+          announceCopy("Copy failed");
+        }
+        window.clearTimeout(Number(button.dataset.copyTimer));
+        button.dataset.copyTimer = String(
+          window.setTimeout(() => {
+            button.textContent = original;
+          }, 1200),
+        );
+      });
+
       const COPY_ICON =
         '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>';
       const CHECK_ICON =
@@ -712,6 +843,7 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
           button.innerHTML = CHECK_ICON;
           button.classList.add("is-copied");
           button.setAttribute("aria-label", "Copied!");
+          announceCopy("Code copied to clipboard");
           resetTimer = window.setTimeout(() => {
             button.innerHTML = COPY_ICON;
             button.classList.remove("is-copied");

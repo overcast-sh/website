@@ -7,3 +7,4 @@ dist/
 .env
 designs/
 src/generated/
+reports/

@@ -30,7 +30,11 @@ const docs: DocEntry[] = await getCollection("docs");
 // markdown body opens with the same title repeated as its own leading "# ..." heading
 // (a structural convention upstream, not a one-off), so strip only that leading <h1> —
 // pure duplication — and leave the rest of the body untouched.
-const body = (doc.rendered?.html ?? "").replace(/^\s*<h1[^>]*>[\s\S]*?<\/h1>\s*/i, "");
+//
+// A leading HTML comment counts as "leading" too: every generated `operations.md` opens
+// `<!-- BEGIN overcast:capabilities -->` above its `# ...`, so the strip missed the
+// heading on all fifty of them and each page carried two <h1>s, its own title twice.
+const body = (doc.rendered?.html ?? "").replace(/^\s*(?:<!--[\s\S]*?-->\s*)*<h1[^>]*>[\s\S]*?<\/h1>\s*/i, "");
 
 // The same convention repeats the lead: the paragraph after that "# ..." heading is what
 // the frontmatter description was written from, so the page printed the sentence twice —
@@ -93,14 +97,14 @@ const serviceLandingSlug = serviceGroup?.landing?.slug;
           Docs navigation
           <ChevronDown class="icon shrink-0 text-muted transition-transform duration-150 group-open:rotate-180" />
         </summary>
-        <div class="mt-2 max-h-[60vh] overflow-auto rounded-md border border-oc bg-card p-3">
-          <DocsNav docs={navDocs} currentSlug={doc.data.slug} support={support} compact />
-        </div>
+        <nav class="mt-2 max-h-[60vh] overflow-auto rounded-md border border-oc bg-card p-3" aria-label="Documentation">
+          <DocsNav docs={navDocs} currentSlug={doc.data.slug} support={support} idPrefix="docsnav-drawer" compact />
+        </nav>
       </details>
 
-      <div class="hidden lg:block">
-        <DocsNav docs={navDocs} currentSlug={doc.data.slug} support={support} />
-      </div>
+      <nav class="hidden lg:block" aria-label="Documentation">
+        <DocsNav docs={navDocs} currentSlug={doc.data.slug} support={support} idPrefix="docsnav-side" />
+      </nav>
     </aside>
     <article class="min-w-0">
       <div class="mb-8 border-b border-oc pb-8">

@@ -9,6 +9,16 @@
 @theme {
   --font-mono: var(--oc-font-mono);
   --font-sans: var(--oc-font-sans);
+
+  /* The bottom of the type scale, so `text-2xs` / `text-xs` are the only two ways to
+   * write small text and there is one place to change what they mean. `text-xs` was
+   * Tailwind's 12px and is now 13px: it is what the header nav, the buttons and the
+   * chips are set in, and 12px is below the floor for text you are meant to operate
+   * rather than skim. Everything from `text-sm` up is Tailwind's own scale. */
+  --text-2xs: var(--oc-text-2xs);
+  --text-2xs--line-height: 1.4;
+  --text-xs: var(--oc-text-xs);
+  --text-xs--line-height: 1.45;
 }
 
 /* Vertical rhythm ------------------------------------------------------
@@ -44,11 +54,15 @@
   --oc-pad-card: 20px;
 }
 
+/* Deliberately no font-rendering hints here. `-webkit-font-smoothing: antialiased`
+ * thins every stroke on macOS, which is the opposite of what small mono labels need on
+ * a high-DPI panel, and `text-rendering: optimizeLegibility` (which this rule used to
+ * carry) buys kerning and ligatures the site does not want in a monospace UI while
+ * being a documented source of layout bugs. The browser default is the right default. */
 html {
   background: var(--oc-bg);
   color: var(--oc-text);
   font-family: var(--oc-font-sans);
-  text-rendering: optimizeLegibility;
 }
 
 body {
@@ -56,13 +70,21 @@ body {
   min-height: 100vh;
 }
 
+/* Inline links are underlined, not merely tinted. An accent link on body text
+ * carries only 1.97:1 against the prose around it, so colour alone cannot be what
+ * separates them (WCAG 1.4.1). The underline is offset off the baseline so
+ * descenders stay legible. Links that carry a class are the site's own buttons,
+ * cards and nav rows — those are told apart by shape, not by sitting in a
+ * sentence, so they keep their own styling. */
 a:not([class]) {
   color: var(--oc-accent);
-  text-decoration: none;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: from-font;
 }
 
 a:not([class]):hover {
-  text-decoration: underline;
+  text-decoration-thickness: 2px;
 }
 
 code,
@@ -161,6 +183,25 @@ kbd {
   border-radius: var(--oc-radius-control);
 }
 
+/* Nothing on the site animates to convey meaning, so a reduced-motion request can
+ * turn all of it off wholesale: the chevron rotations, the copy button's fade-in,
+ * and the smooth scroll behind the version jump list (that one is also guarded in
+ * JS, since `scrollIntoView({behavior:"smooth"})` ignores CSS). */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 .skip-link {
   position: absolute;
   left: var(--oc-space-4);
@@ -192,7 +233,7 @@ kbd {
   margin: 0;
   padding: 0.75rem 0.75rem 0.35rem;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--oc-text-2xs);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--oc-muted);
@@ -221,7 +262,7 @@ kbd {
   display: block;
   margin-top: 1px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--oc-text-2xs);
   color: var(--oc-accent);
 }
 
@@ -232,7 +273,7 @@ kbd {
   line-clamp: 2;
   overflow: hidden;
   margin-top: 3px;
-  font-size: 0.8125rem;
+  font-size: var(--oc-text-sm);
   line-height: 1.45;
   color: var(--oc-body);
 }
@@ -256,20 +297,40 @@ kbd {
 
 .search-anchor {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--oc-text-2xs);
   color: var(--oc-muted);
   text-decoration: none;
 }
 
-.search-anchor:hover {
+.search-anchor:hover,
+.search-anchor.is-active {
   color: var(--oc-accent);
 }
 
+/* Deep links are options in the same listbox as the results above them, so the
+ * arrow-key highlight has to be visible on them too. */
+.search-anchor.is-active {
+  background: var(--oc-accent-soft);
+  border-radius: 4px;
+}
+
+/* Every row in the results list is a pointer target, and a deep link is one line of
+ * 12px text — 2.5.8 asks for 24px of clickable height. */
+.search-anchor {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 2px;
+}
+
+/* An em-relative size compounds: a <kbd> inside 12px hint text came out at 10.8px,
+ * which is the smallest type on the site and a mono glyph on top of that. The floor
+ * is absolute so a keycap is the same size wherever it is written. */
 kbd {
   border: 1px solid var(--oc-line);
   border-radius: 4px;
   padding: 0 4px;
-  font-size: 0.9em;
+  font-size: var(--oc-text-2xs);
   color: var(--oc-muted);
 }
 
@@ -364,6 +425,15 @@ kbd {
   --tw-prose-th-borders: var(--oc-line);
   --tw-prose-td-borders: var(--oc-line);
   max-width: none;
+}
+
+/* Prose ran the full width of the docs column — 116 characters a line on a 1440px
+ * screen, well past the 45-85 band where the eye can find the next line without
+ * hunting for it. Capping the paragraphs rather than `.prose` itself is the point:
+ * tables, code blocks and diagrams still get the whole column, which is what they
+ * need, and only the running text is measured. */
+.prose > :is(p, ul, ol, blockquote, dl, h1, h2, h3, h4, h5, h6) {
+  max-width: var(--oc-measure);
 }
 
 .prose pre {
@@ -462,10 +532,19 @@ kbd {
   }
 }
 
+/* Typography's own 0.875em compounds inside a table cell, which is already 0.875em:
+ * `GET` in a service reference table came out at 12.25px, the smallest text on any
+ * docs page and set in mono. 0.9375em keeps code visibly distinct from the prose
+ * around it without dropping below the floor in either place. */
 .prose :not(pre) > code {
   background: var(--oc-accent-soft);
   border-radius: 4px;
   padding: 0.15em 0.35em;
+  font-size: 0.9375em;
+}
+
+.prose :is(th, td) code {
+  font-size: 1em;
 }
 
 .prose :not(pre) > code::before,
@@ -473,20 +552,41 @@ kbd {
   content: none;
 }
 
-/* Tables render at their natural width but scroll within their own box
- * instead of forcing the whole page to scroll horizontally.
+/* Tables render at their natural width but scroll within their own box instead of
+ * forcing the whole page to scroll horizontally.
  *
- * Cells opt out of the prose-wide `overflow-wrap: anywhere`: `anywhere`
- * lets the layout engine treat every cell as shrinkable to one character,
- * which crushes narrow columns into vertical letter-stacks instead of
- * letting the table scroll. `break-word` wraps the same overflowing URLs
- * without changing a column's minimum width, so columns keep their natural
- * size and the table scrolls when it genuinely doesn't fit. */
-.prose table {
-  display: block;
-  width: max-content;
-  max-width: 100%;
+ * The scrolling happens on a wrapper (added by rehype-table-a11y.ts), never on the
+ * <table> itself: `display: block` on a table is what makes it scroll, and it also
+ * strips the table's own role — rows and cells stop being rows and cells, so a
+ * screen reader can no longer read a header with its cell. The wrapper takes
+ * `tabindex="0"` from the same plugin so the horizontal scroll is reachable by
+ * keyboard (WCAG 2.1.1) rather than by trackpad only.
+ *
+ * Cells opt out of the prose-wide `overflow-wrap: anywhere`: `anywhere` lets the
+ * layout engine treat every cell as shrinkable to one character, which crushes
+ * narrow columns into vertical letter-stacks instead of letting the table scroll.
+ * `break-word` wraps the same overflowing URLs without changing a column's minimum
+ * width, so columns keep their natural size and the table scrolls when it genuinely
+ * doesn't fit. */
+.table-scroll {
   overflow-x: auto;
+  max-width: 100%;
+}
+
+.table-scroll:focus-visible {
+  outline: 2px solid var(--oc-accent);
+  outline-offset: 2px;
+  border-radius: var(--oc-radius-control);
+}
+
+.prose .table-scroll > table {
+  width: max-content;
+  max-width: none;
+  margin-block: 0;
+}
+
+.prose .table-scroll {
+  margin-block: 2em;
 }
 
 .prose th,

@@ -10,11 +10,22 @@ const { tone = "accent" } = Astro.props;
 const toneVar = { accent: "--oc-accent", success: "--oc-success", warning: "--oc-warning", danger: "--oc-danger", muted: "--oc-muted" }[
   tone
 ];
+// The tint carries the tone; the label is read at 12px, so it needs 4.5:1 against
+// that tint. Every tone but `muted` is a semantic token already tuned for exactly
+// that (see brand-tokens.css). `--oc-muted` is not — it is a body-adjacent grey and
+// only clears 4.0:1 on its own 14% tint — so the muted chip keeps the grey tint and
+// prints its label in --oc-body, the same neutral one step darker.
+const textVar = tone === "muted" ? "--oc-body" : toneVar;
 ---
 
+{/* The tint mixes into --oc-card rather than `transparent`. A translucent tint takes
+    its lightness from whatever the chip happens to be sitting on — a chip inside an
+    open <details> inside a tinted panel came out several steps darker than the same
+    chip on the page, and dragged the label with it. Mixing into a known surface makes
+    the pair fixed, which is what lets the tones above be tuned once. */}
 <span
   class="inline-flex items-center gap-1.5 rounded px-2 py-0.5 font-mono text-xs font-medium"
-  style={`background:color-mix(in srgb, var(${toneVar}) 14%, transparent); color:var(${toneVar})`}
+  style={`background:color-mix(in srgb, var(${toneVar}) 14%, var(--oc-card)); color:var(${textVar})`}
 >
   <slot />
 </span>
