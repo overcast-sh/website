@@ -351,6 +351,75 @@ kbd {
   background: var(--oc-card);
 }
 
+/* Callout / admonition. One definition for both producers: <Callout> on hand-authored
+ * pages and the GitHub-alert transform on synced markdown (src/lib/callouts.ts).
+ * `--oc-tint` carries the kind's semantic colour so the rule set below is kind-agnostic. */
+.callout {
+  --oc-tint: var(--oc-accent);
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: var(--oc-radius-card);
+  border: 1px solid var(--oc-line);
+  border-left: 4px solid var(--oc-tint);
+  background: var(--oc-card);
+  color: var(--oc-body);
+}
+
+.callout[data-callout="tip"] {
+  --oc-tint: var(--oc-success);
+}
+
+.callout[data-callout="warning"] {
+  --oc-tint: var(--oc-warning);
+}
+
+.callout[data-callout="caution"] {
+  --oc-tint: var(--oc-danger);
+}
+
+.callout-icon {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  margin-top: 0.2rem;
+  color: var(--oc-tint);
+}
+
+.callout-body {
+  min-width: 0;
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+}
+
+/* A callout rendered from markdown lands inside .prose, where every child would pick up
+ * the prose vertical rhythm — sized for a full page column, and enough to push the first
+ * and last lines off the callout's own padding. Reset it and set one gap for the whole
+ * box instead. Scoped to .prose so a hand-authored <Callout> keeps whatever spacing its
+ * own slot markup asks for; three class selectors so it wins over `.prose .astro-code`. */
+.prose .callout .callout-body > * {
+  margin-block: 0;
+}
+
+.prose .callout .callout-body > * + * {
+  margin-top: 0.75rem;
+}
+
+.prose .callout .callout-body > .callout-label + * {
+  margin-top: 0.25rem;
+}
+
+.callout .callout-label {
+  margin: 0 0 0.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--oc-tint);
+}
+
+
 @font-face {
   font-family: "JetBrains Mono";
   src: url("/fonts/JetBrainsMono-Regular.ttf") format("truetype");

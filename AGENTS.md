@@ -63,6 +63,8 @@ Gotchas:
 - `src/loaders/` — Astro content loaders that read from the external Overcast source
   checkout.
 - `src/lib/` — helpers for generated content, GitHub edit links, and release data.
+- `src/plugins/` — remark plugins wired into `astro.config.mjs`'s `markdown` config, so
+  they apply to synced docs and release bodies alike.
 - `src/generated/` — gitignored, build-time output of `content:sync`.
 - `scripts/sync-overcast-content.ts` — the content-sync script described above.
 - `.github/workflows/deploy.yml` — GitHub Pages deploy workflow, tracking the latest

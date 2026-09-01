@@ -1,0 +1,106 @@
+---
+// The docs sidebar. Rendered twice per page — once inside the mobile <details> drawer,
+// once in the desktop column — so it lives here rather than being written out twice.
+//
+// Service Reference is the section with structure: ~50 services, each grouped by coverage
+// tier, and each optionally holding sub-pages (operations, limitations, ...). Sub-pages
+// are only listed under the service you're currently reading, which is what keeps a
+// 50-service list from turning into a 250-link list.
+import { getServiceSupport, type ServiceSupportManifest } from "../lib/generated-content";
+import { groupServiceDocs, parseServiceDocSlug, type ServiceDocLike } from "../lib/service-docs";
+
+type NavEntry = ServiceDocLike & { section: string };
+
+interface Props {
+  docs: NavEntry[];
+  currentSlug: string;
+  /** Roomier tap targets for the mobile drawer. */
+  compact?: boolean;
+  support?: ServiceSupportManifest;
+}
+
+const { docs, currentSlug, compact = false, support = await getServiceSupport() } = Astro.props;
+
+const linkClass = compact ? "block rounded-md px-3 py-3 text-sm no-underline" : "block rounded-md px-2 py-1.5 text-sm no-underline";
+const stateClass = (slug: string) => (slug === currentSlug ? "soft text-(--oc-text)" : "text-muted");
+
+const serviceGroups = groupServiceDocs(docs);
+const activeService = parseServiceDocSlug(currentSlug)?.service ?? null;
+
+// A service's sub-pages are entries in the docs collection like any other; keep them out
+// of the flat per-tier list so they only ever appear nested under their own service.
+const visible: NavEntry[] = docs.filter((doc) => parseServiceDocSlug(doc.slug)?.page == null);
+
+const grouped = Object.entries(
+  visible.reduce<Record<string, NavEntry[]>>((groups, entry) => {
+    groups[entry.section] ??= [];
+    groups[entry.section].push(entry);
+    return groups;
+  }, {}),
+);
+
+// The "Service Reference" section is a flat, alphabetical list of ~50 doc pages — the same
+// coverage-tier grouping already shown on the homepage's "top services" tiles and in the
+// upstream service table (Comprehensive / Core CRUD / Minimal / IaC-stub) turns that into
+// four labeled clusters instead of one long scroll. coverageTier comes from parsing
+// docs/README.md's generated service table at sync time (see sync-overcast-content.ts);
+// a doc with no match (e.g. the services index page itself) falls into "Other".
+const tierOrder = [
+  "Comprehensive / broad support",
+  "Core CRUD + common workflows",
+  "Minimal / targeted support",
+  "IaC/discovery-oriented stub",
+];
+const tierForDoc = (entry: NavEntry): string => {
+  const docSlug = parseServiceDocSlug(entry.slug)?.service;
+  const service = docSlug ? support.services.find((s) => s.docSlug === docSlug) : undefined;
+  return service?.coverageTier || "Other";
+};
+const servicesByTier = (entries: NavEntry[]): Array<[string, NavEntry[]]> => {
+  const buckets = new Map<string, NavEntry[]>();
+  for (const entry of entries) {
+    const tier = tierForDoc(entry);
+    buckets.set(tier, [...(buckets.get(tier) ?? []), entry]);
+  }
+  return [...tierOrder, "Other"].filter((tier) => buckets.has(tier)).map((tier) => [tier, buckets.get(tier)!]);
+};
+
+const subPagesFor = (entry: NavEntry) => {
+  const service = parseServiceDocSlug(entry.slug)?.service;
+  if (!service || service !== activeService) return [];
+  return serviceGroups.get(service)?.subPages ?? [];
+};
+---
+
+{grouped.map(([section, entries]) => (
+  <div class={compact ? "mb-5 last:mb-0" : "mb-5"}>
+    <h2 class="mb-2 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">{section}</h2>
+    {section === "Service Reference" ? (
+      servicesByTier(entries).map(([tier, tierEntries]) => (
+        <div class="mb-3 last:mb-0">
+          <p class="mb-1 font-mono text-[10px] uppercase tracking-[0.12em] text-muted opacity-75">{tier}</p>
+          <nav class="space-y-1">
+            {tierEntries.map((entry) => (
+              <div>
+                <a class={`${linkClass} ${stateClass(entry.slug)}`} href={`/${entry.slug}/`}>{entry.title}</a>
+                {subPagesFor(entry).length > 0 && (
+                  <div class="ml-3 mt-1 space-y-1 border-l border-oc pl-2">
+                    {subPagesFor(entry).map((page) => (
+                      <a class={`${linkClass} ${stateClass(page.slug)}`} href={`/${page.slug}/`}>{page.label}</a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </nav>
+        </div>
+      ))
+    ) : (
+      <nav class="space-y-1">
+        {entries?.map((entry) => (
+          <a class={`${linkClass} ${stateClass(entry.slug)}`} href={`/${entry.slug}/`}>{entry.title}</a>
+        ))}
+      </nav>
+    )}
+  </div>
+))}
