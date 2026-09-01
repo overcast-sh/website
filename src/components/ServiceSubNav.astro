@@ -1,0 +1,31 @@
+---
+// The per-service page switcher: Overview · Operations · Limitations · Troubleshooting ·
+// Examples, listing only the pages that actually exist for this service.
+//
+// Renders nothing when a service has no sub-pages (the shape every release ships today) —
+// a strip whose only entry is the page you're already reading is chrome with nothing in it.
+import type { ServiceSubPage } from "../lib/service-docs";
+
+interface Props {
+  items: ServiceSubPage[];
+  currentSlug: string;
+}
+
+const { items, currentSlug } = Astro.props;
+---
+
+{items.length > 0 && (
+  <nav class="mt-4 flex flex-wrap gap-1" aria-label="Service pages">
+    {items.map((item) => (
+      <a
+        class={`rounded-md px-2.5 py-1.5 font-mono text-xs no-underline ${
+          item.slug === currentSlug ? "soft text-(--oc-text)" : "text-muted hover:text-(--oc-text)"
+        }`}
+        href={`/${item.slug}/`}
+        aria-current={item.slug === currentSlug ? "page" : undefined}
+      >
+        {item.label}
+      </a>
+    ))}
+  </nav>
+)}

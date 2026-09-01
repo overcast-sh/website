@@ -1,5 +1,6 @@
 import { defineConfig } from "astro/config";
 import tailwindcss from "@tailwindcss/vite";
+import remarkGithubAlerts from "./src/plugins/remark-github-alerts";
 
 export default defineConfig({
   site: "https://overcast.sh",
@@ -10,6 +11,9 @@ export default defineConfig({
     "/compare/localstack/": "/docs/migration-from-localstack/",
   },
   markdown: {
+    // Applies to every markdown the site renders: synced docs and release bodies both go
+    // through the loader API's renderMarkdown(), which uses this config.
+    remarkPlugins: [remarkGithubAlerts],
     shikiConfig: {
       themes: {
         light: "github-light",
