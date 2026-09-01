@@ -16,12 +16,14 @@ export const publicDocFiles = [
   "README.md",
   "docs/README.md",
   // Split out of docs/README.md's mega reference manual (config vars, debug endpoints,
-  // persistence, multi-container networking, startup troubleshooting) in an upcoming
-  // upstream restructure — kept grouped here, right after the doc they came from.
+  // storage & persistence, networking, startup troubleshooting) in an upcoming upstream
+  // restructure — kept grouped here, right after the doc they came from. Storage and
+  // networking each started as two pages (persistence.md/storage.md,
+  // multi-container-networking.md/networking.md) and were later merged upstream into the
+  // single docs/storage.md and docs/networking.md listed below (Overcast PR #1527) — the
+  // old split names never need to appear here again.
   "docs/configuration.md",
   "docs/debug-endpoints.md",
-  "docs/persistence.md",
-  "docs/multi-container-networking.md",
   "docs/troubleshooting.md",
   "docs/sdk-cli.md",
   "docs/cli.md",

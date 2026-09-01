@@ -26,7 +26,7 @@ function titleFromPath(docPath: string): string {
 }
 
 function sectionFor(docPath: string, frontmatter: Record<string, unknown>): string {
-  // docs/README.md is the full config/debug/persistence/troubleshooting reference — it's
+  // docs/README.md is the full config/debug/storage/networking/troubleshooting reference — it's
   // relocated off the L1 landing page (see slugFor) to its own L3 reference page, and
   // grouped in the sidebar accordingly rather than under its own frontmatter section
   // ("Getting Started", inherited from when it doubled as the index).
@@ -43,7 +43,7 @@ function sectionFor(docPath: string, frontmatter: Record<string, unknown>): stri
 }
 
 // docs/README.md is the full ~650-line reference manual (config vars, debug endpoints,
-// persistence, multi-container networking, troubleshooting) — historically it also
+// storage & persistence, networking, troubleshooting) — historically it also
 // rendered at `/docs/`, making the docs landing page the reference manual instead of an
 // orientation page. It now lives at its own stable URL, `/docs/reference/`, so `/docs/`
 // is free for a hand-authored L1 index (src/pages/docs/index.astro) and every existing
@@ -247,7 +247,7 @@ export function overcastDocsLoader(): Loader {
           sourcePath === "docs/README.md" ? "Full reference" : String(parsed.data.title || titleFromPath(sourcePath));
         const description =
           sourcePath === "docs/README.md"
-            ? "Configuration variables, debug endpoints, persistence backends, multi-container networking, and startup troubleshooting — everything in one scannable page."
+            ? "Configuration variables, debug endpoints, storage & persistence, networking, and startup troubleshooting — everything in one scannable page."
             : String(parsed.data.description || "");
         const slug = slugFor(sourcePath).replace(/\/$/, "");
         const body = normalizeMarkdownTables(rewriteMarkdownLinks(rewriteLegacyOrgReferences(parsed.content), sourcePath));
