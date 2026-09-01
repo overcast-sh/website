@@ -1,0 +1,29 @@
+---
+/**
+ * /compare/localstack/ used to be a thin stub duplicating the real migration guide at
+ * /docs/migration-from-localstack/ (see the content audit). This keeps the URL developers
+ * expect resolving without maintaining two pages for one guide.
+ *
+ * It is a hand-rolled page rather than an `astro.config.mjs` `redirects` entry because
+ * Astro's static redirect stub has no `<html>` element, and pagefind (run over `dist/`
+ * in `npm run build`) warns on every such file it finds. Same meta-refresh, canonical and
+ * noindex as Astro's stub — just inside a complete document. GitHub Pages can't emit a
+ * real 3xx either way. The page carries no `data-pagefind-body`, so it stays out of search.
+ */
+const target = "/docs/migration-from-localstack/";
+const canonical = new URL(target, Astro.site ?? "https://overcast.sh").toString();
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Redirecting to: {target}</title>
+    <meta http-equiv="refresh" content={`0;url=${target}`} />
+    <meta name="robots" content="noindex" />
+    <link rel="canonical" href={canonical} />
+  </head>
+  <body>
+    <a href={target}>Redirecting from <code>/compare/localstack/</code> to <code>{target}</code></a>
+  </body>
+</html>
