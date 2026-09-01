@@ -6,14 +6,11 @@ import Chip from "../components/Chip.astro";
 import { ArrowRight, Binary, Container, Download, FileText, PackageOpen, RotateCcwClock } from "@lucide/astro";
 import { getCollection, type CollectionEntry } from "astro:content";
 import { repositoryUrl } from "../lib/github-links";
+import { formatDate, toIsoDate } from "../lib/format-date";
 import { changelogCategoryTone, changelogRollup, firstChangelogEntries, newestReleaseWithAssets, sortReleasesNewestFirst } from "../lib/releases";
 
 type ReleaseEntry = CollectionEntry<"releases">;
 type ReleaseAsset = ReleaseEntry["data"]["assets"][number];
-
-function formatReleaseDate(publishedAt: string | null | undefined): string {
-  return publishedAt ? new Date(publishedAt).toLocaleDateString("en-NZ", { dateStyle: "medium" }) : "";
-}
 
 const releases: ReleaseEntry[] = sortReleasesNewestFirst(await getCollection("releases"));
 const latestRelease = releases[0];
@@ -27,8 +24,8 @@ const dockerSlim = `docker run --rm \\
   ghcr.io/overcast-sh/overcast-slim:alpha`;
 const assets: ReleaseAsset[] = latestWithAssets?.data.assets || [];
 const releasesUrl = latestWithAssets?.data.url || `${repositoryUrl()}/releases`;
-const latestReleaseDate = formatReleaseDate(latestRelease?.data.publishedAt);
-const assetsReleaseDate = formatReleaseDate(latestWithAssets?.data.publishedAt);
+const latestReleaseDate = formatDate(latestRelease?.data.publishedAt);
+const assetsReleaseDate = formatDate(latestWithAssets?.data.publishedAt);
 const topChangelogEntries = latestRelease ? firstChangelogEntries(latestRelease.data.changelogSections, 3) : [];
 const topRollup = latestRelease ? changelogRollup(latestRelease.data.changelogSections) : null;
 ---
@@ -75,7 +72,7 @@ const topRollup = latestRelease ? changelogRollup(latestRelease.data.changelogSe
           {latestWithAssets && (
             <>
               Showing assets from <a href={latestWithAssets.data.url}>{latestWithAssets.data.name}</a>
-              {assetsReleaseDate && <> published <time datetime={latestWithAssets.data.publishedAt || undefined}>{assetsReleaseDate}</time></>}.
+              {assetsReleaseDate && <> published <time datetime={toIsoDate(latestWithAssets.data.publishedAt)}>{assetsReleaseDate}</time></>}.
             </>
           )}
         </p>
@@ -100,9 +97,9 @@ const topRollup = latestRelease ? changelogRollup(latestRelease.data.changelogSe
           </p>
           <h2 class="mt-2 font-mono text-xl font-bold">{latestRelease?.data.name || "Latest release"}</h2>
           {latestReleaseDate && (
-            <time class="mt-1 block text-sm text-muted" datetime={latestRelease?.data.publishedAt || undefined}>
-              Published {latestReleaseDate}
-            </time>
+            <p class="mt-1 text-sm text-muted">
+              Published <time datetime={toIsoDate(latestRelease?.data.publishedAt)}>{latestReleaseDate}</time>
+            </p>
           )}
         </div>
         {latestRelease && (

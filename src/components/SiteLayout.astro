@@ -4,6 +4,7 @@ import { BookOpen, Download, FileText, GitCompare, Menu, Monitor, PencilLine, Ro
 import GitHubIcon from "./GitHubIcon.astro";
 import { repositoryUrl, starsUrl, websiteEditUrlFromRoute } from "../lib/github-links";
 import { getSourceManifest } from "../lib/generated-content";
+import { formatDate, toIsoDate } from "../lib/format-date";
 
 interface Props {
   title?: string;
@@ -29,9 +30,8 @@ const pageTitle = title === "Overcast" ? title : `${title} | Overcast`;
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site || "https://overcast.sh");
 const socialImageUrl = new URL("/brand/github-social-card.svg", Astro.site || "https://overcast.sh");
 const sourceManifest = await getSourceManifest();
-const builtDate = sourceManifest.generatedAt
-  ? new Date(sourceManifest.generatedAt).toLocaleDateString("en-NZ", { dateStyle: "medium" })
-  : "";
+const builtDate = formatDate(sourceManifest.generatedAt);
+const builtIso = toIsoDate(sourceManifest.generatedAt);
 const sourceRef = sourceManifest.sourceRef;
 const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/releases/tag/${sourceRef}` : "";
 ---
@@ -266,7 +266,7 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
           </p>
           {builtDate && (
             <p class="m-0 shrink-0 font-mono text-xs text-muted">
-              Built {builtDate}{sourceRef && (
+              Built <time datetime={builtIso}>{builtDate}</time>{sourceRef && (
                 <> from <a href={sourceReleaseUrl}>Overcast {sourceRef}</a></>
               )}
             </p>
@@ -638,6 +638,24 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
             event.preventDefault();
             target.click();
           }
+        }
+      });
+    </script>
+    <script is:inline>
+      // Every date on the site is baked at build time in UTC, so "31 Aug 2026" can be
+      // yesterday or tomorrow depending on where it is being read, and it is always
+      // formatted the build's way rather than the reader's. Re-render each
+      // <time datetime> in the reader's own locale and timezone; the server-rendered
+      // text stays as the no-JS fallback. <option> is skipped — its text is the
+      // select's own label, which the version jump list composes inline.
+      document.querySelectorAll("time[datetime]").forEach((element) => {
+        if (element.closest("option")) return;
+        const value = new Date(element.getAttribute("datetime"));
+        if (Number.isNaN(value.getTime())) return;
+        try {
+          element.textContent = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(value);
+        } catch {
+          // Leave the build-time text in place.
         }
       });
     </script>
