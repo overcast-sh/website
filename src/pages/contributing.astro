@@ -1,9 +1,10 @@
 ---
 import SiteLayout from "../components/SiteLayout.astro";
-import { CircleAlert, GitPullRequest } from "@lucide/astro";
-import { repositoryUrl } from "../lib/github-links";
+import { CircleAlert, Code, FileText, GitPullRequest } from "@lucide/astro";
+import { repositoryUrl, websiteGitHubRepo } from "../lib/github-links";
 
 const overcastRepoUrl = repositoryUrl();
+const websiteRepoUrl = repositoryUrl(websiteGitHubRepo);
 ---
 
 <SiteLayout title="Contributing" description="Contribute to Overcast and the Overcast website." searchTitle="Contributing">
@@ -22,6 +23,16 @@ const overcastRepoUrl = repositoryUrl();
       <a class="surface rounded-lg p-5 no-underline" href={`${overcastRepoUrl}/issues/new/choose`}>
         <h2 class="flex items-center gap-2 font-mono text-lg font-bold text-(--oc-text)"><CircleAlert class="icon" />Report compatibility gaps</h2>
         <p class="mt-2 text-sm text-body">File concrete differences between Overcast and AWS-compatible client behavior.</p>
+      </a>
+      <a class="surface rounded-lg p-5 no-underline" href={`${overcastRepoUrl}/tree/main/docs`}>
+        <h2 class="flex items-center gap-2 font-mono text-lg font-bold text-(--oc-text)"><FileText class="icon" />Fix a docs page</h2>
+        <p class="mt-2 text-sm text-body">
+          Every published page carries an "Edit this page" link in the footer that opens the exact file to change.
+        </p>
+      </a>
+      <a class="surface rounded-lg p-5 no-underline" href={websiteRepoUrl}>
+        <h2 class="flex items-center gap-2 font-mono text-lg font-bold text-(--oc-text)"><Code class="icon" />Work on this site</h2>
+        <p class="mt-2 text-sm text-body">The Astro site behind overcast.sh — layout, navigation, search, and styling.</p>
       </a>
     </div>
   </section>

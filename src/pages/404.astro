@@ -1,6 +1,7 @@
 ---
 import SiteLayout from "../components/SiteLayout.astro";
-import { ArrowRight, SearchX } from "@lucide/astro";
+import SearchPromo from "../components/SearchPromo.astro";
+import { ArrowRight, BookOpen, Download, SearchX, ShieldCheck } from "@lucide/astro";
 ---
 
 <SiteLayout title="Page Not Found" description="The requested Overcast page could not be found.">
@@ -8,15 +9,26 @@ import { ArrowRight, SearchX } from "@lucide/astro";
     <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><SearchX class="icon" />not found</p>
     <h1 class="mt-3 font-mono text-4xl font-bold">This page is not here.</h1>
     <p class="mt-4 leading-7 text-body">
-      The documentation may have moved with the latest Overcast release, or the URL may be incorrect.
+      A doc may have been renamed in a later Overcast release. Search for it — that is the fastest way back to the
+      page you wanted.
     </p>
-    <div class="mt-8 flex flex-wrap gap-3">
-      <a class="inline-flex items-center gap-2 rounded-md border border-(--oc-accent) bg-(--oc-accent) px-4 py-2 font-mono text-sm font-bold text-white no-underline" href="/docs/">
-        Browse docs<ArrowRight class="icon" />
+
+    <div class="mt-6">
+      <SearchPromo label="Search for the page you wanted" />
+    </div>
+
+    <div class="mt-8 grid gap-3 sm:grid-cols-3">
+      <a class="surface flex items-center gap-2.5 rounded-lg p-4 font-mono text-sm no-underline" href="/docs/">
+        <span class="icon-tile"><BookOpen class="icon" /></span>Docs
       </a>
-      <a class="inline-flex items-center gap-2 rounded-md border border-oc px-4 py-2 font-mono text-sm text-(--oc-text) no-underline" href="/">
-        Back home
+      <a class="surface flex items-center gap-2.5 rounded-lg p-4 font-mono text-sm no-underline" href="/support/">
+        <span class="icon-tile"><ShieldCheck class="icon" /></span>Support matrix
+      </a>
+      <a class="surface flex items-center gap-2.5 rounded-lg p-4 font-mono text-sm no-underline" href="/downloads/">
+        <span class="icon-tile"><Download class="icon" /></span>Downloads
       </a>
     </div>
+
+    <a class="mt-8 inline-flex items-center gap-2 font-mono text-sm" href="/">Back home<ArrowRight class="icon" /></a>
   </section>
 </SiteLayout>

@@ -3,23 +3,55 @@ import SiteLayout from "../components/SiteLayout.astro";
 import CodeBlock from "../components/CodeBlock.astro";
 import ArchitectureDiagram from "../components/diagrams/ArchitectureDiagram.astro";
 import ServiceIcon from "../components/ServiceIcon.astro";
-import { ArrowRight, BookOpen, CloudOff, GitCompare, Network, Route, ScanSearch, ShieldCheck, Terminal } from "@lucide/astro";
+import {
+  ArrowRight,
+  BookOpen,
+  CloudOff,
+  GitCompare,
+  GitPullRequest,
+  Inbox,
+  Monitor,
+  Network,
+  Route,
+  ServerCog,
+  ShieldCheck,
+  Terminal,
+  Waypoints,
+} from "@lucide/astro";
+import { getCollection } from "astro:content";
 import { getServiceSupport } from "../lib/generated-content";
+import { sortReleasesNewestFirst } from "../lib/releases";
 
 const support = await getServiceSupport();
-const topServices = support.services.slice().sort((a, b) => b.implementedOps - a.implementedOps).slice(0, 8);
-const quickStart = `docker run --rm \\
+
+// The eight services an app reaches for first — the five the hero diagram names,
+// plus the three that carry a CDK/CloudFormation app. Sorting by implemented-op
+// count instead (what this grid used to do) produced a leaderboard of services
+// sitting at 100%, which reads as marketing and answers nobody's question. These
+// tiles are worth more precisely because some of them show a gap.
+const featured = ["s3", "lambda", "dynamodb", "sqs", "sns", "apigateway", "cloudformation", "iam"];
+const byId = new Map(support.services.map((service) => [service.service, service]));
+const topServices = featured
+  .map((id) => byId.get(id))
+  .filter((service): service is NonNullable<typeof service> => Boolean(service));
+
+const releases = sortReleasesNewestFirst(await getCollection("releases"));
+const latestVersion = releases[0]?.data.tagName ?? "";
+
+const runCommand = `docker run --rm \\
   -p 4566:4566 \\
   -p 4567:4567 \\
   ghcr.io/overcast-sh/overcast:alpha`;
+const firstCall = `aws --endpoint-url http://localhost:4566 \\
+  s3 mb s3://hello-overcast`;
 ---
 
 <SiteLayout searchTitle="Overcast — local AWS emulator">
   <section class="border-b border-oc">
-    <div class="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:py-24">
-      <div>
+    <div class="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:px-8 lg:py-20">
+      <div class="flex flex-col">
         <p class="font-mono text-xs uppercase tracking-[0.16em] text-accent">alpha local cloud emulation for developers</p>
-        <h1 class="mt-4 max-w-4xl font-mono text-4xl font-bold leading-tight tracking-normal text-(--oc-text) sm:text-5xl">
+        <h1 class="mt-4 text-balance font-mono text-[2rem] font-bold leading-[1.15] tracking-normal text-(--oc-text) sm:text-4xl lg:text-[2.75rem]">
           Develop against AWS-compatible services on your laptop and in CI.
         </h1>
         <p class="mt-5 max-w-2xl text-lg leading-8 text-body">
@@ -35,25 +67,39 @@ const quickStart = `docker run --rm \\
             Download<ArrowRight class="icon" />
           </a>
         </div>
+        <dl class="mt-auto grid grid-cols-3 gap-3 pt-10">
+          <div class="surface rounded-lg p-4">
+            <dd class="m-0 font-mono text-2xl font-bold">{support.services.length}</dd>
+            <dt class="mt-1 text-[11px] leading-4 text-muted">services registered</dt>
+          </div>
+          <div class="surface rounded-lg p-4">
+            <dd class="m-0 font-mono text-2xl font-bold">{support.implementedOps}</dd>
+            <dt class="mt-1 text-[11px] leading-4 text-muted">implemented operations</dt>
+          </div>
+          <div class="surface min-w-0 rounded-lg p-4">
+            {/* A version string is longer than the two counts beside it; keeping it at
+                text-2xl truncated it to "v0.0.1-al…". Smaller type, same 2rem line box,
+                so the three tiles still line up. */}
+            <dd class="m-0 font-mono text-base font-bold leading-8">{latestVersion || "4566"}</dd>
+            <dt class="mt-1 text-[11px] leading-4 text-muted">
+              {latestVersion ? <a href="/releases/">current release</a> : "default API port"}
+            </dt>
+          </div>
+        </dl>
       </div>
-      <div class="space-y-4">
-        <CodeBlock code={quickStart} label="start overcast" />
+      <div class="min-w-0 space-y-4">
+        <ol class="m-0 list-none space-y-4 p-0">
+          <li class="min-w-0">
+            <p class="m-0 mb-2 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">01 — start it</p>
+            <CodeBlock code={runCommand} label="start overcast" />
+          </li>
+          <li class="min-w-0">
+            <p class="m-0 mb-2 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">02 — point a client at it</p>
+            <CodeBlock code={firstCall} label="first call" />
+          </li>
+        </ol>
         <div class="surface rounded-lg p-4">
           <ArchitectureDiagram />
-        </div>
-        <div class="grid grid-cols-3 gap-3">
-          <div class="surface rounded-lg p-4">
-            <div class="font-mono text-2xl font-bold">{support.services.length}</div>
-            <div class="mt-1 text-[11px] leading-4 text-muted">services registered</div>
-          </div>
-          <div class="surface rounded-lg p-4">
-            <div class="font-mono text-2xl font-bold">{support.implementedOps}</div>
-            <div class="mt-1 text-[11px] leading-4 text-muted">implemented operations</div>
-          </div>
-          <div class="surface rounded-lg p-4">
-            <div class="font-mono text-2xl font-bold">4566</div>
-            <div class="mt-1 text-[11px] leading-4 text-muted">default API port</div>
-          </div>
         </div>
       </div>
     </div>
@@ -83,12 +129,12 @@ const quickStart = `docker run --rm \\
       </article>
       <article class="surface rounded-lg p-5">
         <div class="flex items-center gap-3">
-          <span class="icon-tile"><ScanSearch class="icon" /></span>
-          <h2 class="font-mono text-lg font-bold">Inspect local state</h2>
+          <span class="icon-tile"><ServerCog class="icon" /></span>
+          <h2 class="font-mono text-lg font-bold">The same image in CI</h2>
         </div>
         <p class="mt-3 text-sm leading-6 text-body">
-          Use the web UI to inspect resources, follow the event stream, view metrics, and debug SNS, SQS, Lambda, and
-          email flows while your tests run.
+          One process, one endpoint, no sign-in. A slim headless image drops the console for build agents that only
+          need the API.
         </p>
       </article>
     </div>
@@ -96,12 +142,14 @@ const quickStart = `docker run --rm \\
 
   <section class="border-y border-oc bg-card">
     <div class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-      <div class="mb-6 flex items-end justify-between gap-4">
+      <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p class="font-mono text-xs uppercase tracking-[0.16em] text-muted">service implementation</p>
           <h2 class="mt-2 font-mono text-2xl font-bold">Check listed operations before you depend on them</h2>
         </div>
-        <a class="font-mono text-sm" href="/support/">View full matrix</a>
+        <a class="inline-flex shrink-0 items-center gap-1.5 font-mono text-sm" href="/support/">
+          All {support.services.length} services<ArrowRight class="icon" />
+        </a>
       </div>
       <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {topServices.map((service) => (
@@ -122,26 +170,96 @@ const quickStart = `docker run --rm \\
   </section>
 
   <section class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-    <div class="grid gap-8 lg:grid-cols-[0.85fr_1.15fr]">
+    <div class="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
       <div>
-        <p class="font-mono text-xs uppercase tracking-[0.16em] text-muted">documentation</p>
-        <h2 class="mt-2 flex items-center gap-3 font-mono text-2xl font-bold">
-          <span class="icon-tile"><BookOpen class="icon" /></span>Start with the quickstart, go deeper if you need to.
-        </h2>
-        <p class="mt-4 leading-7 text-body">
-          The docs index routes you to a task guide, the per-service reference, or the full config and debug
-          reference — whichever you actually need.
+        <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted">
+          <Monitor class="icon" />web console
         </p>
+        <h2 class="mt-2 font-mono text-2xl font-bold">Port 4567 is a console, not a status page.</h2>
+        <p class="mt-4 leading-7 text-body">
+          The full image serves a management UI alongside the API. Three things in it are easy to miss:
+        </p>
+        <ul class="m-0 mt-5 flex list-none flex-col gap-4 p-0">
+          <li class="flex gap-3">
+            <span class="icon-tile"><Inbox class="icon" /></span>
+            <span class="text-sm leading-6 text-body">
+              <strong class="font-mono text-(--oc-text)">Inbox</strong> — captures the mail your app sends through SES,
+              SNS, and Cognito, plus the SNS SMS, webhook, and push deliveries that have nowhere to go locally.
+            </span>
+          </li>
+          <li class="flex gap-3">
+            <span class="icon-tile"><Route class="icon" /></span>
+            <span class="text-sm leading-6 text-body">
+              <strong class="font-mono text-(--oc-text)">Request traces</strong> — one PutObject and everything it set
+              off, with bodies at each hop and a copy-as-curl on every row.
+            </span>
+          </li>
+          <li class="flex gap-3">
+            <span class="icon-tile"><Waypoints class="icon" /></span>
+            <span class="text-sm leading-6 text-body">
+              <strong class="font-mono text-(--oc-text)">System map</strong> — your topology drawn from what the
+              emulator actually holds, with edges lighting up as data moves.
+            </span>
+          </li>
+        </ul>
+        <a class="mt-6 inline-flex items-center gap-2 font-mono text-sm" href="/console/">
+          Tour the console<ArrowRight class="icon" />
+        </a>
       </div>
-      <div class="surface rounded-lg p-5">
-        <h3 class="font-mono text-sm font-bold">Common first steps</h3>
-        <div class="mt-4 grid gap-3 sm:grid-cols-2">
-          <a class="inline-flex items-center gap-2 rounded-md border border-oc p-3 no-underline" href="/docs/sdk-cli/"><Terminal class="icon text-accent" />Configure AWS CLI and SDKs</a>
-          <a class="inline-flex items-center gap-2 rounded-md border border-oc p-3 no-underline" href="/docs/cdk/"><Network class="icon text-accent" />Use CDK locally</a>
-          <a class="inline-flex items-center gap-2 rounded-md border border-oc p-3 no-underline" href="/docs/networking/"><Route class="icon text-accent" />Host-routed endpoints</a>
-          <a class="inline-flex items-center gap-2 rounded-md border border-oc p-3 no-underline" href="/docs/migration-from-localstack/"><ShieldCheck class="icon text-accent" />Migrate from LocalStack</a>
-        </div>
-      </div>
+      <figure class="surface m-0 overflow-hidden rounded-lg">
+        <img
+          src="/console/console-dashboard.png"
+          alt="The Overcast console dashboard: emulated AWS services as cards, split into fully emulated, partially emulated, and not emulated."
+          width="1600"
+          height="1000"
+          loading="lazy"
+          decoding="async"
+          class="block w-full"
+        />
+      </figure>
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+    <p class="font-mono text-xs uppercase tracking-[0.16em] text-muted">where to start</p>
+    <h2 class="mt-2 font-mono text-2xl font-bold">Pick the path you're on.</h2>
+    <div class="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <a class="surface rounded-lg p-5 no-underline" href="/docs/">
+        <h3 class="flex items-center gap-2.5 font-mono text-base font-bold text-(--oc-text)">
+          <span class="icon-tile"><BookOpen class="icon" /></span>First time here
+        </h3>
+        <p class="mt-3 text-sm leading-6 text-body">One command to start it, one call to prove it works, then the guides.</p>
+      </a>
+      <a class="surface rounded-lg p-5 no-underline" href="/docs/sdk-cli/">
+        <h3 class="flex items-center gap-2.5 font-mono text-base font-bold text-(--oc-text)">
+          <span class="icon-tile"><Terminal class="icon" /></span>Wiring up an app
+        </h3>
+        <p class="mt-3 text-sm leading-6 text-body">Endpoint, credentials, and addressing for the AWS CLI and every SDK.</p>
+      </a>
+      <a class="surface rounded-lg p-5 no-underline" href="/docs/cdk/">
+        <h3 class="flex items-center gap-2.5 font-mono text-base font-bold text-(--oc-text)">
+          <span class="icon-tile"><Network class="icon" /></span>Deploying with CDK
+        </h3>
+        <p class="mt-3 text-sm leading-6 text-body">Bootstrap, deploy, and destroy stacks against the local endpoint.</p>
+      </a>
+      <a class="surface rounded-lg p-5 no-underline" href="/support/">
+        <h3 class="flex items-center gap-2.5 font-mono text-base font-bold text-(--oc-text)">
+          <span class="icon-tile"><ShieldCheck class="icon" /></span>Evaluating for a team
+        </h3>
+        <p class="mt-3 text-sm leading-6 text-body">Per-service coverage, the gaps behind it, and what alpha commits to.</p>
+      </a>
+      <a class="surface rounded-lg p-5 no-underline" href="/docs/migration-from-localstack/">
+        <h3 class="flex items-center gap-2.5 font-mono text-base font-bold text-(--oc-text)">
+          <span class="icon-tile"><GitCompare class="icon" /></span>Coming from LocalStack
+        </h3>
+        <p class="mt-3 text-sm leading-6 text-body">The environment-variable mapping and every known behavioural difference.</p>
+      </a>
+      <a class="surface rounded-lg p-5 no-underline" href="/contributing/">
+        <h3 class="flex items-center gap-2.5 font-mono text-base font-bold text-(--oc-text)">
+          <span class="icon-tile"><GitPullRequest class="icon" /></span>Contributing
+        </h3>
+        <p class="mt-3 text-sm leading-6 text-body">Where the source lives, how to build it, and how to report a gap.</p>
+      </a>
     </div>
   </section>
 </SiteLayout>

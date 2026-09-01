@@ -4,6 +4,7 @@ import { BookOpen, Download, FileText, GitCompare, Menu, Monitor, PencilLine, Ro
 import GitHubIcon from "./GitHubIcon.astro";
 import { repositoryUrl, starsUrl, websiteEditUrlFromRoute } from "../lib/github-links";
 import { getSourceManifest } from "../lib/generated-content";
+import { formatDate, toIsoDate } from "../lib/format-date";
 
 interface Props {
   title?: string;
@@ -29,9 +30,8 @@ const pageTitle = title === "Overcast" ? title : `${title} | Overcast`;
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site || "https://overcast.sh");
 const socialImageUrl = new URL("/brand/github-social-card.svg", Astro.site || "https://overcast.sh");
 const sourceManifest = await getSourceManifest();
-const builtDate = sourceManifest.generatedAt
-  ? new Date(sourceManifest.generatedAt).toLocaleDateString("en-NZ", { dateStyle: "medium" })
-  : "";
+const builtDate = formatDate(sourceManifest.generatedAt);
+const builtIso = toIsoDate(sourceManifest.generatedAt);
 const sourceRef = sourceManifest.sourceRef;
 const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/releases/tag/${sourceRef}` : "";
 ---
@@ -81,7 +81,7 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
             <span class="block font-mono text-[10px] uppercase tracking-[0.16em] text-muted">local AWS emulator</span>
           </span>
         </a>
-        <nav class="hidden items-center gap-4 font-mono text-xs text-muted lg:flex" aria-label="Main">
+        <nav class="hidden items-center gap-3.5 font-mono text-xs whitespace-nowrap text-muted xl:flex" aria-label="Main">
           <a href="/docs/" class="flex items-center gap-1.5 text-muted hover:text-(--oc-text)"><BookOpen class="icon" />Docs</a>
           <a href="/console/" class="flex items-center gap-1.5 text-muted hover:text-(--oc-text)"><Monitor class="icon" />Console</a>
           <a href="/downloads/" class="flex items-center gap-1.5 text-muted hover:text-(--oc-text)"><Download class="icon" />Downloads</a>
@@ -102,19 +102,19 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
           </button>
           <a
             href={repositoryUrl()}
-            class="copy-button hidden h-9 items-center gap-1.5 rounded-md px-3 font-mono text-xs no-underline lg:flex"
+            class="copy-button hidden h-9 items-center gap-1.5 rounded-md px-3 font-mono text-xs no-underline xl:flex"
           >
             <GitHubIcon />GitHub
           </a>
           <a
             href={starsUrl()}
-            class="copy-button hidden h-9 items-center gap-1.5 rounded-md px-3 font-mono text-xs no-underline lg:flex"
+            class="copy-button hidden h-9 items-center gap-1.5 rounded-md px-3 font-mono text-xs no-underline xl:flex"
           >
             <Star class="icon" />Star
           </a>
           <button
             id="theme-toggle"
-            class="copy-button h-11 w-11 rounded-md font-mono text-xs lg:h-9 lg:w-9"
+            class="copy-button h-11 w-11 rounded-md font-mono text-xs xl:h-9 xl:w-9"
             type="button"
             aria-label="Toggle theme"
           >
@@ -122,7 +122,7 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
           </button>
           <button
             id="menu-toggle"
-            class="copy-button flex h-11 w-11 items-center justify-center rounded-md font-mono text-xs lg:hidden"
+            class="copy-button flex h-11 w-11 items-center justify-center rounded-md font-mono text-xs xl:hidden"
             type="button"
             aria-expanded="false"
             aria-controls="mobile-menu"
@@ -135,7 +135,7 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
       </div>
       <div
         id="mobile-menu"
-        class="fixed inset-x-4 top-[4.75rem] z-40 hidden rounded-lg border border-oc bg-card p-2 shadow-2xl lg:hidden"
+        class="fixed inset-x-4 top-[4.75rem] z-40 hidden rounded-lg border border-oc bg-card p-2 shadow-2xl xl:hidden"
       >
         <nav class="flex flex-col gap-1 font-mono text-sm" aria-label="Main">
           <a href="/docs/" class="flex items-center gap-2 rounded-md px-3 py-3 text-muted no-underline hover:bg-(--oc-accent-soft)"><BookOpen class="icon" />Docs</a>
@@ -266,7 +266,7 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
           </p>
           {builtDate && (
             <p class="m-0 shrink-0 font-mono text-xs text-muted">
-              Built {builtDate}{sourceRef && (
+              Built <time datetime={builtIso}>{builtDate}</time>{sourceRef && (
                 <> from <a href={sourceReleaseUrl}>Overcast {sourceRef}</a></>
               )}
             </p>
@@ -332,7 +332,7 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
         if (menuPanel.contains(target) || menuTrigger?.contains(target)) return;
         closeMenu();
       });
-      const desktopNavQuery = window.matchMedia("(min-width: 1024px)");
+      const desktopNavQuery = window.matchMedia("(min-width: 1280px)");
       desktopNavQuery.addEventListener("change", (event) => {
         if (event.matches) closeMenu();
       });
@@ -638,6 +638,24 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
             event.preventDefault();
             target.click();
           }
+        }
+      });
+    </script>
+    <script is:inline>
+      // Every date on the site is baked at build time in UTC, so "31 Aug 2026" can be
+      // yesterday or tomorrow depending on where it is being read, and it is always
+      // formatted the build's way rather than the reader's. Re-render each
+      // <time datetime> in the reader's own locale and timezone; the server-rendered
+      // text stays as the no-JS fallback. <option> is skipped — its text is the
+      // select's own label, which the version jump list composes inline.
+      document.querySelectorAll("time[datetime]").forEach((element) => {
+        if (element.closest("option")) return;
+        const value = new Date(element.getAttribute("datetime"));
+        if (Number.isNaN(value.getTime())) return;
+        try {
+          element.textContent = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(value);
+        } catch {
+          // Leave the build-time text in place.
         }
       });
     </script>

@@ -8,6 +8,7 @@ import Chip from "../components/Chip.astro";
 import { ChevronDown, Container, FileText, PackageCheck, PackageOpen, RotateCcwClock } from "@lucide/astro";
 import { getCollection, type CollectionEntry } from "astro:content";
 import { cappedAreas, changelogRollup, sortReleasesNewestFirst } from "../lib/releases";
+import { formatDate, toIsoDate } from "../lib/format-date";
 
 const headerAreaCap = 5;
 
@@ -15,15 +16,11 @@ const releases: CollectionEntry<"releases">[] = sortReleasesNewestFirst(await ge
 const latest = releases[0];
 const olderReleases = releases.slice(1);
 
-function formatReleaseDate(publishedAt: string | null | undefined): string {
-  return publishedAt ? new Date(publishedAt).toLocaleDateString("en-NZ", { dateStyle: "medium" }) : "";
-}
-
 function dockerVersion(tagName: string): string {
   return tagName.replace(/^v/, "");
 }
 
-const latestDate = formatReleaseDate(latest?.data.publishedAt);
+const latestDate = formatDate(latest?.data.publishedAt);
 ---
 
 <SiteLayout title="Releases" description="Overcast release history and release assets." searchTitle="Releases">
@@ -51,9 +48,9 @@ const latestDate = formatReleaseDate(latest?.data.publishedAt);
               {latest.data.prerelease && <span class="rounded soft px-2 py-1 font-mono text-xs text-accent">prerelease</span>}
             </h2>
             {latestDate && (
-              <time class="mt-1 block text-sm text-muted" datetime={latest.data.publishedAt || undefined}>
-                Published {latestDate}
-              </time>
+              <p class="mt-1 text-sm text-muted">
+                Published <time datetime={toIsoDate(latest.data.publishedAt)}>{latestDate}</time>
+              </p>
             )}
           </div>
           <a class="copy-button inline-flex items-center gap-2 rounded-md px-3 py-2 font-mono text-xs no-underline" href={latest.data.url}>
@@ -114,7 +111,7 @@ const latestDate = formatReleaseDate(latest?.data.publishedAt);
         <h2 class="font-mono text-xl font-bold">Older versions</h2>
         <div class="mt-4 space-y-3">
           {olderReleases.map((release) => {
-            const releaseDate = formatReleaseDate(release.data.publishedAt);
+            const releaseDate = formatDate(release.data.publishedAt);
             const rollup = changelogRollup(release.data.changelogSections);
             const areaPreview = rollup ? cappedAreas(rollup.areas, headerAreaCap) : null;
             return (
@@ -125,7 +122,7 @@ const latestDate = formatReleaseDate(latest?.data.publishedAt);
                     <span class="font-mono text-base font-bold">{release.data.name}</span>
                     {release.data.prerelease && <span class="rounded soft px-2 py-1 font-mono text-xs text-accent">prerelease</span>}
                     {releaseDate && (
-                      <time class="text-sm text-muted" datetime={release.data.publishedAt || undefined}>
+                      <time class="text-sm text-muted" datetime={toIsoDate(release.data.publishedAt)}>
                         {releaseDate}
                       </time>
                     )}
