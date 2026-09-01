@@ -257,12 +257,46 @@ kbd {
 }
 
 /* Tables render at their natural width but scroll within their own box
- * instead of forcing the whole page to scroll horizontally. */
+ * instead of forcing the whole page to scroll horizontally.
+ *
+ * Cells opt out of the prose-wide `overflow-wrap: anywhere`: `anywhere`
+ * lets the layout engine treat every cell as shrinkable to one character,
+ * which crushes narrow columns into vertical letter-stacks instead of
+ * letting the table scroll. `break-word` wraps the same overflowing URLs
+ * without changing a column's minimum width, so columns keep their natural
+ * size and the table scrolls when it genuinely doesn't fit. */
 .prose table {
   display: block;
   width: max-content;
   max-width: 100%;
   overflow-x: auto;
+}
+
+.prose th,
+.prose td {
+  overflow-wrap: break-word;
+}
+
+.prose th {
+  white-space: nowrap;
+}
+
+/* Wide tables scroll horizontally, so keep each row's identity (the first
+ * column) pinned while the rest slides under it. The solid background is
+ * load-bearing: sticky cells paint over the columns scrolling beneath. */
+.prose table td:first-child,
+.prose table th:first-child {
+  position: sticky;
+  left: 0;
+  background: var(--oc-bg);
+  box-shadow: 1px 0 0 var(--oc-line);
+}
+
+/* Prose rendered inside a card surface (release changelogs) sits on the
+ * card background, so its pinned column must match that surface. */
+.surface .prose table td:first-child,
+.surface .prose table th:first-child {
+  background: var(--oc-card);
 }
 
 @font-face {
