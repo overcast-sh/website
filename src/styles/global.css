@@ -251,24 +251,17 @@ kbd {
   padding: 1rem;
 }
 
-.code-block .shiki {
-  background: #0d1117 !important;
-  color: var(--shiki-dark) !important;
-}
-
+.code-block .shiki,
 .prose .astro-code {
   background: var(--oc-card) !important;
   color: var(--shiki-light) !important;
+}
+
+.prose .astro-code {
   margin-block: 1.7142857em;
 }
 
-.code-block .shiki span {
-  color: var(--shiki-dark) !important;
-  font-style: var(--shiki-dark-font-style) !important;
-  font-weight: var(--shiki-dark-font-weight) !important;
-  text-decoration: var(--shiki-dark-text-decoration) !important;
-}
-
+.code-block .shiki span,
 .prose .astro-code span {
   color: var(--shiki-light) !important;
   font-style: var(--shiki-light-font-style) !important;
@@ -276,6 +269,12 @@ kbd {
   text-decoration: var(--shiki-light-text-decoration) !important;
 }
 
+:root[data-theme="dark"] .code-block .shiki,
+:root[data-theme="dark"] .prose .astro-code {
+  color: var(--shiki-dark) !important;
+}
+
+:root[data-theme="dark"] .code-block .shiki span,
 :root[data-theme="dark"] .prose .astro-code span {
   color: var(--shiki-dark) !important;
   font-style: var(--shiki-dark-font-style) !important;
@@ -283,20 +282,18 @@ kbd {
   text-decoration: var(--shiki-dark-text-decoration) !important;
 }
 
-:root[data-theme="dark"] .prose .astro-code {
-  color: var(--shiki-dark) !important;
-}
-
 @media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .code-block .shiki,
+  :root:not([data-theme="light"]) .prose .astro-code {
+    color: var(--shiki-dark) !important;
+  }
+
+  :root:not([data-theme="light"]) .code-block .shiki span,
   :root:not([data-theme="light"]) .prose .astro-code span {
     color: var(--shiki-dark) !important;
     font-style: var(--shiki-dark-font-style) !important;
     font-weight: var(--shiki-dark-font-weight) !important;
     text-decoration: var(--shiki-dark-text-decoration) !important;
-  }
-
-  :root:not([data-theme="light"]) .prose .astro-code {
-    color: var(--shiki-dark) !important;
   }
 }
 
