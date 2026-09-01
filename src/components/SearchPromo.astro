@@ -1,0 +1,32 @@
+---
+// Promotes the site's global search (header-only, icon-sized) as the fast path for "does
+// it support X" — pagefind already answers that question directly from a query like
+// "transactions"; the gap was that nothing on /docs/ or /support/ pointed at it. Reuses the
+// #search-open trigger SiteLayout already wires up rather than duplicating search logic.
+import { Search } from "@lucide/astro";
+
+interface Props {
+  label?: string;
+}
+
+const { label = "Looking for something specific? Search the docs" } = Astro.props;
+---
+
+<button
+  type="button"
+  data-search-promo
+  class="copy-button flex w-full items-center justify-between gap-3 rounded-lg px-4 py-3 font-mono text-sm"
+>
+  <span class="flex items-center gap-2">
+    <Search class="icon text-accent" />
+    {label}
+  </span>
+  <kbd class="text-xs text-muted">/</kbd>
+</button>
+<script>
+  document.querySelectorAll("[data-search-promo]").forEach((button) => {
+    button.addEventListener("click", () => {
+      document.getElementById("search-open")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+  });
+</script>

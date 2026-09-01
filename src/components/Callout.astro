@@ -1,0 +1,29 @@
+---
+// Admonition/callout primitive. Use sparingly: only to replace a paragraph of prose that's
+// doing "aside" or "warning" duty, never to wrap prose that's already fine as prose. Styled
+// entirely from the site's --oc-* tokens (src/styles/brand-tokens.css) so it themes for free.
+import { Info, Lightbulb, TriangleAlert } from "@lucide/astro";
+
+interface Props {
+  kind?: "note" | "tip" | "warning";
+  title?: string;
+}
+
+const { kind = "note", title } = Astro.props;
+
+const config = {
+  note: { Icon: Info, border: "var(--oc-accent)", iconColor: "var(--oc-accent)", label: title ?? "Note" },
+  tip: { Icon: Lightbulb, border: "var(--oc-success)", iconColor: "var(--oc-success)", label: title ?? "Tip" },
+  warning: { Icon: TriangleAlert, border: "var(--oc-warning)", iconColor: "var(--oc-warning)", label: title ?? "Warning" },
+}[kind];
+---
+
+<div class="surface flex gap-3 rounded-lg border-l-4 p-4" style={`border-left-color:${config.border}`}>
+  <config.Icon class="icon mt-0.5 shrink-0" style={`color:${config.iconColor}`} />
+  <div class="min-w-0 text-sm leading-6 text-body">
+    <p class="m-0 mb-1 font-mono text-xs font-bold uppercase tracking-[0.1em]" style={`color:${config.iconColor}`}>
+      {config.label}
+    </p>
+    <slot />
+  </div>
+</div>

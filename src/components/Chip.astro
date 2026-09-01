@@ -1,0 +1,18 @@
+---
+// Small status/tier pill. Generalizes the inline "prerelease" chip already used on
+// /releases/ (`rounded soft px-2 py-1 font-mono text-xs text-accent`) so other pages can
+// reuse the same shape instead of inventing new chip styling per page.
+interface Props {
+  tone?: "accent" | "success" | "warning" | "muted";
+}
+
+const { tone = "accent" } = Astro.props;
+const toneVar = { accent: "--oc-accent", success: "--oc-success", warning: "--oc-warning", muted: "--oc-muted" }[tone];
+---
+
+<span
+  class="inline-flex items-center gap-1.5 rounded px-2 py-0.5 font-mono text-xs font-medium"
+  style={`background:color-mix(in srgb, var(${toneVar}) 14%, transparent); color:var(${toneVar})`}
+>
+  <slot />
+</span>
