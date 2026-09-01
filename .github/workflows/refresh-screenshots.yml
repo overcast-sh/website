@@ -137,11 +137,14 @@ jobs:
           # OVERCAST_HOSTNAME gives CDK asset publishing a virtual-hosted S3 address; that
           # hostname is public wildcard DNS pointing at 127.0.0.1. The Docker socket mount is
           # what makes Lambda invocations run for real instead of stubbing out with 502s.
+          # OVERCAST_DEBUG turns on request tracing, which the console's /debug/traces route
+          # refuses to render without. This container is thrown away at the end of the job.
           docker run -d --pull always \
             --name "$EMULATOR_CONTAINER" \
             -p 4566:4566 \
             -p 4567:4567 \
             -e OVERCAST_HOSTNAME=localhost.overcast.sh \
+            -e OVERCAST_DEBUG=true \
             -v /var/run/docker.sock:/var/run/docker.sock \
             "$OVERCAST_IMAGE"
 
@@ -217,6 +220,36 @@ jobs:
 
           echo "Capturing the object browser for bucket $bucket."
           echo "bucket=$bucket" >> "$GITHUB_OUTPUT"
+
+      # The example stacks don't send mail, so the inbox would be empty and the console-inbox
+      # scenario would have nothing to shoot. One SES send is the whole setup. Non-fatal: that
+      # scenario is optional, and losing one screenshot should not lose the other six.
+      - name: Seed the inbox
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+
+          cat > .tmp-inbox-message.json <<'JSON'
+          {
+            "Subject": { "Data": "Your order #4815 has shipped" },
+            "Body": {
+              "Text": { "Data": "Order #4815 is on its way. Track it at https://example.com/track/4815" },
+              "Html": { "Data": "<html><body style=\"font-family:system-ui,sans-serif;padding:24px\"><h1 style=\"font-size:20px\">Your order has shipped</h1><p>Order <strong>#4815</strong> left the warehouse this morning.</p><p><a href=\"https://example.com/track/4815\" style=\"display:inline-block;background:#1273C4;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none\">Track your parcel</a></p></body></html>" }
+            }
+          }
+          JSON
+
+          aws ses verify-email-identity \
+            --endpoint-url "$AWS_ENDPOINT_URL" \
+            --email-address orders@shop.example.com
+
+          aws ses send-email \
+            --endpoint-url "$AWS_ENDPOINT_URL" \
+            --from orders@shop.example.com \
+            --destination ToAddresses=customer@example.com \
+            --message file://.tmp-inbox-message.json
+
+          rm -f .tmp-inbox-message.json
 
       - name: Capture console screenshots
         env:

@@ -9,6 +9,13 @@
 //   OVERCAST_CAPTURE_DEBUG_DIR           traces + failure shots (default .tmp/capture-debug)
 //                          / --only=     comma-separated scenario names, for local debugging
 //
+// Some scenarios need the emulator set up a particular way and are marked `optional`: they warn
+// and produce no file rather than failing the run. /console renders a feature without its image
+// when the file is missing, so a skipped optional scenario costs a picture, not a build.
+//   console-traces  needs OVERCAST_DEBUG=true on the emulator
+//   console-inbox   needs at least one captured message (nothing in the example stacks sends
+//                   mail, so the workflow seeds one through SES before calling this script)
+//
 // Selectors below are taken from the console source (overcast-sh/overcast, web/src). The app
 // authors no data-testids of its own, so the anchors are ARIA roles, aria-labels, exact visible
 // text, and — on the map — the testids React Flow itself emits.
@@ -49,6 +56,11 @@ const clockPauseAt = new Date(clockStart.getTime() + 60_000);
 // pausing has landed". Bounded and deliberately short.
 const pausedRenderSettleMs = 200;
 
+// /metrics samples the runtime every 3s and draws each card as a sparkline over the samples it
+// has. Nothing in the DOM says "enough points to look like a line", so this is a plain wait for
+// roughly five samples — the only place the script trades wall-clock for a better picture.
+const sparklineFillMs = 15_000;
+
 const freezeAnimationsCss = `
 *, *::before, *::after {
   animation-delay: 0s !important;
@@ -67,6 +79,7 @@ html { scroll-behavior: auto !important; }
  * @typedef {object} Scenario
  * @property {string} name        output file name, without extension
  * @property {string} route       path appended to the console origin
+ * @property {boolean} [optional] warn instead of failing the run when every attempt fails
  * @property {(page: Page) => Promise<void>} [steps]    interactions to perform before capture
  * @property {(page: Page) => Promise<void>} readyWhen  fails the attempt if the page never gets there
  * @property {(page: Page, file: string) => Promise<void>} [capture]  defaults to a viewport shot
@@ -124,6 +137,56 @@ const scenarios = [
       // The button label is the state: Pause -> Resume once the stream is frozen.
       await page.getByRole("button", { name: "Resume", exact: true }).waitFor({ state: "visible" });
       await page.locator("[data-index]").first().waitFor({ state: "visible" });
+    },
+  },
+  {
+    // Nothing in the example stacks sends mail, so this shoots whatever the capture pipeline
+    // seeded. An empty inbox is a legitimate state of a healthy emulator, not a capture bug —
+    // hence optional rather than a hard failure.
+    name: "console-inbox",
+    route: "/inbox",
+    optional: true,
+    async steps(page) {
+      // Rows are <li><button>, but so is a fan-out thread header, which expands instead of
+      // selecting. The j shortcut walks the real message list, so it cannot land on one.
+      await page.locator("ul button").first().waitFor({ state: "visible" });
+      await page.keyboard.press("j");
+      // The tab bar exists only once a message is selected; the empty right pane has no tabs.
+      await page.getByRole("button", { name: "Plain Text", exact: true }).waitFor({ state: "visible" });
+      // Prefer the rendered HTML part when the message has one — it is the half of the inbox a
+      // plain-text pane can't show. Not every message has an HTML body, so this stays optional.
+      const html = page.getByRole("button", { name: "HTML", exact: true });
+      if ((await html.count()) > 0) await html.click();
+    },
+    async readyWhen(page) {
+      await page.getByRole("heading", { level: 1, name: "Inbox", exact: true }).waitFor({ state: "visible" });
+      await page.getByRole("button", { name: "Plain Text", exact: true }).waitFor({ state: "visible" });
+    },
+  },
+  {
+    // Tracing is off unless OVERCAST_DEBUG=true, and the route renders an empty state saying so
+    // rather than erroring — which a screenshot would happily capture. The per-row curl button
+    // below separates "tracing is on and has data" from both of those at once.
+    name: "console-traces",
+    route: "/debug/traces",
+    optional: true,
+    async readyWhen(page) {
+      await page.getByRole("heading", { level: 1, name: "Request Traces" }).waitFor({ state: "visible" });
+      await page.getByRole("button", { name: "Copy as curl" }).first().waitFor({ state: "visible" });
+    },
+  },
+  {
+    // The only scenario with no data prerequisite: the emulator always reports its own health.
+    name: "console-metrics",
+    route: "/metrics",
+    async steps(page) {
+      await page.getByRole("heading", { level: 2, name: "Runtime" }).waitFor({ state: "visible" });
+      await page.waitForTimeout(sparklineFillMs);
+    },
+    async readyWhen(page) {
+      // "Live" renders only after a snapshot lands; the other two states are "Connecting…" and
+      // "Disconnected", and neither is worth a screenshot.
+      await page.getByText("Live", { exact: true }).waitFor({ state: "visible" });
     },
   },
 ];
@@ -247,6 +310,7 @@ async function main() {
   await fs.mkdir(outputDir, { recursive: true });
   const browser = await chromium.launch();
   const failed = [];
+  const skipped = [];
 
   try {
     for (const scenario of selected) {
@@ -257,12 +321,16 @@ async function main() {
           break;
         } catch (error) {
           console.error(`Attempt ${attempt}/${attemptsPerScenario} for ${scenario.name} failed: ${error.message}`);
-          if (attempt === attemptsPerScenario) failed.push(scenario.name);
+          if (attempt === attemptsPerScenario) (scenario.optional ? skipped : failed).push(scenario.name);
         }
       }
     }
   } finally {
     await browser.close();
+  }
+
+  if (skipped.length > 0) {
+    console.log(`::warning::No screenshot for optional scenario(s): ${skipped.join(", ")}. Traces are in ${debugDir}.`);
   }
 
   if (failed.length > 0) {
