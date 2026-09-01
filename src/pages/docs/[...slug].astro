@@ -30,7 +30,30 @@ const docs: DocEntry[] = await getCollection("docs");
 // markdown body opens with the same title repeated as its own leading "# ..." heading
 // (a structural convention upstream, not a one-off), so strip only that leading <h1> —
 // pure duplication — and leave the rest of the body untouched.
-const html = (doc.rendered?.html ?? "").replace(/^\s*<h1[^>]*>[\s\S]*?<\/h1>\s*/i, "");
+const body = (doc.rendered?.html ?? "").replace(/^\s*<h1[^>]*>[\s\S]*?<\/h1>\s*/i, "");
+
+// The same convention repeats the lead: the paragraph after that "# ..." heading is what
+// the frontmatter description was written from, so the page printed the sentence twice —
+// once as the subtitle under the title, then again as the body's first paragraph. The
+// subtitle is the worse of the two copies, because `description` is capped at 220
+// characters upstream and arrives truncated mid-clause. So when the body's opening
+// paragraph starts with the description, the paragraph wins: it becomes the subtitle
+// (keeping its inline code spans) and is dropped from the body.
+const plain = (value: string) => value.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+const comparable = (value: string) => plain(value).toLowerCase().replace(/[…\s.]+$/, "");
+const leadMatch = body.match(/^\s*<p>([\s\S]*?)<\/p>\s*/i);
+const describedLead = comparable(doc.data.description ?? "");
+// An exact match is a duplicate at any length ("EKS supports two modes:" is 23
+// characters and repeated verbatim). Short of that, require 40 characters of shared
+// prefix — enough that a coincidental match isn't plausible, and below it the two are
+// too terse to confidently call the same sentence, so the page keeps both.
+const leadPlain = leadMatch ? comparable(leadMatch[1]) : "";
+const leadIsDescription =
+  Boolean(leadMatch) &&
+  describedLead.length > 0 &&
+  (leadPlain === describedLead || (describedLead.length >= 40 && leadPlain.startsWith(describedLead.slice(0, 60))));
+const html = leadIsDescription ? body.slice(leadMatch![0].length) : body;
+const leadHtml = leadIsDescription ? leadMatch![1] : null;
 const editUrl = await overcastEditUrl(doc.data.sourcePath);
 const support = await getServiceSupport();
 const navDocs = docs.map((entry) => ({ slug: entry.data.slug, title: entry.data.title, section: entry.data.section }));
@@ -89,7 +112,11 @@ const serviceLandingSlug = serviceGroup?.landing?.slug;
           {serviceDoc && <ServiceIcon service={serviceId} />}
           <h1 class="min-w-0 font-mono text-3xl font-bold">{doc.data.title}</h1>
         </div>
-        {doc.data.description && <p class="mt-3 max-w-3xl text-body">{doc.data.description}</p>}
+        {leadHtml ? (
+          <p class="mt-3 max-w-3xl text-body" set:html={leadHtml}></p>
+        ) : (
+          doc.data.description && <p class="mt-3 max-w-3xl text-body">{doc.data.description}</p>
+        )}
         <ServiceSubNav items={subNavItems} currentSlug={doc.data.slug} />
       </div>
       <div class="prose" set:html={html} data-pagefind-body></div>
