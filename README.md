@@ -44,6 +44,20 @@ GitHub links are configurable:
 - Scheduled runs resolve the latest release and stop before build/deploy when it matches the last deployed release
   (tracked in `.github/overcast-release.lock`).
 
+## Console screenshots
+
+`public/console/*.png` is captured automatically by `.github/workflows/refresh-screenshots.yml`.
+
+- It runs on `repository_dispatch` (`overcast-release`), weekly on Mondays, and on manual dispatch.
+- Each run fingerprints the `web/` tree of the latest Overcast release and stops early when that matches
+  `.github/console-ui.lock`. Manual runs always capture.
+- Capture boots `ghcr.io/overcast-sh/overcast:latest`, deploys the `overcast-sh/examples` CDK stacks into it,
+  then drives the console with `scripts/capture-console.mjs` (Playwright).
+- Changed images arrive as a `screenshots/refresh-<tag>` pull request; nothing is pushed to `main` directly.
+- That PR needs the `RELEASE_APP_CLIENT_ID` / `RELEASE_APP_PRIVATE_KEY` App secrets to run required
+  checks; without them it is authored by `github-actions` and checks never start.
+- To run it by hand: Actions → "Refresh console screenshots" → Run workflow.
+
 ## Generated content
 
 `src/generated/` is ignored and rebuilt by `npm run content:sync`.
