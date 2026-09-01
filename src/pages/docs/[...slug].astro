@@ -30,7 +30,11 @@ const docs: DocEntry[] = await getCollection("docs");
 // markdown body opens with the same title repeated as its own leading "# ..." heading
 // (a structural convention upstream, not a one-off), so strip only that leading <h1> —
 // pure duplication — and leave the rest of the body untouched.
-const body = (doc.rendered?.html ?? "").replace(/^\s*<h1[^>]*>[\s\S]*?<\/h1>\s*/i, "");
+//
+// A leading HTML comment counts as "leading" too: every generated `operations.md` opens
+// `<!-- BEGIN overcast:capabilities -->` above its `# ...`, so the strip missed the
+// heading on all fifty of them and each page carried two <h1>s, its own title twice.
+const body = (doc.rendered?.html ?? "").replace(/^\s*(?:<!--[\s\S]*?-->\s*)*<h1[^>]*>[\s\S]*?<\/h1>\s*/i, "");
 
 // The same convention repeats the lead: the paragraph after that "# ..." heading is what
 // the frontmatter description was written from, so the page printed the sentence twice —

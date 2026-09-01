@@ -1,7 +1,7 @@
 import { defineConfig } from "astro/config";
 import tailwindcss from "@tailwindcss/vite";
 import remarkGithubAlerts from "./src/plugins/remark-github-alerts";
-import rehypeTableA11y from "./src/plugins/rehype-table-a11y";
+import rehypeMarkdownA11y from "./src/plugins/rehype-markdown-a11y";
 
 export default defineConfig({
   site: "https://overcast.sh",
@@ -11,7 +11,7 @@ export default defineConfig({
     // Applies to every markdown the site renders: synced docs and release bodies both go
     // through the loader API's renderMarkdown(), which uses this config.
     remarkPlugins: [remarkGithubAlerts],
-    rehypePlugins: [rehypeTableA11y],
+    rehypePlugins: [rehypeMarkdownA11y],
     shikiConfig: {
       themes: {
         // GitHub's current pair rather than the legacy `github-light`/`github-dark`.

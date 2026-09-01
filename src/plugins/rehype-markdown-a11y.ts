@@ -1,6 +1,16 @@
 /**
- * Two fixes to every markdown table the site renders, applied to the hast tree after
- * markdown has become HTML:
+ * Accessibility repairs to every markdown the site renders — synced docs and release
+ * bodies alike — applied to the hast tree after markdown has become HTML.
+ *
+ * Heading levels never skip. `docs/services/ec2.md` opens `# EC2` and then jumps
+ * straight to `###`, so its outline claims a level-two section that was never written
+ * and anyone navigating by heading level walks past two of them. A skipped level in
+ * markdown is a defect rather than a choice — heading level carries no styling intent
+ * there — so each heading is clamped to at most one deeper than the heading before it.
+ * The clamp only ever raises a heading, and never to `<h1>`: the page chrome supplies
+ * the one `<h1>`, and a release body that opens at `##` has to stay at `##`.
+ *
+ * And two fixes to every table:
  *
  * 1. The table is wrapped in a focusable `.table-scroll` div. The service reference
  *    tables are wider than the column they sit in, so something has to scroll. Doing
@@ -59,12 +69,39 @@ function annotateHeaderCells(table: Element): void {
   }
 }
 
-function walk(node: Element): void {
+const HEADING = /^h([1-6])$/;
+
+/**
+ * Closes off every open section the new heading is a sibling of or an ancestor to, then
+ * puts it one level under whatever is still open. Two `###`s that share a missing `##`
+ * parent stay siblings — a plain "no more than one deeper than the last" clamp would
+ * nest the second one inside the first.
+ */
+function normalizeHeading(child: Element, level: number, stack: Array<{ source: number; output: number }>): void {
+  if (level === 1) {
+    child.tagName = "h1";
+    stack.length = 0;
+    stack.push({ source: 1, output: 1 });
+    return;
+  }
+  while (stack.length > 0 && stack[stack.length - 1].source >= level) stack.pop();
+  const parent = stack.length > 0 ? stack[stack.length - 1].output : 1;
+  const output = Math.min(6, Math.max(2, parent + 1));
+  child.tagName = `h${output}`;
+  stack.push({ source: level, output });
+}
+
+/** The open-section stack spans the whole document, not one subtree. */
+function walk(node: Element, stack: Array<{ source: number; output: number }>): void {
   const children = node.children;
   if (!children) return;
   for (let index = 0; index < children.length; index += 1) {
     const child = children[index];
-    walk(child);
+
+    const heading = child.type === "element" ? HEADING.exec(child.tagName ?? "") : null;
+    if (heading) normalizeHeading(child, Number(heading[1]), stack);
+
+    walk(child, stack);
     if (!isTag(child, "table")) continue;
     annotateHeaderCells(child);
     children[index] = {
@@ -76,6 +113,8 @@ function walk(node: Element): void {
   }
 }
 
-export default function rehypeTableA11y() {
-  return (tree: Element): void => walk(tree);
+export default function rehypeMarkdownA11y() {
+  // The stack starts empty, which puts a document's first heading at <h2>: the page
+  // chrome renders the title as the one <h1>, so the body always begins one level down.
+  return (tree: Element): void => walk(tree, []);
 }
