@@ -1,0 +1,364 @@
+---
+import fs from "node:fs";
+import { fileURLToPath } from "node:url";
+import SiteLayout from "../components/SiteLayout.astro";
+import CodeBlock from "../components/CodeBlock.astro";
+import Callout from "../components/Callout.astro";
+import Chip from "../components/Chip.astro";
+import ServiceIcon from "../components/ServiceIcon.astro";
+import {
+  ArrowRight,
+  BookOpen,
+  Compass,
+  Container,
+  Download,
+  Gauge,
+  Inbox,
+  ListTree,
+  Monitor,
+  Radio,
+  Route,
+  ScanSearch,
+  ShieldCheck,
+  SunMoon,
+  Waypoints,
+} from "@lucide/astro";
+
+// Screenshots come from `scripts/capture-console.mjs`, and the scenarios that need a
+// particular emulator setup are allowed to produce nothing rather than fail the run. So a
+// feature renders with its picture when the file is there and without it when it isn't,
+// instead of shipping a broken <img> or a "coming soon" box.
+const shot = (name: string) => {
+  const src = `/console/${name}.png`;
+  const onDisk = fileURLToPath(new URL(`../../public${src}`, import.meta.url));
+  return fs.existsSync(onDisk) ? src : null;
+};
+
+const dockerFull = `docker run --rm \\
+  -p 4566:4566 \\
+  -p 4567:4567 \\
+  ghcr.io/overcast-sh/overcast:alpha`;
+
+const dashboardShot = shot("console-dashboard");
+
+const tour = [
+  {
+    id: "inbox",
+    icon: Inbox,
+    title: "Inbox",
+    lead: "Your Lambda sent a confirmation email. Read it instead of guessing whether it went out.",
+    body: "Overcast runs a mock SMTP server by default, so mail from SES, SNS email subscriptions, and Cognito lands at /inbox rather than anywhere real. SNS SMS, webhook, and mobile-push deliveries land there too — locally those usually have nowhere to go at all.",
+    points: [
+      "Plain text, rendered HTML, and the verbatim raw message, per message",
+      "One SNS publish that fans out to five subscribers is grouped as one thread",
+      "Messages arrive live, and the sidebar carries an unread count from any page",
+    ],
+    shot: shot("console-inbox"),
+    alt: "The Overcast console inbox: a list of captured messages on the left, one message open on the right with its HTML body rendered.",
+  },
+  {
+    id: "events",
+    icon: Radio,
+    title: "Event stream",
+    lead: "Something fired and you don't know what set it off.",
+    body: "/events is a live feed of every API call the emulator handles and every effect it causes, filterable by source, text, and time. Paste a request id in and it narrows to that one call plus everything downstream of it.",
+    points: [
+      "Pause the stream, then scroll back through what happened during a test run",
+      "Payloads are highlighted inline; ARNs are links to the resource they name",
+    ],
+    shot: shot("console-events"),
+    alt: "The Overcast console event stream: a dense monospace feed of emulator events with colour-coded type badges and a filter bar.",
+  },
+  {
+    id: "traces",
+    icon: Route,
+    title: "Request traces",
+    lead: "One PutObject became a notification, a queue message, and a Lambda invocation.",
+    body: "Request tracing records that as a single trace and draws it three ways — sequence diagram, waterfall, or flow map — with the request and response bodies at every hop. Every row has a copy-as-curl button, so you can replay the exact call from a terminal.",
+    points: [
+      "Search over request and response bodies, not just paths",
+      "Failed requests are kept past the normal retention window",
+      "Needs OVERCAST_DEBUG=true; without it the page says so rather than showing nothing",
+    ],
+    shot: shot("console-traces"),
+    alt: "The Overcast console request traces table: one row per AWS API request with method, path, service, status, duration, and a copy-as-curl button.",
+  },
+  {
+    id: "map",
+    icon: Waypoints,
+    title: "System map",
+    lead: "The wiring you think you deployed, drawn from what the emulator actually has.",
+    body: "Buckets, queues, tables, and functions grouped by region, CloudFormation stack, and VPC, with an edge for every real notification, subscription, and event source mapping. Edges light up and particles travel along them when data moves.",
+    points: [
+      "Lambda nodes list their live instances with the idle countdown running",
+      "Click an instance for its logs and the event that triggered it",
+      "Send an SQS message, publish to a topic, or invoke a function from the node itself",
+    ],
+    shot: shot("console-map"),
+    alt: "The Overcast console system map: a topology diagram of emulated AWS resources grouped into stacks, with connections drawn between them.",
+  },
+  {
+    id: "resources",
+    icon: ListTree,
+    title: "Resource browsers",
+    lead: "Check what your code wrote without an aws s3 cp round trip.",
+    body: "Each service gets a browser built for that service. In S3 that means prefix navigation, drag-and-drop upload with a storage class, multi-object zip download, and a preview that renders images and pretty-prints and highlights JSON, YAML, CSV, and logs. Versioned objects get a revision tab.",
+    points: [
+      "Bucket notifications and lifecycle rules are forms, not hand-written config JSON",
+      "Copy any key as an s3:// URI or a path-style URL, version pinned if you picked one",
+    ],
+    shot: shot("console-resources"),
+    alt: "The Overcast console S3 object browser: a table of objects in a bucket with size, storage class, and last-modified columns.",
+  },
+  {
+    id: "metrics",
+    icon: Gauge,
+    title: "Metrics and health",
+    lead: "When the emulator itself is the thing behaving oddly.",
+    body: "Storage mode and journal state, uptime, a breakdown of where startup time went, Go runtime sparklines sampled every three seconds, and Docker connectivity. Advisories say what to do when something needs attention, and collapse to one line when nothing does.",
+    points: [],
+    shot: shot("console-metrics"),
+    alt: "The Overcast console metrics page: health pills for storage and uptime above a grid of runtime sparkline cards.",
+  },
+];
+
+// `service` renders the service's own glyph from the site catalogue, so a card about SQS looks
+// the same here as the SQS row does everywhere else; `icon` is the fallback for the cards that
+// aren't about one service, and is always set so the template never has to guess.
+const alsoInside: { icon: typeof ScanSearch; service?: string; title: string; body: string }[] = [
+  {
+    icon: ScanSearch,
+    title: "Global search",
+    body: "Cmd-K from anywhere. Paste an ARN, a bucket name, a queue URL, or a phrase you half-remember from an email your app sent, and land on it.",
+  },
+  {
+    icon: BookOpen,
+    title: "Docs, in the console",
+    body: "The same per-service reference published on this site, one click from the page you are on and matched to the binary you are running.",
+  },
+  {
+    icon: ShieldCheck,
+    service: "iam",
+    title: "IAM policy simulator",
+    body: "Evaluate actions against a real user or role and see the decision and the statement that produced it. It also says whether enforcement is on, since it is off by default.",
+  },
+  {
+    icon: ListTree,
+    service: "dynamodb",
+    title: "DynamoDB item editor",
+    body: "Query or scan any index with a filter builder, then edit items as a typed form or as JSON — marshalled or plain.",
+  },
+  {
+    icon: Radio,
+    service: "sqs",
+    title: "SQS message inspector",
+    body: "Read message bodies without consuming them, send a test message, follow a dead-letter queue back to its source, or purge.",
+  },
+  {
+    icon: Radio,
+    service: "cloudwatch-logs",
+    title: "Live log tail",
+    body: "Follow a stream as it writes, search a whole log group with matches highlighted, jump to a timestamp, and export what you loaded.",
+  },
+  {
+    icon: Container,
+    service: "lambda",
+    title: "Edit, deploy, invoke",
+    body: "Browse and edit a function's source in place, deploy it, invoke it with a canned event template, and read the logs it produced.",
+  },
+  {
+    icon: ListTree,
+    service: "cloudformation",
+    title: "Stack diagnostics",
+    body: "When a stack fails, each piece of evidence is labelled as from the AWS API, captured by Overcast, or Overcast's own reading of it.",
+  },
+  {
+    icon: Waypoints,
+    service: "eventbridge",
+    title: "Target delivery outcomes",
+    body: "Every rule target shows its latest outcome — delivered, retried, dead-lettered, or dropped — so a rule that matched but never arrived is visible.",
+  },
+  {
+    icon: ListTree,
+    title: "Raw state browser",
+    body: "With OVERCAST_DEBUG on, read the emulator's actual stored state by namespace and key, for when the API says a resource exists and your consumer disagrees.",
+  },
+  {
+    icon: Compass,
+    title: "Wrong-region notice",
+    body: "An empty list says \"no stacks in us-east-1 — there are 3 in ap-southeast-2\" instead of leaving you to hunt for a deploy that went somewhere else.",
+  },
+  {
+    icon: SunMoon,
+    title: "Light and dark",
+    body: "Light, dark, or follow the system. Service colours are chosen separately for each theme, so a service stays recognisable in both.",
+  },
+];
+---
+
+<SiteLayout
+  title="Web Console"
+  description="The browser UI bundled with Overcast: inbox, event stream, request traces, topology map, and a browser for every emulated service."
+>
+  <section class="border-b border-oc">
+    <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+      <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-accent">
+        <Monitor class="icon" />web console
+      </p>
+      <h1 class="mt-3 max-w-3xl font-mono text-3xl font-bold leading-tight sm:text-4xl">
+        See what your local AWS environment is doing.
+      </h1>
+      <p class="mt-5 max-w-2xl text-lg leading-8 text-body">
+        The full Overcast image serves a management console on port <code>4567</code>, next to the AWS API on
+        <code>4566</code>. It reads the same state your code does and updates as your app runs, so you never
+        have to poll it with a CLI command to find out what happened.
+      </p>
+      <div class="mt-8 grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+        <div>
+          <CodeBlock code={dockerFull} label="full image, console included" language="bash" />
+          <p class="mt-4 text-sm text-muted">
+            Then open <code>http://localhost:4567</code>. Jump to
+            <a href="#running">running it</a> for the slim image, the port flag, and what the native binaries ship.
+          </p>
+        </div>
+        {dashboardShot && (
+          <figure class="surface m-0 overflow-hidden rounded-lg">
+            <img
+              src={dashboardShot}
+              alt="The Overcast console dashboard: emulated AWS services as cards, split into fully emulated, partially emulated, and not emulated."
+              width="1600"
+              height="1000"
+              class="block w-full"
+            />
+            <figcaption class="border-t border-oc px-4 py-3 text-xs text-muted">
+              The dashboard sorts every service by how completely Overcast emulates it, so you can see what is worth
+              building against before you start.
+            </figcaption>
+          </figure>
+        )}
+      </div>
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+    <p class="font-mono text-xs uppercase tracking-[0.16em] text-muted">what's in it</p>
+    <h2 class="mt-2 max-w-3xl font-mono text-2xl font-bold">
+      Six views, and when you would reach for each.
+    </h2>
+
+    <div class="mt-10 space-y-14">
+      {tour.map((feature) => (
+        <article id={feature.id} class="scroll-mt-24">
+          <div class:list={["grid gap-6", feature.shot && "lg:grid-cols-[0.85fr_1.15fr] lg:items-start"]}>
+            <div class:list={[!feature.shot && "max-w-3xl"]}>
+              <h3 class="flex items-center gap-3 font-mono text-xl font-bold">
+                <span class="icon-tile"><feature.icon class="icon" /></span>{feature.title}
+              </h3>
+              <p class="mt-4 leading-7 text-body">{feature.lead}</p>
+              <p class="mt-3 text-sm leading-6 text-muted">{feature.body}</p>
+              {feature.points.length > 0 && (
+                <ul class="mt-4 list-none space-y-2 p-0 text-sm leading-6 text-body">
+                  {feature.points.map((point) => (
+                    <li class="flex gap-2.5">
+                      <ArrowRight class="icon mt-1 shrink-0 text-accent" />
+                      <span>{point}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            {feature.shot && (
+              <figure class="surface m-0 overflow-hidden rounded-lg">
+                <img src={feature.shot} alt={feature.alt} width="1600" height="1000" loading="lazy" class="block w-full" />
+              </figure>
+            )}
+          </div>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <section class="border-y border-oc bg-card">
+    <div class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+      <p class="font-mono text-xs uppercase tracking-[0.16em] text-muted">also in there</p>
+      <h2 class="mt-2 font-mono text-2xl font-bold">Smaller things, easy to miss.</h2>
+      <div class="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {alsoInside.map((item) => (
+          <article class="surface rounded-lg p-5">
+            <div class="flex items-center gap-3">
+              {item.service ? <ServiceIcon service={item.service} /> : <span class="icon-tile"><item.icon class="icon" /></span>}
+              <h3 class="font-mono text-sm font-bold">{item.title}</h3>
+            </div>
+            <p class="mt-3 text-sm leading-6 text-muted">{item.body}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section id="running" class="mx-auto max-w-7xl scroll-mt-24 px-4 py-14 sm:px-6 lg:px-8">
+    <p class="font-mono text-xs uppercase tracking-[0.16em] text-muted">running it</p>
+    <h2 class="mt-2 font-mono text-2xl font-bold">One port, one process, optional.</h2>
+    <p class="mt-4 max-w-3xl leading-7 text-body">
+      The console is served in-process by the same binary as the API — there is no second server to start or
+      supervise, and port <code>4566</code> does not depend on it. Set <code>--ui-port</code> or
+      <code>OVERCAST_UI_PORT</code> to move it, or <code>0</code> to switch it off.
+    </p>
+
+    <div class="mt-6 grid gap-4 md:grid-cols-2">
+      <article class="surface rounded-lg p-5">
+        <div class="flex items-center gap-3">
+          <span class="icon-tile"><Container class="icon" /></span>
+          <h3 class="font-mono text-base font-bold">Full image</h3>
+        </div>
+        <p class="mt-3 text-sm leading-6 text-body">
+          <code>ghcr.io/overcast-sh/overcast</code> — API on <code>4566</code>, console on <code>4567</code>.
+        </p>
+        <div class="mt-3 flex flex-wrap gap-2">
+          <Chip>4566 api</Chip><Chip>4567 console</Chip>
+        </div>
+      </article>
+      <article class="surface rounded-lg p-5">
+        <div class="flex items-center gap-3">
+          <span class="icon-tile"><ShieldCheck class="icon" /></span>
+          <h3 class="font-mono text-base font-bold">Slim image</h3>
+        </div>
+        <p class="mt-3 text-sm leading-6 text-body">
+          <code>ghcr.io/overcast-sh/overcast-slim</code> and the <code>overcastd</code> binary leave the console out
+          for a smaller headless footprint in CI.
+        </p>
+        <div class="mt-3 flex flex-wrap gap-2">
+          <Chip tone="muted">4566 api only</Chip>
+        </div>
+      </article>
+    </div>
+
+    <div class="mt-6 max-w-3xl">
+      <Callout kind="tip" title="If the console feels sluggish">
+        <p class="m-0">
+          Many concurrent Lambdas or transfers can exhaust the browser's six-connection HTTP/1.1 limit, because the
+          live feed and progress streams hold sockets open. Serving the console over HTTPS unlocks HTTP/2 and fixes
+          it — see <a href="/docs/https/">HTTPS and HTTP/2</a>.
+        </p>
+      </Callout>
+    </div>
+
+    <div class="surface mt-8 flex flex-wrap items-center justify-between gap-4 rounded-lg p-5">
+      <div class="flex items-center gap-3">
+        <span class="icon-tile"><Download class="icon" /></span>
+        <div>
+          <h3 class="font-mono text-base font-bold">Get the full image</h3>
+          <p class="mt-1 text-sm text-muted">Docker images and native binaries, with the checksums.</p>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-3">
+        <a class="copy-button inline-flex items-center gap-2 rounded-md px-3 py-2 font-mono text-sm no-underline" href="/downloads/">
+          <Download class="icon" />Downloads
+        </a>
+        <a class="inline-flex items-center gap-2 rounded-md border border-oc px-3 py-2 font-mono text-sm text-(--oc-text) no-underline" href="/docs/">
+          <BookOpen class="icon" />Docs
+        </a>
+      </div>
+    </div>
+  </section>
+</SiteLayout>

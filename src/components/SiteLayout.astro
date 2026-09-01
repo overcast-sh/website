@@ -1,6 +1,6 @@
 ---
 import "../styles/global.css";
-import { BookOpen, Download, FileText, GitCompare, Menu, PencilLine, RotateCcwClock, Search, ShieldCheck, Star, SunMoon, X } from "@lucide/astro";
+import { BookOpen, Download, FileText, GitCompare, Menu, Monitor, PencilLine, RotateCcwClock, Search, ShieldCheck, Star, SunMoon, X } from "@lucide/astro";
 import GitHubIcon from "./GitHubIcon.astro";
 import { repositoryUrl, starsUrl, websiteEditUrlFromRoute } from "../lib/github-links";
 import { getSourceManifest } from "../lib/generated-content";
@@ -83,6 +83,7 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
         </a>
         <nav class="hidden items-center gap-4 font-mono text-xs text-muted lg:flex" aria-label="Main">
           <a href="/docs/" class="flex items-center gap-1.5 text-muted hover:text-(--oc-text)"><BookOpen class="icon" />Docs</a>
+          <a href="/console/" class="flex items-center gap-1.5 text-muted hover:text-(--oc-text)"><Monitor class="icon" />Console</a>
           <a href="/downloads/" class="flex items-center gap-1.5 text-muted hover:text-(--oc-text)"><Download class="icon" />Downloads</a>
           <a href="/releases/" class="flex items-center gap-1.5 text-muted hover:text-(--oc-text)"><RotateCcwClock class="icon" />Releases</a>
           <a href="/support/" class="flex items-center gap-1.5 text-muted hover:text-(--oc-text)"><ShieldCheck class="icon" />Support Matrix</a>
@@ -138,6 +139,7 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
       >
         <nav class="flex flex-col gap-1 font-mono text-sm" aria-label="Main">
           <a href="/docs/" class="flex items-center gap-2 rounded-md px-3 py-3 text-muted no-underline hover:bg-(--oc-accent-soft)"><BookOpen class="icon" />Docs</a>
+          <a href="/console/" class="flex items-center gap-2 rounded-md px-3 py-3 text-muted no-underline hover:bg-(--oc-accent-soft)"><Monitor class="icon" />Console</a>
           <a href="/downloads/" class="flex items-center gap-2 rounded-md px-3 py-3 text-muted no-underline hover:bg-(--oc-accent-soft)"><Download class="icon" />Downloads</a>
           <a href="/releases/" class="flex items-center gap-2 rounded-md px-3 py-3 text-muted no-underline hover:bg-(--oc-accent-soft)"><RotateCcwClock class="icon" />Releases</a>
           <a href="/support/" class="flex items-center gap-2 rounded-md px-3 py-3 text-muted no-underline hover:bg-(--oc-accent-soft)"><ShieldCheck class="icon" />Support Matrix</a>
@@ -238,6 +240,7 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
               <p class="m-0 font-mono text-xs uppercase tracking-[0.16em] text-muted">Product</p>
               <ul class="m-0 mt-3 flex list-none flex-col gap-2.5 p-0 text-sm">
                 <li><a class="text-muted no-underline hover:text-(--oc-text)" href="/docs/">Docs</a></li>
+                <li><a class="text-muted no-underline hover:text-(--oc-text)" href="/console/">Web Console</a></li>
                 <li><a class="text-muted no-underline hover:text-(--oc-text)" href="/downloads/">Downloads</a></li>
                 <li><a class="text-muted no-underline hover:text-(--oc-text)" href="/releases/">Releases</a></li>
                 <li><a class="text-muted no-underline hover:text-(--oc-text)" href="/support/">Support Matrix</a></li>
