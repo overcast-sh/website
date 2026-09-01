@@ -1,5 +1,6 @@
 ---
 import SiteLayout from "../../components/SiteLayout.astro";
+import { ChevronDown } from "@lucide/astro";
 import { getCollection, type CollectionEntry } from "astro:content";
 import { overcastEditUrl } from "../../lib/github-links";
 
@@ -29,22 +30,49 @@ const grouped = Object.entries(
 <SiteLayout title={doc.data.title} description={doc.data.description} editUrl={editUrl}>
   <div class="mx-auto grid max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[260px_1fr] lg:px-8">
     <aside class="lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
-      <a class="mb-4 block font-mono text-sm font-bold" href="/docs/">Documentation</a>
-      {grouped.map(([section, entries]) => (
-        <div class="mb-5">
-          <h2 class="mb-2 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">{section}</h2>
-          <nav class="space-y-1">
-            {entries?.map((entry) => (
-              <a
-                class={`block rounded-md px-2 py-1.5 text-sm no-underline ${entry.data.slug === doc.data.slug ? "soft text-(--oc-text)" : "text-muted"}`}
-                href={`/${entry.data.slug}/`}
-              >
-                {entry.data.title}
-              </a>
-            ))}
-          </nav>
+      <a class="mb-4 hidden font-mono text-sm font-bold lg:block" href="/docs/">Documentation</a>
+
+      <details class="group sticky top-[4.75rem] z-10 mb-4 lg:hidden">
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-2 rounded-md border border-oc bg-card px-3 py-3 font-mono text-sm font-semibold text-(--oc-text) shadow-sm [&::-webkit-details-marker]:hidden">
+          Docs navigation
+          <ChevronDown class="icon shrink-0 text-muted transition-transform duration-150 group-open:rotate-180" />
+        </summary>
+        <div class="mt-2 max-h-[60vh] overflow-auto rounded-md border border-oc bg-card p-3">
+          {grouped.map(([section, entries]) => (
+            <div class="mb-5 last:mb-0">
+              <h2 class="mb-2 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">{section}</h2>
+              <nav class="space-y-1">
+                {entries?.map((entry) => (
+                  <a
+                    class={`block rounded-md px-3 py-3 text-sm no-underline ${entry.data.slug === doc.data.slug ? "soft text-(--oc-text)" : "text-muted"}`}
+                    href={`/${entry.data.slug}/`}
+                  >
+                    {entry.data.title}
+                  </a>
+                ))}
+              </nav>
+            </div>
+          ))}
         </div>
-      ))}
+      </details>
+
+      <div class="hidden lg:block">
+        {grouped.map(([section, entries]) => (
+          <div class="mb-5">
+            <h2 class="mb-2 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">{section}</h2>
+            <nav class="space-y-1">
+              {entries?.map((entry) => (
+                <a
+                  class={`block rounded-md px-2 py-1.5 text-sm no-underline ${entry.data.slug === doc.data.slug ? "soft text-(--oc-text)" : "text-muted"}`}
+                  href={`/${entry.data.slug}/`}
+                >
+                  {entry.data.title}
+                </a>
+              ))}
+            </nav>
+          </div>
+        ))}
+      </div>
     </aside>
     <article class="min-w-0">
       <div class="mb-8 border-b border-oc pb-6">

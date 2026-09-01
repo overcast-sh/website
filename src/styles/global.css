@@ -127,6 +127,7 @@ kbd {
 }
 
 .prose {
+  overflow-wrap: anywhere;
   --tw-prose-body: var(--oc-body);
   --tw-prose-headings: var(--oc-text);
   --tw-prose-links: var(--oc-accent);
@@ -148,6 +149,41 @@ kbd {
 .prose pre {
   border: 1px solid var(--oc-line);
   border-radius: 8px;
+}
+
+.code-block-wrap {
+  position: relative;
+}
+
+.code-copy-btn {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem;
+  border-radius: 6px;
+  opacity: 0;
+  transform: translateY(-2px);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+
+.code-block-wrap:hover .code-copy-btn,
+.code-copy-btn:focus-visible,
+.code-copy-btn.is-copied {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (hover: none) {
+  .code-copy-btn {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .code-block .shiki,
@@ -218,6 +254,15 @@ kbd {
 .prose :not(pre) > code::before,
 .prose :not(pre) > code::after {
   content: none;
+}
+
+/* Tables render at their natural width but scroll within their own box
+ * instead of forcing the whole page to scroll horizontally. */
+.prose table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 @font-face {
