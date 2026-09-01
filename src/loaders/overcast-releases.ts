@@ -55,6 +55,8 @@ const githubReleasesSchema = z.array(githubReleaseSchema);
 
 const summaryCharacterLimit = 360;
 const entryPreviewCharacterLimit = 170;
+const longEntryCharacterThreshold = 160;
+const minimumClampedRemainderLength = 20;
 const boilerplateHeadings = new Set(["docker images", "native binaries"]);
 
 function cleanInlineMarkdown(markdown: string): string {
@@ -272,6 +274,45 @@ function parseBulletUnit(unit: LineUnit): ParsedBullet | null {
   return { breaking: Boolean(match[1]), areas, prose, migration };
 }
 
+/**
+ * Splits an entry's prose into an always-visible lead sentence and an optional collapsed
+ * remainder, so a long entry doesn't dominate the scan the way a short one-liner doesn't. Only
+ * clamps when the text is both past the length threshold AND has more than one sentence-ish
+ * boundary to split on — a single very long sentence has nothing sensible to hide, so it stays
+ * whole. The boundary search skips inline code spans (same trick as autolinkIssueReferences) so
+ * a split can never land mid-`code`, which would otherwise unbalance the backticks once each
+ * half is rendered independently.
+ *
+ * This is a plain-text heuristic, not a parser for the "first sentence is a standalone summary,
+ * detail on a continuation line" convention release-prep is about to adopt upstream — it works
+ * without that convention (every entry today is a single line) and doesn't get any more precise
+ * once bullets start following it either; a real continuation line is just more prose text this
+ * same heuristic already has to reason about.
+ */
+function splitLongEntryProse(text: string): { lead: string; rest: string | null } {
+  if (text.length <= longEntryCharacterThreshold) return { lead: text, rest: null };
+
+  const segments = text.split(/(`[^`]*`)/g);
+  const boundaryPositions: number[] = [];
+  let offset = 0;
+  for (const [index, segment] of segments.entries()) {
+    if (index % 2 === 0) {
+      for (const match of segment.matchAll(/[.;:](?=\s)/g)) {
+        boundaryPositions.push(offset + (match.index ?? 0) + 1);
+      }
+    }
+    offset += segment.length;
+  }
+  if (boundaryPositions.length < 2) return { lead: text, rest: null };
+
+  const splitAt = boundaryPositions[0];
+  const lead = text.slice(0, splitAt).trim();
+  const rest = text.slice(splitAt).trim();
+  if (rest.length < minimumClampedRemainderLength) return { lead: text, rest: null };
+
+  return { lead, rest };
+}
+
 /** Turns a bare `#1234` issue/PR reference into a markdown link, skipping anything inside
  * inline code spans so a shell flag or hex-ish token is never mistaken for one. */
 function autolinkIssueReferences(text: string, repo: string): string {
@@ -292,9 +333,24 @@ async function renderEntryProse(text: string, repo: string, renderMarkdown: Mark
   return html.trim();
 }
 
+/** Renders a raw (unparsed) unit unchanged — except a single-line bullet long enough to clamp
+ * (the old `**Service** — prose` style is the common case) gets the same lead/remainder split
+ * as a structured entry, rendered as its own tiny bullet list plus a separate remainder
+ * fragment. A multi-line raw unit (rare — a bullet with more than one continuation line, or a
+ * stray non-bullet run like the trailing `Release: <url>` footer) is left whole: it already has
+ * its own internal shape this function has no business second-guessing. */
 async function renderRawUnit(unit: LineUnit, renderMarkdown: MarkdownRenderer): Promise<ChangelogBulletEntry> {
+  if (unit.type === "bullet" && unit.lines.length === 1) {
+    const bulletText = /^- (.*)$/.exec(unit.lines[0])?.[1] ?? "";
+    const { lead, rest } = splitLongEntryProse(bulletText);
+    if (rest) {
+      const [{ html: leadHtml }, { html: restHtml }] = await Promise.all([renderMarkdown(`- ${lead}`), renderMarkdown(rest)]);
+      return { kind: "raw", html: leadHtml.trim(), moreHtml: restHtml.trim() };
+    }
+  }
+
   const { html } = await renderMarkdown(unit.lines.join("\n"));
-  return { kind: "raw", html: html.trim() };
+  return { kind: "raw", html: html.trim(), moreHtml: null };
 }
 
 async function parseCategoryEntries(
@@ -316,11 +372,13 @@ async function parseCategoryEntries(
       continue;
     }
 
+    const { lead, rest } = splitLongEntryProse(parsed.prose);
     entries.push({
       kind: "entry",
       breaking: parsed.breaking,
       areas: parsed.areas,
-      proseHtml: await renderEntryProse(parsed.prose, repo, renderMarkdown),
+      proseHtml: await renderEntryProse(lead, repo, renderMarkdown),
+      proseMoreHtml: rest ? await renderEntryProse(rest, repo, renderMarkdown) : null,
       proseText: truncateAtSentence(cleanInlineMarkdown(parsed.prose), entryPreviewCharacterLimit),
       migrationHtml: parsed.migration ? await renderEntryProse(parsed.migration, repo, renderMarkdown) : null,
     });

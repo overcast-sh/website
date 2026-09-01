@@ -2,66 +2,167 @@
 // Structured renderer for a release's "## Release Notes" section, built from
 // `ChangelogSection[]` (src/lib/release-schema.ts defines the shape; the parsing happens at
 // build time in src/loaders/overcast-releases.ts).
-// A "category" section gets a colored Chip heading and per-entry area/breaking chips; a "raw"
-// section/entry is content the parser didn't recognize, rendered through the exact same
-// markdown pipeline as the rest of the site — never mangled, just undecorated.
+//
+// Round 2 (progressive disclosure): breaking changes are pulled out into their own always-open
+// section pinned above the categories; each category is a native <details> disclosure — open by
+// default only when `defaultOpen` is set (the latest release), collapsed otherwise — labeled
+// with its entry count so triage doesn't require opening anything; entries carry a thin
+// category-colored left rail instead of a per-row chip (the section header already says the
+// category once for everyone inside it) and right-aligned muted area tags; a long entry's
+// remainder and any migration note sit behind the same inline "→" disclosure pattern. Area chips
+// in the rollup line double as an area filter across the whole release (progressive enhancement
+// — with no JS the chips are inert and everything just shows).
+//
+// A "raw" section/entry is content the parser didn't recognize, rendered through the exact same
+// markdown pipeline as the rest of the site — never mangled, just undecorated, and never part of
+// the rollup, the breaking pin, or the filter (there's no area/breaking metadata to work with).
 import Chip from "./Chip.astro";
-import Callout from "./Callout.astro";
+import { ChevronDown, TriangleAlert } from "@lucide/astro";
 import type { ChangelogSection } from "../lib/release-schema";
-import { changelogCategoryTone } from "../lib/releases";
+import { changelogCategoryCssVar, changelogCategoryTone, changelogRollup, splitBreakingEntries } from "../lib/releases";
 
 interface Props {
   sections: ChangelogSection[];
+  defaultOpen?: boolean;
 }
 
-const { sections } = Astro.props;
+const { sections, defaultOpen = false } = Astro.props;
+
+const rollup = changelogRollup(sections);
+const { breakingEntries, sections: sectionsWithoutBreaking } = splitBreakingEntries(sections);
+const renderableSections = sectionsWithoutBreaking.filter((section) => section.kind !== "category" || section.entries.length > 0);
 ---
 
-<div class="changelog space-y-6">
+<div class="changelog space-y-5" data-changelog-root>
   {
-    sections.map((section) =>
+    rollup && (
+      <div class="flex flex-wrap items-center gap-x-2 gap-y-1.5 font-mono text-xs text-muted">
+        <span>
+          {rollup.counts.map((count, index) => (
+            <>
+              {index > 0 && " · "}
+              {`${count.count} ${count.label.toLowerCase()}`}
+            </>
+          ))}
+          {rollup.breakingCount > 0 && (
+            <>
+              {" "}
+              · <span class="text-(--oc-danger)">{rollup.breakingCount} breaking</span>
+            </>
+          )}
+        </span>
+        {rollup.areas.length > 0 && (
+          <span class="flex flex-wrap items-center gap-1.5">
+            {rollup.areas.map((area) => (
+              <button type="button" class="area-filter-chip" data-area-chip data-area={area} aria-pressed="false">
+                <Chip tone="muted">{area}</Chip>
+              </button>
+            ))}
+            <button type="button" class="changelog-clear-filter" data-clear-filter hidden>
+              clear filter
+            </button>
+          </span>
+        )}
+      </div>
+    )
+  }
+
+  {
+    breakingEntries.length > 0 && (
+      <section class="changelog-breaking rounded-lg border border-(--oc-danger) p-4" style="background:color-mix(in srgb, var(--oc-danger) 6%, transparent)">
+        <p class="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-[0.14em] text-(--oc-danger)">
+          <TriangleAlert class="icon" />
+          Breaking changes
+        </p>
+        <ul class="mt-3 list-none space-y-3 pl-0">
+          {breakingEntries.map((entry) => (
+            <li class="pl-3 text-sm leading-6 text-body" style={`border-left:3px solid var(${changelogCategoryCssVar[entry.category]})`} data-areas={entry.areas.join(",")}>
+              <div class="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+                <div class="min-w-0 flex-1">
+                  <Chip tone={changelogCategoryTone[entry.category]}>{entry.label}</Chip>
+                  <div class="changelog-prose mt-1" set:html={entry.proseHtml} />
+                </div>
+                {entry.areas.length > 0 && (
+                  <span class="flex shrink-0 flex-wrap items-center gap-1">
+                    {entry.areas.map((area) => (
+                      <Chip tone="muted">{area}</Chip>
+                    ))}
+                  </span>
+                )}
+              </div>
+              {entry.proseMoreHtml && (
+                <details class="changelog-disclosure mt-1.5">
+                  <summary class="cursor-pointer font-mono text-xs text-muted">more →</summary>
+                  <div class="changelog-prose mt-1.5" set:html={entry.proseMoreHtml} />
+                </details>
+              )}
+              {entry.migrationHtml && (
+                <details class="changelog-disclosure mt-1.5">
+                  <summary class="cursor-pointer font-mono text-xs text-(--oc-warning)">migration →</summary>
+                  <div class="changelog-prose mt-1.5 border-l-2 border-(--oc-warning) pl-3" set:html={entry.migrationHtml} />
+                </details>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+    )
+  }
+
+  {
+    renderableSections.map((section) =>
       section.kind === "raw" ? (
         <div class="prose prose-sm max-w-none" set:html={section.html} />
       ) : (
-        <section>
-          <h3 class="flex items-center gap-2">
+        <details class="changelog-category group" open={defaultOpen || undefined}>
+          <summary class="flex cursor-pointer list-none items-center gap-2 [&::-webkit-details-marker]:hidden">
+            <ChevronDown class="icon shrink-0 text-muted transition-transform duration-150 group-open:rotate-180" />
             <Chip tone={changelogCategoryTone[section.category]}>{section.label}</Chip>
-          </h3>
+            <span class="font-mono text-xs text-muted">{section.entries.length}</span>
+          </summary>
           <ul class="mt-3 list-none space-y-3 pl-0">
             {section.entries.map((entry) =>
               entry.kind === "raw" ? (
-                <li class="changelog-raw text-sm leading-6 text-body" set:html={entry.html} />
-              ) : (
-                <li class="text-sm leading-6 text-body">
-                  {(entry.breaking || entry.areas.length > 0) && (
-                    <div class="flex flex-wrap items-center gap-1.5">
-                      {entry.breaking && <Chip tone="danger">Breaking</Chip>}
-                      {entry.areas.map((area) => (
-                        <Chip tone="muted">{area}</Chip>
-                      ))}
-                    </div>
+                <li class="changelog-raw pl-3 text-sm leading-6 text-body" style={`border-left:3px solid var(${changelogCategoryCssVar[section.category]})`}>
+                  <Fragment set:html={entry.html} />
+                  {entry.moreHtml && (
+                    <details class="changelog-disclosure mt-1">
+                      <summary class="cursor-pointer font-mono text-xs text-muted">more →</summary>
+                      <div class="changelog-prose mt-1" set:html={entry.moreHtml} />
+                    </details>
                   )}
-                  <div class="changelog-prose mt-1" set:html={entry.proseHtml} />
-                  {entry.migrationHtml && (
-                    <div class="mt-2">
-                      <Callout kind="warning" title="Migration">
-                        <Fragment set:html={entry.migrationHtml} />
-                      </Callout>
-                    </div>
+                </li>
+              ) : (
+                <li class="pl-3 text-sm leading-6 text-body" style={`border-left:3px solid var(${changelogCategoryCssVar[section.category]})`} data-areas={entry.areas.join(",")}>
+                  <div class="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+                    <div class="changelog-prose min-w-0 flex-1" set:html={entry.proseHtml} />
+                    {entry.areas.length > 0 && (
+                      <span class="flex shrink-0 flex-wrap items-center gap-1">
+                        {entry.areas.map((area) => (
+                          <Chip tone="muted">{area}</Chip>
+                        ))}
+                      </span>
+                    )}
+                  </div>
+                  {entry.proseMoreHtml && (
+                    <details class="changelog-disclosure mt-1">
+                      <summary class="cursor-pointer font-mono text-xs text-muted">more →</summary>
+                      <div class="changelog-prose mt-1" set:html={entry.proseMoreHtml} />
+                    </details>
                   )}
                 </li>
               ),
             )}
           </ul>
-        </section>
+        </details>
       ),
     )
   }
 </div>
 
 <style>
-  /* Entry/migration prose is rendered from a single markdown line: it's always one <p>,
-   * so drop the block margin the site's markdown pipeline normally gives paragraphs. */
+  /* Entry/migration prose is rendered from a single markdown line: it's always one <p>, so drop
+   * the block margin the site's markdown pipeline normally gives paragraphs. */
   .changelog-prose :global(p) {
     margin: 0;
   }
@@ -72,4 +173,121 @@ const { sections } = Astro.props;
     margin: 0.25rem 0 0;
     padding-left: 1.25rem;
   }
+
+  details.changelog-category > summary {
+    cursor: pointer;
+  }
+
+  .changelog-disclosure > summary {
+    cursor: pointer;
+    list-style: none;
+  }
+  .changelog-disclosure > summary::-webkit-details-marker {
+    display: none;
+  }
+  .changelog-disclosure > summary::marker {
+    content: "";
+  }
+
+  button[data-area-chip] {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    cursor: pointer;
+  }
+  button[data-area-chip]:hover :global(span) {
+    filter: brightness(1.15);
+  }
+  button[data-area-chip]:focus-visible {
+    outline: 2px solid var(--oc-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  /* Overrides Chip's inline background/color style — necessary since the active state has to
+   * beat inline styles, and Chip has no prop for "filled" vs "soft". */
+  button[data-area-chip][aria-pressed="true"] :global(span) {
+    background: var(--oc-muted) !important;
+    color: var(--oc-bg) !important;
+  }
+
+  button[data-clear-filter] {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font-family: var(--oc-font-mono);
+    font-size: 0.75rem;
+    color: var(--oc-accent);
+    text-decoration: underline;
+    cursor: pointer;
+  }
 </style>
+
+<script>
+  // One delegated listener for the whole page rather than one per ReleaseChangelog instance —
+  // every release on /releases/ renders this component, and each instance's own inline <script>
+  // block runs, so binding directly here would attach the handler once per release.
+  if (!(window as unknown as { __changelogFilterBound?: boolean }).__changelogFilterBound) {
+    (window as unknown as { __changelogFilterBound: boolean }).__changelogFilterBound = true;
+
+    const applyFilter = (root: Element, area: string | null) => {
+      root.querySelectorAll<HTMLElement>("[data-areas]").forEach((item) => {
+        const areas = (item.getAttribute("data-areas") || "").split(",").filter(Boolean);
+        item.hidden = Boolean(area) && !areas.includes(area as string);
+      });
+
+      root.querySelectorAll<HTMLDetailsElement>("details.changelog-category").forEach((details) => {
+        if (!area) {
+          if (details.dataset.wasOpen !== undefined) {
+            details.open = details.dataset.wasOpen === "true";
+            delete details.dataset.wasOpen;
+          }
+          details.hidden = false;
+          return;
+        }
+
+        const visibleCount = details.querySelectorAll("[data-areas]:not([hidden])").length;
+        details.hidden = visibleCount === 0;
+        if (visibleCount > 0) {
+          if (details.dataset.wasOpen === undefined) details.dataset.wasOpen = String(details.open);
+          details.open = true;
+        }
+      });
+
+      const breaking = root.querySelector<HTMLElement>(".changelog-breaking");
+      if (breaking) {
+        const visibleCount = breaking.querySelectorAll("[data-areas]:not([hidden])").length;
+        breaking.hidden = Boolean(area) && visibleCount === 0;
+      }
+
+      root.querySelectorAll<HTMLButtonElement>("[data-area-chip]").forEach((chip) => {
+        chip.setAttribute("aria-pressed", String(chip.getAttribute("data-area") === area));
+      });
+
+      const clearButton = root.querySelector<HTMLButtonElement>("[data-clear-filter]");
+      if (clearButton) clearButton.hidden = !area;
+    };
+
+    document.addEventListener("click", (event) => {
+      const target = event.target as HTMLElement;
+      const chip = target.closest<HTMLButtonElement>("[data-area-chip]");
+      const clearButton = target.closest<HTMLButtonElement>("[data-clear-filter]");
+      if (!chip && !clearButton) return;
+
+      const root = (chip ?? clearButton)?.closest("[data-changelog-root]");
+      if (!root) return;
+
+      if (clearButton) {
+        applyFilter(root, null);
+        return;
+      }
+      if (chip) {
+        const area = chip.getAttribute("data-area");
+        const isActive = chip.getAttribute("aria-pressed") === "true";
+        applyFilter(root, isActive ? null : area);
+      }
+    });
+  }
+</script>

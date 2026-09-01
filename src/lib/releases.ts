@@ -20,6 +20,20 @@ export const changelogCategoryTone: Record<ChangelogCategory, "accent" | "succes
   security: "danger",
 };
 
+const toneCssVar: Record<"accent" | "success" | "warning" | "danger" | "muted", string> = {
+  accent: "--oc-accent",
+  success: "--oc-success",
+  warning: "--oc-warning",
+  danger: "--oc-danger",
+  muted: "--oc-muted",
+};
+
+/** The `--oc-*` custom property behind each category's tone, for styling entry rails/borders
+ * directly rather than going through Chip. */
+export const changelogCategoryCssVar: Record<ChangelogCategory, string> = Object.fromEntries(
+  Object.entries(changelogCategoryTone).map(([category, tone]) => [category, toneCssVar[tone]]),
+) as Record<ChangelogCategory, string>;
+
 export type FlatChangelogEntry = Extract<ChangelogBulletEntry, { kind: "entry" }> & {
   category: ChangelogCategory;
   label: string;
@@ -41,6 +55,83 @@ export function firstChangelogEntries(sections: readonly ChangelogSection[], lim
   }
 
   return flattened;
+}
+
+/** Pulls every breaking entry out of `sections` into its own flat, category-ordered list, and
+ * returns the sections with those entries removed from their category — a breaking change is
+ * surfaced once, pinned at the top of the release, not twice (once pinned, once buried in its
+ * category). Non-category ("raw") sections pass through untouched. */
+export function splitBreakingEntries(sections: readonly ChangelogSection[]): {
+  breakingEntries: FlatChangelogEntry[];
+  sections: ChangelogSection[];
+} {
+  const breakingEntries: FlatChangelogEntry[] = [];
+
+  const nextSections = sections.map((section): ChangelogSection => {
+    if (section.kind !== "category") return section;
+
+    const remaining: ChangelogBulletEntry[] = [];
+    for (const entry of section.entries) {
+      if (entry.kind === "entry" && entry.breaking) {
+        breakingEntries.push({ ...entry, category: section.category, label: section.label });
+      } else {
+        remaining.push(entry);
+      }
+    }
+    return { ...section, entries: remaining };
+  });
+
+  return { breakingEntries, sections: nextSections };
+}
+
+export type ChangelogRollup = {
+  /** Per-category entry counts, after breaking entries are pulled out (see splitBreakingEntries)
+   * — this is what the category disclosure itself will actually contain, so the two numbers
+   * never disagree. Categories with zero entries left are omitted. */
+  counts: { category: ChangelogCategory; label: string; count: number }[];
+  breakingCount: number;
+  /** Every area referenced anywhere in the release (categories + breaking), deduplicated in
+   * first-seen order. */
+  areas: string[];
+};
+
+/** Release-wide rollup for triage: "12 added · 8 fixed · 2 breaking" plus the areas touched.
+ * Null when the release has no recognized category section at all (old-format body, nothing
+ * honest to roll up) — the caller falls back to showing nothing, never a fake "0 added". */
+export function changelogRollup(sections: readonly ChangelogSection[]): ChangelogRollup | null {
+  const hasCategory = sections.some((section) => section.kind === "category");
+  if (!hasCategory) return null;
+
+  const { breakingEntries, sections: nonBreakingSections } = splitBreakingEntries(sections);
+
+  const counts = nonBreakingSections
+    .filter((section): section is Extract<ChangelogSection, { kind: "category" }> => section.kind === "category")
+    .map((section) => ({ category: section.category, label: section.label, count: section.entries.length }))
+    .filter((entry) => entry.count > 0);
+
+  const areas: string[] = [];
+  const seenAreas = new Set<string>();
+  for (const section of sections) {
+    if (section.kind !== "category") continue;
+    for (const entry of section.entries) {
+      if (entry.kind !== "entry") continue;
+      for (const area of entry.areas) {
+        if (seenAreas.has(area)) continue;
+        seenAreas.add(area);
+        areas.push(area);
+      }
+    }
+  }
+
+  return { counts, breakingCount: breakingEntries.length, areas };
+}
+
+/** Caps an area list for a space-constrained, non-interactive context (the collapsed-accordion
+ * summary line) — the full, uncapped list is what the open release's filter chips show, since
+ * every area has to stay clickable there. */
+export function cappedAreas(areas: readonly string[], limit: number): { shown: string[]; more: number } {
+  if (areas.length <= limit) return { shown: [...areas], more: 0 };
+  return { shown: areas.slice(0, limit), more: areas.length - limit };
 }
 
 function releaseTime(release: ReleaseEntryLike): number {

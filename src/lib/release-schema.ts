@@ -20,7 +20,13 @@ export const changelogCategories = ["added", "changed", "deprecated", "removed",
 export const changelogCategorySchema = z.enum(changelogCategories);
 
 /** One bullet under a category heading: either parsed into its parts, or — when the bullet
- * doesn't match the fragment grammar — the markdown rendered as-is. */
+ * doesn't match the fragment grammar — the markdown rendered as-is.
+ *
+ * `proseHtml` is always what's shown up front; `proseMoreHtml` is a collapsed remainder (null
+ * for a short entry, which renders exactly as `proseHtml` with nothing hidden). Same idea for
+ * "raw" entries via `moreHtml` — a long pre-fragment-format bullet (`**Service** — prose`) gets
+ * the identical lead/remainder split, just rendered through the raw markdown path instead of
+ * the parsed one. See splitLongEntryProse in the loader. */
 export const changelogBulletEntrySchema = z.discriminatedUnion("kind", [
   z
     .object({
@@ -28,11 +34,12 @@ export const changelogBulletEntrySchema = z.discriminatedUnion("kind", [
       breaking: z.boolean(),
       areas: z.array(z.string()),
       proseHtml: z.string(),
+      proseMoreHtml: z.string().nullable(),
       proseText: z.string(),
       migrationHtml: z.string().nullable(),
     })
     .strict(),
-  z.object({ kind: z.literal("raw"), html: z.string() }).strict(),
+  z.object({ kind: z.literal("raw"), html: z.string(), moreHtml: z.string().nullable() }).strict(),
 ]);
 
 /** One `### Heading` block: a recognized category with its entries, or unrecognized content
