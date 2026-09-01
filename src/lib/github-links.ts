@@ -35,7 +35,9 @@ export function repositoryUrl(repo = overcastGitHubRepo): string {
 }
 
 export function starsUrl(repo = overcastGitHubRepo): string {
-  return githubUrl(repo, ["stargazers"]);
+  // The repo page, not /stargazers: GitHub 404s the stargazers page while a
+  // repo has zero stars, and the star button lives on the repo page anyway.
+  return repositoryUrl(repo);
 }
 
 export function editUrl(repo: string, ref: string, filePath: string): string {
@@ -62,4 +64,23 @@ export function websiteEditUrlFromRoute(routePattern: string): string | undefine
   const routePath = routePattern.replace(/^\/|\/$/g, "");
   const sourcePath = routePath.length === 0 ? "src/pages/index.astro" : `src/pages/${routePath}.astro`;
   return websiteEditUrl(sourcePath);
+}
+
+/**
+ * Overcast lived under the `Neaox` GitHub org / `ghcr.io/neaox` image namespace before it
+ * moved to `overcast-sh`. Historical content pulled from upstream (old GitHub release
+ * bodies, doc pages that haven't been touched since the rename) still references the old
+ * org, and those references will never be edited upstream. Rewrite them at build time so
+ * the published site never shows a dead `neaox` link.
+ */
+const legacyGhcrPattern = /ghcr\.io\/neaox\//gi;
+const legacyGithubOvercastPattern = /github\.com\/neaox\/overcast/gi;
+const legacyNeaoxTokenPattern = /\bneaox\b/gi;
+
+export function rewriteLegacyOrgReferences(text: string): string {
+  if (!text) return text;
+  return text
+    .replace(legacyGhcrPattern, "ghcr.io/overcast-sh/")
+    .replace(legacyGithubOvercastPattern, "github.com/overcast-sh/overcast")
+    .replace(legacyNeaoxTokenPattern, "overcast-sh");
 }

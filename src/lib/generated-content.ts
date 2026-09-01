@@ -3,6 +3,11 @@ import fs from "node:fs/promises";
 
 export type ServiceSupport = {
   service: string;
+  // The doc page slug under docs/services/ for this service. Usually equal to `service`,
+  // but a few upstream service ids (e.g. `elbv2`) don't match their doc's filename
+  // (docs/services/elb.md) — use this for building `/docs/services/<docSlug>/` links
+  // instead of assuming `service` always matches.
+  docSlug: string;
   displayName: string;
   totalOps: number;
   implementedOps: number;

@@ -1,6 +1,7 @@
 import type { Loader } from "astro/loaders";
 import { z } from "zod4";
 import { overcastRepo } from "./overcast-source";
+import { rewriteLegacyOrgReferences } from "../lib/github-links";
 
 export type OvercastReleaseData = {
   tagName: string;
@@ -150,7 +151,11 @@ async function fetchGitHubReleases(): Promise<OvercastReleaseData[]> {
 
   const data = githubReleasesSchema.parse(await response.json());
   return data.slice(0, 30).map((release) => {
-    const body = release.body || "";
+    // Old release bodies reference the pre-rename `Neaox` GitHub org / `ghcr.io/neaox`
+    // image namespace. Those releases will never be edited upstream, so rewrite the
+    // stale org references before summarizing/rendering, so both the raw body and the
+    // rendered markdown are clean.
+    const body = rewriteLegacyOrgReferences(release.body || "");
     return {
       tagName: release.tag_name,
       name: release.name || release.tag_name,

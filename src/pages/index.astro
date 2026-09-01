@@ -10,7 +10,7 @@ const topServices = support.services.slice().sort((a, b) => b.implementedOps - a
 const quickStart = `docker run --rm \\
   -p 4566:4566 \\
   -p 4567:4567 \\
-  ghcr.io/overcast-sh/overcast:latest`;
+  ghcr.io/overcast-sh/overcast:alpha`;
 ---
 
 <SiteLayout>
@@ -101,7 +101,7 @@ const quickStart = `docker run --rm \\
       </div>
       <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {topServices.map((service) => (
-          <a class="surface rounded-lg p-4 no-underline" href={`/docs/services/${service.service}/`}>
+          <a class="surface rounded-lg p-4 no-underline" href={`/docs/services/${service.docSlug ?? service.service}/`}>
             <div class="flex items-center justify-between gap-3">
               <strong class="font-mono text-sm text-(--oc-text)">{service.displayName}</strong>
               <span class="font-mono text-xs text-accent">{service.implementedOps}/{service.totalOps}</span>
