@@ -1,0 +1,64 @@
+---
+// Jumps to a release's section by id (see the `id`/`scroll-mt-24` pair set on each release in
+// releases.astro). Progressive enhancement only: with JS disabled the select just sits there,
+// and every release stays reachable via its #hash anchor since that's plain browser behaviour.
+interface ReleaseOption {
+  tagName: string;
+  name: string;
+  publishedAt: string | null;
+}
+
+interface Props {
+  releases: ReleaseOption[];
+}
+
+const { releases } = Astro.props;
+
+function formatDate(publishedAt: string | null): string {
+  return publishedAt ? new Date(publishedAt).toLocaleDateString("en-NZ", { dateStyle: "medium" }) : "";
+}
+---
+
+<label class="flex flex-col gap-1.5 font-mono text-xs sm:max-w-xs">
+  <span class="uppercase tracking-[0.16em] text-muted">Jump to version</span>
+  <select id="version-jump" aria-label="Jump to version" class="surface rounded-md border border-oc px-3 py-2 font-mono text-sm text-(--oc-text)">
+    <option value="">Select a release…</option>
+    {
+      releases.map((release) => {
+        const date = formatDate(release.publishedAt);
+        return (
+          <option value={release.tagName}>
+            {release.name}
+            {date ? ` · ${date}` : ""}
+          </option>
+        );
+      })
+    }
+  </select>
+</label>
+
+<script>
+  function openAndScroll(id: string) {
+    const target = document.getElementById(id);
+    if (!target) return;
+    const details = target instanceof HTMLDetailsElement ? target : target.closest("details");
+    if (details) details.open = true;
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function handleHash() {
+    const id = decodeURIComponent(location.hash.slice(1));
+    if (id) openAndScroll(id);
+  }
+
+  const select = document.getElementById("version-jump");
+  select?.addEventListener("change", (event) => {
+    const id = (event.currentTarget as HTMLSelectElement).value;
+    if (!id) return;
+    history.pushState(null, "", `#${id}`);
+    openAndScroll(id);
+  });
+
+  window.addEventListener("hashchange", handleHash);
+  handleHash();
+</script>

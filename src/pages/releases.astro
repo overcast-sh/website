@@ -1,7 +1,10 @@
 ---
 import SiteLayout from "../components/SiteLayout.astro";
 import AssetDownloadList from "../components/AssetDownloadList.astro";
-import { ChevronDown, FileText, PackageCheck, PackageOpen, RotateCcwClock } from "@lucide/astro";
+import DockerImageRefs from "../components/DockerImageRefs.astro";
+import ReleaseChangelog from "../components/ReleaseChangelog.astro";
+import VersionJumpSelect from "../components/VersionJumpSelect.astro";
+import { ChevronDown, Container, FileText, PackageCheck, PackageOpen, RotateCcwClock } from "@lucide/astro";
 import { getCollection, type CollectionEntry } from "astro:content";
 import { sortReleasesNewestFirst } from "../lib/releases";
 
@@ -11,6 +14,10 @@ const olderReleases = releases.slice(1);
 
 function formatReleaseDate(publishedAt: string | null | undefined): string {
   return publishedAt ? new Date(publishedAt).toLocaleDateString("en-NZ", { dateStyle: "medium" }) : "";
+}
+
+function dockerVersion(tagName: string): string {
+  return tagName.replace(/^v/, "");
 }
 
 const latestDate = formatReleaseDate(latest?.data.publishedAt);
@@ -25,8 +32,14 @@ const latestDate = formatReleaseDate(latest?.data.publishedAt);
       details.
     </p>
 
+    {releases.length > 1 && (
+      <div class="mt-6">
+        <VersionJumpSelect releases={releases.map((release) => ({ tagName: release.data.tagName, name: release.data.name, publishedAt: release.data.publishedAt }))} />
+      </div>
+    )}
+
     {latest && (
-      <article class="surface mt-8 rounded-lg p-5">
+      <article id={latest.data.tagName} class="surface mt-8 scroll-mt-24 rounded-lg p-5">
         <div class="flex flex-wrap items-start justify-between gap-3 border-b border-oc pb-4">
           <div>
             <p class="font-mono text-xs uppercase tracking-[0.16em] text-muted">latest release</p>
@@ -46,6 +59,13 @@ const latestDate = formatReleaseDate(latest?.data.publishedAt);
         </div>
 
         <div class="mt-5">
+          <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><Container class="icon" />Docker images</p>
+          <div class="mt-3">
+            <DockerImageRefs version={dockerVersion(latest.data.tagName)} />
+          </div>
+        </div>
+
+        <div class="mt-5">
           <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><PackageOpen class="icon" />Downloads</p>
           {latest.data.assets.length > 0 ? (
             <div class="surface mt-3 overflow-hidden rounded-lg">
@@ -59,15 +79,27 @@ const latestDate = formatReleaseDate(latest?.data.publishedAt);
           )}
         </div>
 
-        {latest.rendered?.html && (
-          <details class="group mt-6 rounded-lg border border-oc">
-            <summary class="flex cursor-pointer list-none items-center gap-2 px-4 py-3 font-mono text-xs uppercase tracking-[0.16em] text-muted [&::-webkit-details-marker]:hidden">
-              <ChevronDown class="icon shrink-0 transition-transform duration-150 group-open:rotate-180" />
-              Full changelog
-            </summary>
-            <div class="prose border-t border-oc px-4 py-4" set:html={latest.rendered.html}></div>
-          </details>
-        )}
+        <div class="mt-6 border-t border-oc pt-6">
+          <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><FileText class="icon" />Changelog</p>
+          {latest.data.changelogSections.length > 0 ? (
+            <div class="mt-4">
+              <ReleaseChangelog sections={latest.data.changelogSections} />
+            </div>
+          ) : latest.rendered?.html ? (
+            <details class="group mt-4 rounded-lg border border-oc">
+              <summary class="flex cursor-pointer list-none items-center gap-2 px-4 py-3 font-mono text-xs uppercase tracking-[0.16em] text-muted [&::-webkit-details-marker]:hidden">
+                <ChevronDown class="icon shrink-0 transition-transform duration-150 group-open:rotate-180" />
+                Full changelog
+              </summary>
+              <div class="prose border-t border-oc px-4 py-4" set:html={latest.rendered.html}></div>
+            </details>
+          ) : (
+            <p class="mt-4 text-sm leading-6 text-body">
+              Release notes could not be loaded for this build. Check the
+              <a href={latest.data.url}> GitHub release page</a> for the full changelog.
+            </p>
+          )}
+        </div>
       </article>
     )}
 
@@ -78,7 +110,7 @@ const latestDate = formatReleaseDate(latest?.data.publishedAt);
           {olderReleases.map((release) => {
             const releaseDate = formatReleaseDate(release.data.publishedAt);
             return (
-              <details class="surface group rounded-lg">
+              <details id={release.data.tagName} class="surface group scroll-mt-24 rounded-lg">
                 <summary class="flex cursor-pointer list-none flex-wrap items-center gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
                   <ChevronDown class="icon shrink-0 text-muted transition-transform duration-150 group-open:rotate-180" />
                   <span class="font-mono text-base font-bold">{release.data.name}</span>
@@ -95,16 +127,44 @@ const latestDate = formatReleaseDate(latest?.data.publishedAt);
                   )}
                 </summary>
                 <div class="border-t border-oc px-5 py-4">
-                  {release.data.summary && <p class="text-sm leading-6 text-body">{release.data.summary}</p>}
+                  <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><Container class="icon" />Docker images</p>
+                  <div class="mt-3">
+                    <DockerImageRefs version={dockerVersion(release.data.tagName)} />
+                  </div>
+
+                  <p class="mt-5 flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><PackageOpen class="icon" />Downloads</p>
                   {release.data.assets.length > 0 ? (
-                    <div class="surface mt-4 overflow-hidden rounded-lg">
+                    <div class="surface mt-3 overflow-hidden rounded-lg">
                       <AssetDownloadList assets={release.data.assets} />
                     </div>
                   ) : (
-                    <p class="mt-4 text-sm leading-6 text-body">No release assets were published for this version.</p>
+                    <p class="mt-3 text-sm leading-6 text-body">No release assets were published for this version.</p>
                   )}
-                  <a class="mt-4 inline-flex items-center gap-2 font-mono text-xs" href={release.data.url}>
-                    <FileText class="icon" />View changelog on GitHub
+
+                  <div class="mt-5 border-t border-oc pt-5">
+                    <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><FileText class="icon" />Changelog</p>
+                    {release.data.changelogSections.length > 0 ? (
+                      <div class="mt-4">
+                        <ReleaseChangelog sections={release.data.changelogSections} />
+                      </div>
+                    ) : release.rendered?.html ? (
+                      <>
+                        {release.data.summary && <p class="mt-3 text-sm leading-6 text-body">{release.data.summary}</p>}
+                        <details class="group mt-3 rounded-lg border border-oc">
+                          <summary class="flex cursor-pointer list-none items-center gap-2 px-4 py-3 font-mono text-xs uppercase tracking-[0.16em] text-muted [&::-webkit-details-marker]:hidden">
+                            <ChevronDown class="icon shrink-0 transition-transform duration-150 group-open:rotate-180" />
+                            Full changelog
+                          </summary>
+                          <div class="prose border-t border-oc px-4 py-4" set:html={release.rendered.html}></div>
+                        </details>
+                      </>
+                    ) : (
+                      release.data.summary && <p class="mt-3 text-sm leading-6 text-body">{release.data.summary}</p>
+                    )}
+                  </div>
+
+                  <a class="mt-5 inline-flex items-center gap-2 font-mono text-xs" href={release.data.url}>
+                    <FileText class="icon" />View on GitHub
                   </a>
                 </div>
               </details>
