@@ -26,7 +26,7 @@ function dockerVersion(tagName: string): string {
 const latestDate = formatReleaseDate(latest?.data.publishedAt);
 ---
 
-<SiteLayout title="Releases" description="Overcast release history and release assets.">
+<SiteLayout title="Releases" description="Overcast release history and release assets." searchTitle="Releases">
   <section class="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
     <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><RotateCcwClock class="icon" />release history</p>
     <h1 class="mt-2 font-mono text-3xl font-bold">Overcast releases</h1>
@@ -106,8 +106,11 @@ const latestDate = formatReleaseDate(latest?.data.publishedAt);
       </article>
     )}
 
+    {/* Every superseded changelog on one page would swamp site search: a query for
+        any AWS noun would match a dozen historical entries before the doc that
+        explains it. Only the current release stays indexed. */}
     {olderReleases.length > 0 && (
-      <div class="mt-8">
+      <div class="mt-8" data-pagefind-ignore>
         <h2 class="font-mono text-xl font-bold">Older versions</h2>
         <div class="mt-4 space-y-3">
           {olderReleases.map((release) => {

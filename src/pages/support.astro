@@ -10,7 +10,7 @@ const support = await getServiceSupport();
 const services = support.services.slice().sort((a, b) => a.displayName.localeCompare(b.displayName));
 ---
 
-<SiteLayout title="Support Matrix" description="Overcast service and operation implementation status.">
+<SiteLayout title="Support Matrix" description="Overcast service and operation implementation status." searchTitle="Support matrix">
   <section class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
     <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><ShieldCheck class="icon" />support matrix</p>
     <h1 class="mt-2 font-mono text-3xl font-bold">Listed service operations, with visible gaps.</h1>

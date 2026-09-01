@@ -1,6 +1,6 @@
 ---
 import "../styles/global.css";
-import { BookOpen, Download, FileText, Menu, PencilLine, RotateCcwClock, Search, ShieldCheck, Star, SunMoon, X } from "@lucide/astro";
+import { BookOpen, Download, FileText, GitCompare, Menu, PencilLine, RotateCcwClock, Search, ShieldCheck, Star, SunMoon, X } from "@lucide/astro";
 import GitHubIcon from "./GitHubIcon.astro";
 import { repositoryUrl, starsUrl, websiteEditUrlFromRoute } from "../lib/github-links";
 import { getSourceManifest } from "../lib/generated-content";
@@ -9,12 +9,20 @@ interface Props {
   title?: string;
   description?: string;
   editUrl?: string;
+  /**
+   * Title to index this page under in site search. Docs pages mark their own
+   * `data-pagefind-body` on the article, so they leave this unset; every other
+   * page opts in here — without it pagefind indexes docs only, and /downloads/,
+   * /support/ and /releases/ are unreachable from the search box that offers them.
+   */
+  searchTitle?: string;
 }
 
 const {
   title = "Overcast",
   description = "A fast, free, open-source local AWS emulator for development and CI.",
   editUrl,
+  searchTitle,
 } = Astro.props;
 const pageEditUrl = editUrl ?? websiteEditUrlFromRoute(Astro.routePattern);
 const pageTitle = title === "Overcast" ? title : `${title} | Overcast`;
@@ -53,7 +61,8 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
       if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
     </script>
   </head>
-  <body class="bg-page">
+  <body class="flex min-h-screen flex-col bg-page">
+    <a class="skip-link" href="#main-content">Skip to content</a>
     <div class="soft border-b border-oc">
       <p class="mx-auto max-w-7xl px-4 py-2 text-center font-mono text-xs leading-5 text-body sm:px-6 lg:px-8">
         <strong class="text-(--oc-text)">Overcast is alpha</strong> — behavior and APIs may change between releases.
@@ -72,12 +81,12 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
             <span class="block font-mono text-[10px] uppercase tracking-[0.16em] text-muted">local AWS emulator</span>
           </span>
         </a>
-        <nav class="hidden items-center gap-4 font-mono text-xs text-muted lg:flex">
-          <a href="/docs/" class="flex items-center gap-1.5 text-muted"><BookOpen class="icon" />Docs</a>
-          <a href="/downloads/" class="flex items-center gap-1.5 text-muted"><Download class="icon" />Downloads</a>
-          <a href="/releases/" class="flex items-center gap-1.5 text-muted"><RotateCcwClock class="icon" />Releases</a>
-          <a href="/support/" class="flex items-center gap-1.5 text-muted"><ShieldCheck class="icon" />Support Matrix</a>
-          <a href="/docs/migration-from-localstack/" class="text-muted">LocalStack Migration</a>
+        <nav class="hidden items-center gap-4 font-mono text-xs text-muted lg:flex" aria-label="Main">
+          <a href="/docs/" class="flex items-center gap-1.5 text-muted hover:text-(--oc-text)"><BookOpen class="icon" />Docs</a>
+          <a href="/downloads/" class="flex items-center gap-1.5 text-muted hover:text-(--oc-text)"><Download class="icon" />Downloads</a>
+          <a href="/releases/" class="flex items-center gap-1.5 text-muted hover:text-(--oc-text)"><RotateCcwClock class="icon" />Releases</a>
+          <a href="/support/" class="flex items-center gap-1.5 text-muted hover:text-(--oc-text)"><ShieldCheck class="icon" />Support Matrix</a>
+          <a href="/docs/migration-from-localstack/" class="flex items-center gap-1.5 text-muted hover:text-(--oc-text)"><GitCompare class="icon" />LocalStack Migration</a>
         </nav>
         <div class="ml-auto flex items-center gap-2">
           <button
@@ -126,53 +135,82 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
       <div
         id="mobile-menu"
         class="fixed inset-x-4 top-[4.75rem] z-40 hidden rounded-lg border border-oc bg-card p-2 shadow-2xl lg:hidden"
-        role="region"
-        aria-label="Mobile navigation"
       >
-        <nav class="flex flex-col gap-1 font-mono text-sm">
+        <nav class="flex flex-col gap-1 font-mono text-sm" aria-label="Main">
           <a href="/docs/" class="flex items-center gap-2 rounded-md px-3 py-3 text-muted no-underline hover:bg-(--oc-accent-soft)"><BookOpen class="icon" />Docs</a>
           <a href="/downloads/" class="flex items-center gap-2 rounded-md px-3 py-3 text-muted no-underline hover:bg-(--oc-accent-soft)"><Download class="icon" />Downloads</a>
           <a href="/releases/" class="flex items-center gap-2 rounded-md px-3 py-3 text-muted no-underline hover:bg-(--oc-accent-soft)"><RotateCcwClock class="icon" />Releases</a>
           <a href="/support/" class="flex items-center gap-2 rounded-md px-3 py-3 text-muted no-underline hover:bg-(--oc-accent-soft)"><ShieldCheck class="icon" />Support Matrix</a>
-          <a href="/docs/migration-from-localstack/" class="flex items-center gap-2 rounded-md px-3 py-3 text-muted no-underline hover:bg-(--oc-accent-soft)">LocalStack Migration</a>
+          <a href="/docs/migration-from-localstack/" class="flex items-center gap-2 rounded-md px-3 py-3 text-muted no-underline hover:bg-(--oc-accent-soft)"><GitCompare class="icon" />LocalStack Migration</a>
           <div class="my-1 border-t border-oc"></div>
           <a href={repositoryUrl()} class="flex items-center gap-2 rounded-md px-3 py-3 text-muted no-underline hover:bg-(--oc-accent-soft)"><GitHubIcon />GitHub</a>
           <a href={starsUrl()} class="flex items-center gap-2 rounded-md px-3 py-3 text-muted no-underline hover:bg-(--oc-accent-soft)"><Star class="icon" />Star</a>
         </nav>
       </div>
-      <div
-        id="search-panel"
-        class="fixed inset-x-4 top-20 z-50 mx-auto hidden max-w-2xl rounded-lg border border-oc bg-card p-3 shadow-2xl"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Search"
-      >
-        <label class="sr-only" for="search-input">Search</label>
-        <div class="relative">
-          <input
-            id="search-input"
-            class="w-full rounded-md border border-oc bg-page py-2 pl-3 pr-9 font-mono text-sm text-(--oc-text)"
-            placeholder="Search docs, services, releases..."
-            type="text"
-            autocomplete="off"
-            spellcheck="false"
-            role="combobox"
-            aria-expanded="false"
-            aria-controls="search-results"
-            aria-autocomplete="list"
-          />
-          <img
-            id="search-loading"
-            src="/brand/overcast-loader.svg"
-            alt=""
-            class="pointer-events-none absolute right-2.5 top-1/2 hidden h-4 w-4 -translate-y-1/2"
-          />
+      <div id="search-overlay" class="fixed inset-0 z-50 hidden">
+        <div id="search-scrim" class="absolute inset-0 bg-(--oc-scrim) backdrop-blur-[1px]"></div>
+        <div
+          id="search-panel"
+          class="absolute inset-x-3 top-16 mx-auto flex max-h-[80vh] max-w-2xl flex-col overflow-hidden rounded-lg border border-oc bg-card shadow-2xl sm:inset-x-4 sm:top-24"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="search-title"
+        >
+          <h2 id="search-title" class="sr-only">Search Overcast</h2>
+          <div class="flex items-center gap-2 border-b border-oc p-3">
+            <label class="sr-only" for="search-input">Search</label>
+            <div class="relative min-w-0 flex-1">
+              <Search class="icon pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+              <input
+                id="search-input"
+                class="w-full rounded-md border border-oc bg-page py-2.5 pl-9 pr-9 font-mono text-sm text-(--oc-text)"
+                placeholder="Search docs, services, downloads…"
+                type="text"
+                autocomplete="off"
+                spellcheck="false"
+                role="combobox"
+                aria-expanded="false"
+                aria-controls="search-results"
+                aria-autocomplete="list"
+              />
+              <img
+                id="search-loading"
+                src="/brand/overcast-loader.svg"
+                alt=""
+                width="16"
+                height="16"
+                class="pointer-events-none absolute right-2.5 top-1/2 hidden h-4 w-4 -translate-y-1/2"
+              />
+            </div>
+            <button
+              id="search-close"
+              type="button"
+              class="copy-button flex h-11 w-11 shrink-0 items-center justify-center rounded-md sm:h-10 sm:w-10"
+              aria-label="Close search"
+            >
+              <X class="icon" />
+            </button>
+          </div>
+          <div id="search-results" class="min-h-0 flex-1 overflow-y-auto p-2 text-sm" role="listbox" aria-label="Search results"></div>
+          <div class="flex items-center justify-between gap-3 border-t border-oc px-3 py-2 font-mono text-[11px] text-muted">
+            <span id="search-count" aria-hidden="true"></span>
+            <span class="hidden gap-3 sm:flex">
+              <span><kbd>↑</kbd> <kbd>↓</kbd> move</span>
+              <span><kbd>↵</kbd> open</span>
+              <span><kbd>esc</kbd> close</span>
+            </span>
+          </div>
+          <p id="search-status" class="sr-only" role="status" aria-live="polite"></p>
         </div>
-        <div id="search-results" class="mt-3 max-h-96 overflow-auto text-sm" role="listbox" aria-label="Search results"></div>
-        <p id="search-status" class="sr-only" role="status" aria-live="polite"></p>
       </div>
     </header>
-    <main>
+    <main
+      id="main-content"
+      class="flex-1"
+      tabindex="-1"
+      data-pagefind-body={searchTitle ? true : undefined}
+      data-pagefind-meta={searchTitle ? `title:${searchTitle}` : undefined}
+    >
       <slot />
     </main>
     <footer class="border-t border-oc bg-card">
@@ -241,12 +279,15 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
         localStorage.setItem("overcast-theme", next);
       });
 
+      const overlay = document.getElementById("search-overlay");
       const panel = document.getElementById("search-panel");
       const input = document.getElementById("search-input");
       const results = document.getElementById("search-results");
       const status = document.getElementById("search-status");
+      const countLabel = document.getElementById("search-count");
       const loadingIcon = document.getElementById("search-loading");
       const trigger = document.getElementById("search-open");
+      const closeButton = document.getElementById("search-close");
 
       const menuTrigger = document.getElementById("menu-toggle");
       const menuOpenIcon = document.getElementById("menu-toggle-icon-open");
@@ -294,6 +335,9 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
       });
 
       const DEBOUNCE_MS = 150;
+      const MAX_SHOWN = 12;
+      const SUGGESTIONS = ["s3", "endpoint url", "cdk deploy", "lambda docker", "sqs fifo", "migrate from localstack"];
+
       let debounceTimer;
       let requestId = 0;
       let activeIndex = -1;
@@ -309,41 +353,146 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
         return pagefindPromise;
       };
 
-      const setLoading = (isLoading) => loadingIcon?.classList.toggle("hidden", !isLoading);
+      const escapeHtml = (value) =>
+        String(value ?? "").replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
 
+      const setLoading = (isLoading) => loadingIcon?.classList.toggle("hidden", !isLoading);
       const setStatus = (message) => {
         if (status) status.textContent = message;
+      };
+      const setCount = (message) => {
+        if (countLabel) countLabel.textContent = message;
       };
 
       const clearResults = () => {
         results.innerHTML = "";
         activeIndex = -1;
+        input?.removeAttribute("aria-activedescendant");
       };
 
-      const renderMessage = (message) => {
+      // Which part of the site a hit belongs to. Ordering matters: the label is
+      // also the group heading, and groups are shown best-scoring-group first.
+      const sectionFor = (url) => {
+        if (url.startsWith("/docs/services/")) return "Service reference";
+        if (url.startsWith("/docs/cdk/")) return "CDK guides";
+        if (url.startsWith("/docs/")) return "Guides & reference";
+        return "Site";
+      };
+
+      const tokenize = (value) =>
+        String(value ?? "")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, " ")
+          .trim()
+          .split(" ")
+          .filter(Boolean);
+
+      // Pagefind ranks on body-text frequency alone, which buries the page a
+      // query names outright ("s3" put /docs/sdk-cli/ above /docs/services/s3/).
+      // Re-rank on top of its order: an exact title or slug match wins, then
+      // partial title coverage, then pagefind's own ordering as the tiebreak.
+      const scoreRow = (row, index, total, queryTokens, rawQuery) => {
+        const title = String(row.meta?.title ?? "");
+        const titleTokens = tokenize(title);
+        const slug = row.url.replace(/\/+$/, "").split("/").pop() ?? "";
+        let score = (total - index) / total;
+        if (title.toLowerCase() === rawQuery) score += 6;
+        if (slug.toLowerCase() === rawQuery.replace(/\s+/g, "-")) score += 5;
+        if (titleTokens.length && queryTokens.every((token) => titleTokens.includes(token))) score += 3;
+        const matched = queryTokens.filter((token) =>
+          titleTokens.some((titleToken) => titleToken.startsWith(token)),
+        ).length;
+        if (queryTokens.length) score += (matched / queryTokens.length) * 2;
+        return score;
+      };
+
+      const renderPanelMessage = (html, statusMessage) => {
         clearResults();
-        const p = document.createElement("p");
-        p.className = "px-3 py-6 text-center text-muted";
-        p.textContent = message;
-        results.appendChild(p);
-        setStatus(message);
+        results.innerHTML = `<div class="px-3 py-6 text-center text-sm text-muted">${html}</div>`;
+        setCount("");
+        if (statusMessage) setStatus(statusMessage);
+      };
+
+      const renderIdleState = () => {
+        clearResults();
+        results.innerHTML = `<div class="px-3 py-4">
+            <p class="m-0 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">try searching for</p>
+            <div class="mt-3 flex flex-wrap gap-2">${SUGGESTIONS.map(
+              (suggestion) =>
+                `<button type="button" data-suggestion="${escapeHtml(suggestion)}" class="copy-button rounded-md px-2.5 py-1.5 font-mono text-xs">${escapeHtml(suggestion)}</button>`,
+            ).join("")}</div>
+          </div>`;
+        setCount("");
+        setStatus("");
       };
 
       const highlightResult = (index) => {
         const items = results.querySelectorAll("[data-result]");
         items.forEach((item, i) => {
           const active = i === index;
-          item.classList.toggle("bg-(--oc-accent-soft)", active);
+          item.classList.toggle("is-active", active);
           item.setAttribute("aria-selected", active ? "true" : "false");
         });
         activeIndex = index;
-        input?.setAttribute("aria-activedescendant", index >= 0 ? `search-result-${index}` : "");
-        if (index >= 0) items[index]?.scrollIntoView({ block: "nearest" });
+        if (index >= 0) {
+          input?.setAttribute("aria-activedescendant", `search-result-${index}`);
+          items[index]?.scrollIntoView({ block: "nearest" });
+        } else {
+          input?.removeAttribute("aria-activedescendant");
+        }
+      };
+
+      const renderResults = (ranked, query) => {
+        const shown = ranked.slice(0, MAX_SHOWN);
+        const groups = [];
+        shown.forEach((entry) => {
+          const name = sectionFor(entry.row.url);
+          let group = groups.find((candidate) => candidate.name === name);
+          if (!group) {
+            group = { name, entries: [] };
+            groups.push(group);
+          }
+          group.entries.push(entry);
+        });
+
+        let index = 0;
+        const html = groups
+          .map((group) => {
+            const rows = group.entries
+              .map((entry) => {
+                const row = entry.row;
+                const id = index++;
+                // Deep links live in a sibling row, never inside the result's own
+                // <a>: a nested anchor is invalid HTML and the parser hoists it
+                // out of the card, which is exactly how it looked.
+                const anchors = (row.sub_results || [])
+                  .filter((sub) => sub.url && sub.url.includes("#"))
+                  .slice(0, 2)
+                  .map(
+                    (sub) =>
+                      `<a class="search-anchor" tabindex="-1" href="${escapeHtml(sub.url)}"># ${escapeHtml(sub.title)}</a>`,
+                  )
+                  .join("");
+                return `<a id="search-result-${id}" data-result role="option" aria-selected="false" tabindex="-1" class="search-result" href="${escapeHtml(row.url)}">
+                    <span class="search-result-title">${escapeHtml(row.meta?.title ?? row.url)}</span>
+                    <span class="search-result-url">${escapeHtml(row.url)}</span>
+                    <span class="search-result-excerpt">${row.excerpt}</span>
+                  </a>${anchors ? `<span class="search-anchors">${anchors}</span>` : ""}`;
+              })
+              .join("");
+            return `<div role="group" aria-label="${escapeHtml(group.name)}"><p class="search-group">${escapeHtml(group.name)}</p>${rows}</div>`;
+          })
+          .join("");
+
+        results.innerHTML = html;
+        activeIndex = -1;
+        const total = ranked.length;
+        setCount(total > shown.length ? `${shown.length} of ${total} results` : `${total} result${total === 1 ? "" : "s"}`);
+        setStatus(`${total} result${total === 1 ? "" : "s"} for ${query}`);
       };
 
       const runSearch = async (query) => {
         const thisRequest = ++requestId;
-        clearResults();
         setLoading(true);
         setStatus("Searching…");
         try {
@@ -351,22 +500,33 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
           if (thisRequest !== requestId) return;
           const search = await pagefind.search(query);
           if (thisRequest !== requestId) return;
-          const rows = await Promise.all(search.results.slice(0, 8).map((result) => result.data()));
+          const rows = await Promise.all(search.results.slice(0, 30).map((result) => result.data()));
           if (thisRequest !== requestId) return;
           if (rows.length === 0) {
-            renderMessage(`No results for "${query}"`);
+            renderPanelMessage(
+              `<p class="m-0">Nothing matched <strong class="font-mono text-(--oc-text)">${escapeHtml(query)}</strong>.</p>
+               <p class="m-0 mt-3">Try a service name, or check whether the operation exists at all:</p>
+               <p class="m-0 mt-3 flex flex-wrap justify-center gap-2">
+                 <a class="copy-button rounded-md px-2.5 py-1.5 font-mono text-xs no-underline" href="/support/">Support matrix</a>
+                 <a class="copy-button rounded-md px-2.5 py-1.5 font-mono text-xs no-underline" href="/docs/">All docs</a>
+               </p>`,
+              `No results for ${query}`,
+            );
             return;
           }
-          results.innerHTML = rows
-            .map(
-              (row, i) =>
-                `<a id="search-result-${i}" data-result role="option" aria-selected="false" tabindex="-1" class="block rounded-md px-3 py-2 no-underline hover:bg-(--oc-accent-soft)" href="${row.url}"><strong class="font-mono text-(--oc-text)">${row.meta.title}</strong><span class="block text-muted">${row.excerpt}</span></a>`,
-            )
-            .join("");
-          setStatus(`${rows.length} result${rows.length === 1 ? "" : "s"} found`);
+          const queryTokens = tokenize(query);
+          const rawQuery = query.trim().toLowerCase();
+          const ranked = rows
+            .map((row, index) => ({ row, score: scoreRow(row, index, rows.length, queryTokens, rawQuery) }))
+            .sort((a, b) => b.score - a.score);
+          renderResults(ranked, query);
         } catch (error) {
           if (thisRequest !== requestId) return;
-          renderMessage("Search is unavailable right now.");
+          renderPanelMessage(
+            `<p class="m-0">Search is unavailable right now.</p>
+             <p class="m-0 mt-3"><a class="font-mono text-xs" href="/docs/">Browse the docs instead</a></p>`,
+            "Search is unavailable right now.",
+          );
         } finally {
           if (thisRequest === requestId) setLoading(false);
         }
@@ -374,35 +534,70 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
 
       const openSearch = () => {
         closeMenu();
-        panel?.classList.remove("hidden");
+        overlay?.classList.remove("hidden");
+        document.documentElement.classList.add("search-open");
         input?.setAttribute("aria-expanded", "true");
         loadPagefind().catch(() => {});
+        if (!input?.value.trim()) renderIdleState();
         input?.focus();
         input?.select();
       };
       const closeSearch = ({ returnFocus = false } = {}) => {
-        if (panel?.classList.contains("hidden")) return;
-        panel?.classList.add("hidden");
+        if (overlay?.classList.contains("hidden")) return;
+        overlay?.classList.add("hidden");
+        document.documentElement.classList.remove("search-open");
         input?.setAttribute("aria-expanded", "false");
         requestId++;
         setLoading(false);
         if (returnFocus) trigger?.focus();
       };
+      const searchIsOpen = () => !overlay?.classList.contains("hidden");
+
       trigger?.addEventListener("click", openSearch);
+      closeButton?.addEventListener("click", () => closeSearch({ returnFocus: true }));
+      document.getElementById("search-scrim")?.addEventListener("click", () => closeSearch());
+
       document.addEventListener("keydown", (event) => {
-        if (event.key === "/" && document.activeElement?.tagName !== "INPUT") {
+        if (
+          event.key === "/" &&
+          !event.metaKey &&
+          !event.ctrlKey &&
+          !event.altKey &&
+          !searchIsOpen() &&
+          !document.activeElement?.closest("input, textarea, select, [contenteditable='true']")
+        ) {
           event.preventDefault();
           openSearch();
         }
-        if (event.key === "Escape" && !panel?.classList.contains("hidden")) {
+        if (event.key === "k" && (event.metaKey || event.ctrlKey)) {
+          event.preventDefault();
+          openSearch();
+        }
+        if (event.key === "Escape" && searchIsOpen()) {
           closeSearch({ returnFocus: true });
         }
+        // The panel is aria-modal, so keep Tab inside it while it is open.
+        if (event.key === "Tab" && searchIsOpen() && panel) {
+          const focusable = panel.querySelectorAll("a[href], button, input, [tabindex]:not([tabindex='-1'])");
+          if (!focusable.length) return;
+          const first = focusable[0];
+          const last = focusable[focusable.length - 1];
+          if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+          } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+          }
+        }
       });
-      document.addEventListener("click", (event) => {
-        if (panel?.classList.contains("hidden")) return;
-        const target = event.target;
-        if (panel.contains(target) || trigger?.contains(target)) return;
-        closeSearch();
+
+      results?.addEventListener("click", (event) => {
+        const suggestion = event.target.closest("[data-suggestion]");
+        if (!suggestion || !input) return;
+        input.value = suggestion.getAttribute("data-suggestion") || "";
+        input.focus();
+        runSearch(input.value);
       });
 
       input?.addEventListener("input", () => {
@@ -410,9 +605,8 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
         clearTimeout(debounceTimer);
         if (!query) {
           requestId++;
-          clearResults();
           setLoading(false);
-          setStatus("");
+          renderIdleState();
           return;
         }
         debounceTimer = window.setTimeout(() => runSearch(query), DEBOUNCE_MS);
@@ -428,10 +622,18 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
           if (!items.length) return;
           event.preventDefault();
           highlightResult((activeIndex - 1 + items.length) % items.length);
+        } else if (event.key === "Home" && items.length) {
+          event.preventDefault();
+          highlightResult(0);
+        } else if (event.key === "End" && items.length) {
+          event.preventDefault();
+          highlightResult(items.length - 1);
         } else if (event.key === "Enter") {
-          if (activeIndex >= 0 && items[activeIndex]) {
+          // Enter with nothing highlighted opens the top hit rather than doing nothing.
+          const target = activeIndex >= 0 ? items[activeIndex] : items[0];
+          if (target) {
             event.preventDefault();
-            items[activeIndex].click();
+            target.click();
           }
         }
       });
