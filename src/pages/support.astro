@@ -50,18 +50,20 @@ const totalGap = services.reduce((sum, service) => sum + service.gap, 0);
       ))}
     </div>
 
+    {/* Term before description in the markup — a <dd> ahead of its own <dt> is not a
+        definition list — with `flex-col-reverse` keeping the number on top. */}
     <dl class="mt-6 grid gap-4 sm:mt-8 sm:grid-cols-3">
-      <div class="surface rounded-lg p-5">
-        <dd class="m-0 font-mono text-2xl font-bold">{support.implementedOps}<span class="text-muted">/{support.totalOps}</span></dd>
+      <div class="surface flex flex-col-reverse rounded-lg p-5">
         <dt class="mt-2 text-xs text-muted">listed operations implemented</dt>
+        <dd class="m-0 font-mono text-2xl font-bold">{support.implementedOps}<span class="text-muted">/{support.totalOps}</span></dd>
       </div>
-      <div class="surface rounded-lg p-5">
-        <dd class="m-0 font-mono text-2xl font-bold">{completeCount}<span class="text-muted">/{services.length}</span></dd>
+      <div class="surface flex flex-col-reverse rounded-lg p-5">
         <dt class="mt-2 text-xs text-muted">services with no gaps</dt>
+        <dd class="m-0 font-mono text-2xl font-bold">{completeCount}<span class="text-muted">/{services.length}</span></dd>
       </div>
-      <div class="surface rounded-lg p-5">
-        <dd class="m-0 font-mono text-2xl font-bold text-(--oc-warning)">{totalGap}</dd>
+      <div class="surface flex flex-col-reverse rounded-lg p-5">
         <dt class="mt-2 text-xs text-muted">operations that return 501</dt>
+        <dd class="m-0 font-mono text-2xl font-bold text-(--oc-warning)">{totalGap}</dd>
       </div>
     </dl>
 
@@ -77,6 +79,10 @@ const totalGap = services.reduce((sum, service) => sum + service.gap, 0);
 
     <div class="mt-6 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:gap-4">
       <div class="relative flex-1">
+        {/* A placeholder is not a label: it disappears the moment anything is typed and
+            is not what a screen reader reads for the field. The visible design has no
+            room for a caption, so the name is carried off-screen. */}
+        <label class="sr-only" for="support-filter">Filter services</label>
         <Search class="icon pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
         <input
           id="support-filter"
@@ -110,7 +116,14 @@ const totalGap = services.reduce((sum, service) => sum + service.gap, 0);
     </p>
 
     <div class="surface mt-4 overflow-hidden rounded-lg">
-      <div class="hidden grid-cols-[1fr_130px_110px_96px] gap-4 border-b border-oc px-5 py-3 font-mono text-[11px] uppercase tracking-[0.14em] text-muted sm:grid">
+      {/* The column strip is a visual key for sighted readers only: nothing associates
+          it with a cell, and it disappears below `sm` entirely. Each row states its own
+          columns off-screen instead (see the sr-only spans below), so announcing these
+          four words as well would only add noise. */}
+      <div
+        class="hidden grid-cols-[1fr_130px_110px_96px] gap-4 border-b border-oc px-5 py-3 font-mono text-2xs uppercase tracking-[0.14em] text-muted sm:grid"
+        aria-hidden="true"
+      >
         <span>service</span>
         <span>coverage</span>
         <span class="text-right">implemented</span>
@@ -136,15 +149,20 @@ const totalGap = services.reduce((sum, service) => sum + service.gap, 0);
               <ServiceIcon service={service.service} size="sm" />
               <span class="truncate">{service.displayName}</span>
             </span>
-            <span class="coverage-meter hidden sm:block" title={`${service.percent}% implemented`}>
+            {/* Decorative: the same ratio is the next thing in the row. */}
+            <span class="coverage-meter hidden sm:block" aria-hidden="true" title={`${service.percent}% implemented`}>
               <span style={`width:${service.percent}%`}></span>
             </span>
+            {/* Without these, the row reads out as "S3 45/53 8" — three bare numbers
+                whose meaning lives only in a column strip that is never associated with
+                them, and is hidden outright on a phone. */}
             <span class="shrink-0 font-mono text-xs text-muted sm:text-right sm:text-sm">
               <span class="text-accent">{service.implementedOps}</span>/{service.totalOps}
+              <span class="sr-only"> listed operations implemented</span>
             </span>
             <span class="w-6 shrink-0 text-right font-mono text-xs sm:w-auto sm:text-sm">
               {service.gap > 0 ? (
-                <span class="text-(--oc-warning)">{service.gap}</span>
+                <span class="text-(--oc-warning)">{service.gap}<span class="sr-only"> not implemented</span></span>
               ) : (
                 <span class="text-muted"><span class="sr-only">no gaps</span>—</span>
               )}

@@ -70,3 +70,73 @@
   --oc-cat-9: oklch(0.75 0.144 320);
   --oc-cat-10: oklch(0.75 0.144 355);
 }
+
+/* Accessible tones for the accent and the three semantic colours -------------
+ *
+ * These override the vendored brand values rather than editing them, because
+ * `npm run content:sync` rewrites brand-tokens.css byte-for-byte from the branding
+ * repo — an edit there survives locally and disappears on the next build.
+ *
+ * All four render as text (chips, counts, callout labels, inline links) as well as
+ * fills and hairlines, and the brand values do not clear 4.5:1 as text: on white the
+ * warning amber is 3.0:1 and the success green 3.4:1, and in the dark theme
+ * white-on-accent — the home page's primary button — is 2.1:1. Each tone below is the
+ * closest step to the brand colour that clears 4.5:1 on every surface it lands on:
+ * --oc-bg, --oc-card, --oc-accent-soft, and its own 14%/6% tint. `npm run a11y`
+ * fails if any of them regresses.
+ *
+ * The full four-block cascade is repeated on purpose: brand-tokens.css sets these at
+ * `:root`, `:root[data-theme="dark"]` and `:root[data-theme="light"]`, so overriding
+ * only `:root` here would win in the wrong places and lose in the others. */
+:root {
+  --oc-accent: #1066AE;
+  --oc-success: #21704C;
+  --oc-warning: #815C1E;
+  --oc-danger: #A3463C;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --oc-accent: #5FB8FF;
+    --oc-success: #49AB7E;
+    --oc-warning: #C38F35;
+    --oc-danger: #D78279;
+  }
+}
+:root[data-theme="dark"] {
+  --oc-accent: #5FB8FF;
+  --oc-success: #49AB7E;
+  --oc-warning: #C38F35;
+  --oc-danger: #D78279;
+}
+:root[data-theme="light"] {
+  --oc-accent: #1066AE;
+  --oc-success: #21704C;
+  --oc-warning: #815C1E;
+  --oc-danger: #A3463C;
+}
+
+/* Type ----------------------------------------------------------------------
+ *
+ * The bottom of the scale, which is the only part of it anything reads at.
+ * `2xs` is the floor: nothing on the site is smaller, and it is only for genuinely
+ * secondary labels (eyebrows, captions, chips, diagram annotations). `xs` is the
+ * smallest size UI text is set at — nav, buttons, controls. `sm` is dense body copy.
+ * Everything from `text-base` up is Tailwind's own scale, unchanged, and so are the
+ * headings.
+ *
+ * The floor matters more on a high-DPI panel than at 1x: 10-11px mono is rendered
+ * with real subpixel stems there rather than snapped to whole pixels, so the strokes
+ * go thin and grey instead of sharp. Weight is not an available lever — the JetBrains
+ * Mono webfont ships 400 and 700 and nothing between — which leaves size and colour,
+ * and is why the floor is 12px and why nothing at the floor is set in a colour weaker
+ * than --oc-muted. global.css maps Tailwind's `text-2xs`/`text-xs` onto these. */
+:root {
+  --oc-text-2xs: 0.75rem;    /* 12px */
+  --oc-text-xs: 0.8125rem;   /* 13px */
+  --oc-text-sm: 0.875rem;    /* 14px */
+
+  /* Reading measure for long-form prose: 45-85 characters is the band a line can be
+   * scanned in without the eye losing the return sweep. Docs prose ran to 116. */
+  --oc-measure: 74ch;
+}

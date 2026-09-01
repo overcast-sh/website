@@ -79,41 +79,47 @@ const firstCall = `aws --endpoint-url http://localhost:4566 \\
           UI.
         </p>
         <div class="mt-8 flex flex-wrap gap-3">
-          <a class="inline-flex items-center gap-2 rounded-md border border-(--oc-accent) bg-(--oc-accent) px-4 py-2 font-mono text-sm font-bold text-white no-underline" href="/docs/">
+          {/* --oc-bg, not white: the accent is a pale blue in the dark theme, where
+              white-on-accent lands at 2.1:1. The page background is the right
+              counterpart to the accent in both themes. */}
+          <a class="inline-flex items-center gap-2 rounded-md border border-(--oc-accent) bg-(--oc-accent) px-4 py-2 font-mono text-sm font-bold text-(--oc-bg) no-underline" href="/docs/">
             <Terminal class="icon" />Read the docs
           </a>
           <a class="inline-flex items-center gap-2 rounded-md border border-oc px-4 py-2 font-mono text-sm text-(--oc-text) no-underline" href="/downloads/">
             Download<ArrowRight class="icon" />
           </a>
         </div>
+        {/* The term comes before its description in the markup — a <dd> ahead of its
+            own <dt> is not a definition list, it is two lists interleaved — and
+            `flex-col-reverse` puts the number back on top where the design wants it. */}
         <dl class="mt-auto grid grid-cols-3 gap-4 pt-10">
-          <div class="surface rounded-lg p-5">
+          <div class="surface flex flex-col-reverse rounded-lg p-5">
+            <dt class="mt-2 text-2xs leading-4 text-muted">services registered</dt>
             <dd class="m-0 font-mono text-2xl font-bold">{support.services.length}</dd>
-            <dt class="mt-2 text-[11px] leading-4 text-muted">services registered</dt>
           </div>
-          <div class="surface rounded-lg p-5">
+          <div class="surface flex flex-col-reverse rounded-lg p-5">
+            <dt class="mt-2 text-2xs leading-4 text-muted">implemented operations</dt>
             <dd class="m-0 font-mono text-2xl font-bold">{support.implementedOps}</dd>
-            <dt class="mt-2 text-[11px] leading-4 text-muted">implemented operations</dt>
           </div>
-          <div class="surface min-w-0 rounded-lg p-5">
+          <div class="surface flex min-w-0 flex-col-reverse rounded-lg p-5">
+            <dt class="mt-2 text-2xs leading-4 text-muted">
+              {latestVersion ? <a href="/releases/">current release</a> : "default API port"}
+            </dt>
             {/* A version string is longer than the two counts beside it; keeping it at
                 text-2xl truncated it to "v0.0.1-al…". Smaller type, same 2rem line box,
                 so the three tiles still line up. */}
             <dd class="m-0 font-mono text-base font-bold leading-8">{latestVersion || "4566"}</dd>
-            <dt class="mt-2 text-[11px] leading-4 text-muted">
-              {latestVersion ? <a href="/releases/">current release</a> : "default API port"}
-            </dt>
           </div>
         </dl>
       </div>
       <div class="min-w-0 space-y-4">
         <ol class="m-0 list-none space-y-4 p-0">
           <li class="min-w-0">
-            <p class="m-0 mb-2 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">01 — start it</p>
+            <p class="m-0 mb-2 font-mono text-2xs uppercase tracking-[0.16em] text-muted">01 — start it</p>
             <CodeBlock code={runCommand} label="start overcast" />
           </li>
           <li class="min-w-0">
-            <p class="m-0 mb-2 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">02 — point a client at it</p>
+            <p class="m-0 mb-2 font-mono text-2xs uppercase tracking-[0.16em] text-muted">02 — point a client at it</p>
             <CodeBlock code={firstCall} label="first call" />
           </li>
         </ol>

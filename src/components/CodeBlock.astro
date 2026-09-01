@@ -12,7 +12,7 @@ const highlightedCode = await codeToHtml(code, {
   lang: language,
   themes: {
     light: "github-light",
-    dark: "github-dark",
+    dark: "github-dark-default",
   },
   defaultColor: false,
 });
@@ -21,16 +21,18 @@ const highlightedCode = await codeToHtml(code, {
 <div class="surface overflow-hidden rounded-lg">
   <div class="flex items-center justify-between border-b border-oc px-4 py-2 font-mono text-xs text-muted">
     <span>&gt;_ {label}</span>
-    <button class="copy-button rounded px-2 py-1" data-copy={code}>copy</button>
+    {/* "copy" is the same accessible name on every code block a page shows, so the
+        label says which one. The click handler is SiteLayout's single delegated
+        `[data-copy]` listener — it announces the copy through #copy-status. */}
+    <button
+      class="copy-button inline-flex min-h-6 items-center rounded px-2 py-1"
+      type="button"
+      data-copy={code}
+      data-copy-label={label}
+      aria-label={`Copy ${label}`}
+    >
+      copy
+    </button>
   </div>
   <div class="code-block overflow-x-auto" set:html={highlightedCode}></div>
 </div>
-<script>
-  document.querySelectorAll("[data-copy]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      await navigator.clipboard.writeText(button.getAttribute("data-copy") || "");
-      button.textContent = "copied";
-      window.setTimeout(() => (button.textContent = "copy"), 1200);
-    });
-  });
-</script>

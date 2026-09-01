@@ -36,12 +36,24 @@ const { releases } = Astro.props;
 </label>
 
 <script>
+  // `scrollIntoView({ behavior: "smooth" })` is not governed by the CSS
+  // reduced-motion rules, so the preference has to be read here too.
+  const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
   function openAndScroll(id: string) {
     const target = document.getElementById(id);
     if (!target) return;
     const details = target instanceof HTMLDetailsElement ? target : target.closest("details");
     if (details) details.open = true;
-    target.scrollIntoView({ behavior: "smooth", block: "start" });
+    target.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
+    // Jumping the viewport is a visual move only; without this the keyboard and the
+    // screen reader are still back at the select, and the next Tab continues from
+    // there rather than into the release that was just opened.
+    const heading = target.querySelector("summary, h2, h3") ?? target;
+    if (heading instanceof HTMLElement) {
+      if (!heading.hasAttribute("tabindex") && heading.tagName !== "SUMMARY") heading.setAttribute("tabindex", "-1");
+      heading.focus({ preventScroll: true });
+    }
   }
 
   function handleHash() {

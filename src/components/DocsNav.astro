@@ -1,6 +1,15 @@
 ---
 // The docs sidebar. Rendered twice per page — once inside the mobile <details> drawer,
 // once in the desktop column — so it lives here rather than being written out twice.
+// Only one of the two is ever displayed (the other is `display: none` at that width),
+// so the duplicate ids and the shared nav label never both reach the accessibility
+// tree; `idPrefix` still differs between them so the document is valid either way.
+//
+// The section labels used to be <h2>s. On a service page that put nine level-two
+// headings ahead of the page's own <h1>, so anyone navigating by heading walked the
+// whole sidebar before reaching the title. They are plain text now, and each list is
+// named by them through aria-labelledby instead — which is what a set of links wants
+// anyway.
 //
 // Service Reference is the section with structure: ~50 services, each grouped by coverage
 // tier, and each optionally holding sub-pages (operations, limitations, ...). Sub-pages
@@ -17,12 +26,18 @@ interface Props {
   /** Roomier tap targets for the mobile drawer. */
   compact?: boolean;
   support?: ServiceSupportManifest;
+  /** Distinguishes the two copies' element ids. */
+  idPrefix?: string;
 }
 
-const { docs, currentSlug, compact = false, support = await getServiceSupport() } = Astro.props;
+const { docs, currentSlug, compact = false, support = await getServiceSupport(), idPrefix = "docsnav" } = Astro.props;
 
 const linkClass = compact ? "block rounded-md px-3 py-3 text-sm no-underline" : "block rounded-md px-2 py-1.5 text-sm no-underline";
 const stateClass = (slug: string) => (slug === currentSlug ? "soft text-(--oc-text)" : "text-muted");
+// The current page is marked, not just tinted: `soft` is a background colour, and a
+// background colour is not something a screen reader reads out.
+const currentAttr = (slug: string) => (slug === currentSlug ? "page" : undefined);
+const labelId = (value: string) => `${idPrefix}-${value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
 
 const serviceGroups = groupServiceDocs(docs);
 const activeService = parseServiceDocSlug(currentSlug)?.service ?? null;
@@ -76,33 +91,48 @@ const subPagesFor = (entry: NavEntry) => {
 
 {grouped.map(([section, entries]) => (
   <div class={compact ? "mb-5 last:mb-0" : "mb-5"}>
-    <h2 class="mb-2 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">{section}</h2>
+    <p id={labelId(section)} class="mb-2 font-mono text-2xs uppercase tracking-[0.16em] text-muted">{section}</p>
     {section === "Service Reference" ? (
       servicesByTier(entries).map(([tier, tierEntries]) => (
         <div class="mb-3 last:mb-0">
-          <p class="mb-1 font-mono text-[10px] uppercase tracking-[0.12em] text-muted opacity-75">{coverageTierLabel(tier)}</p>
-          <nav class="space-y-1">
+          {/* No `opacity-75` here: it took --oc-muted down to 2.98:1 on the page
+              background, on what was the smallest text in the sidebar. The letter
+              spacing already sets this a step below the section label above it. */}
+          <p id={labelId(`${section}-${tier}`)} class="mb-1 font-mono text-2xs uppercase tracking-[0.12em] text-muted">
+            {coverageTierLabel(tier)}
+          </p>
+          <ul class="m-0 list-none space-y-1 p-0" aria-labelledby={labelId(`${section}-${tier}`)}>
             {tierEntries.map((entry) => (
-              <div>
-                <a class={`${linkClass} ${stateClass(entry.slug)}`} href={`/${entry.slug}/`}>{entry.title}</a>
+              <li>
+                <a class={`${linkClass} ${stateClass(entry.slug)}`} href={`/${entry.slug}/`} aria-current={currentAttr(entry.slug)}>
+                  {entry.title}
+                </a>
                 {subPagesFor(entry).length > 0 && (
-                  <div class="ml-3 mt-1 space-y-1 border-l border-oc pl-2">
+                  <ul class="m-0 ml-3 mt-1 list-none space-y-1 border-l border-oc p-0 pl-2">
                     {subPagesFor(entry).map((page) => (
-                      <a class={`${linkClass} ${stateClass(page.slug)}`} href={`/${page.slug}/`}>{page.label}</a>
+                      <li>
+                        <a class={`${linkClass} ${stateClass(page.slug)}`} href={`/${page.slug}/`} aria-current={currentAttr(page.slug)}>
+                          {page.label}
+                        </a>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 )}
-              </div>
+              </li>
             ))}
-          </nav>
+          </ul>
         </div>
       ))
     ) : (
-      <nav class="space-y-1">
+      <ul class="m-0 list-none space-y-1 p-0" aria-labelledby={labelId(section)}>
         {entries?.map((entry) => (
-          <a class={`${linkClass} ${stateClass(entry.slug)}`} href={`/${entry.slug}/`}>{entry.title}</a>
+          <li>
+            <a class={`${linkClass} ${stateClass(entry.slug)}`} href={`/${entry.slug}/`} aria-current={currentAttr(entry.slug)}>
+              {entry.title}
+            </a>
+          </li>
         ))}
-      </nav>
+      </ul>
     )}
   </div>
 ))}

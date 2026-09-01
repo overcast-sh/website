@@ -8,9 +8,11 @@
 // to fit the narrow case, which took the old version's labels down to ~6px. Real elements
 // keep type at real sizes at every width and let the rows reflow instead of scaling.
 //
-// Three tiers of type throughout: 15/700 hero title, 13/700 node titles, 11 for labels and
-// chips. Three depths of surface: --oc-bg for the two ordinary nodes (recessed against the
-// card this sits on), --oc-accent-soft for the hero, --oc-card for the chips on top of both.
+// Three tiers of type throughout: 15/700 hero title, --oc-text-xs/700 node titles, and the
+// scale's floor (--oc-text-2xs) for labels and chips — the floor rather than the 10-11px
+// this used to set, which went thin and grey rather than sharp on a high-DPI panel. Three
+// depths of surface: --oc-bg for the two ordinary nodes (recessed against the card this
+// sits on), --oc-accent-soft for the hero, --oc-card for the chips on top of both.
 import ServiceIcon from "../ServiceIcon.astro";
 
 const clients = ["aws cli", "cdk", "sdk"];
@@ -111,13 +113,13 @@ const services = [
   }
 
   .arch-node-title {
-    font-size: 13px;
+    font-size: var(--oc-text-xs);
     font-weight: 700;
     color: var(--oc-text);
   }
 
   .arch-more {
-    font-size: 11px;
+    font-size: var(--oc-text-2xs);
     color: var(--oc-accent);
   }
 
@@ -132,7 +134,7 @@ const services = [
     border: 1px solid var(--oc-line);
     border-radius: 5px;
     background: var(--oc-card);
-    font-size: 11px;
+    font-size: var(--oc-text-2xs);
     color: var(--oc-muted);
   }
 
@@ -144,7 +146,7 @@ const services = [
     border: 1px solid var(--oc-line);
     border-radius: 7px;
     background: var(--oc-card);
-    font-size: 11px;
+    font-size: var(--oc-text-2xs);
     color: var(--oc-body);
   }
 
@@ -182,7 +184,7 @@ const services = [
     top: 50%;
     left: calc(50% + 12px);
     transform: translateY(-50%);
-    font-size: 11px;
+    font-size: var(--oc-text-2xs);
     line-height: 1;
     color: var(--oc-muted);
     white-space: nowrap;
@@ -225,17 +227,19 @@ const services = [
 
   .arch-hero-title {
     display: block;
-    font-size: 15px;
+    font-size: 0.9375rem;
     font-weight: 700;
     line-height: 1.25;
     color: var(--oc-text);
   }
 
+  /* --oc-body, not --oc-muted: this is the one label in the figure that sits on the
+   * accent panel rather than a neutral surface, and muted only reaches 4.4:1 there. */
   .arch-hero-note {
     display: block;
-    font-size: 11px;
+    font-size: var(--oc-text-2xs);
     line-height: 1.45;
-    color: var(--oc-muted);
+    color: var(--oc-body);
   }
 
   .arch-port-row {
@@ -256,7 +260,7 @@ const services = [
   }
 
   .arch-port-num {
-    font-size: 12px;
+    font-size: var(--oc-text-2xs);
     font-weight: 700;
     color: var(--oc-body);
   }
@@ -266,7 +270,7 @@ const services = [
   }
 
   .arch-port-role {
-    font-size: 11px;
+    font-size: var(--oc-text-2xs);
     color: var(--oc-muted);
   }
 </style>
