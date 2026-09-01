@@ -2,6 +2,7 @@
 import SiteLayout from "../components/SiteLayout.astro";
 import Callout from "../components/Callout.astro";
 import SearchPromo from "../components/SearchPromo.astro";
+import ServiceIcon from "../components/ServiceIcon.astro";
 import { Search, ShieldCheck } from "@lucide/astro";
 import { getServiceSupport } from "../lib/generated-content";
 
@@ -50,7 +51,10 @@ const services = support.services.slice().sort((a, b) => a.displayName.localeCom
           data-service-row
           data-service-name={service.displayName.toLowerCase()}
         >
-          <span class="font-mono text-(--oc-text)">{service.displayName}</span>
+          <span class="flex items-center gap-2.5 font-mono text-(--oc-text)">
+            <ServiceIcon service={service.service} size="sm" />
+            {service.displayName}
+          </span>
           <span class="text-right text-muted">{service.totalOps}</span>
           <span class="text-right font-mono text-accent">{service.implementedOps}</span>
         </a>
