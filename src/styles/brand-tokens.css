@@ -11,6 +11,7 @@
   --oc-line: #D5E2EE;
   --oc-accent-soft: #E3F0FB;
   --oc-tile: #16222E;          /* icon tile is ink on every surface */
+  --oc-scrim: rgb(22 34 46 / 0.45);   /* ink, behind modal surfaces */
 
   /* text */
   --oc-text: #16222E;
@@ -64,6 +65,7 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --oc-bg: #10161D; --oc-card: #16222E; --oc-line: #24384C; --oc-accent-soft: #1A2E42;
+    --oc-scrim: rgb(4 8 12 / 0.62);
     --oc-text: #DCEBF8; --oc-body: #A9C2D8; --oc-muted: #7FA8C9;
     --oc-accent: #5FB8FF; --oc-cursor: #8FD0FF;
     --oc-cloud: #33536F; --oc-cloud-stroke: #89BCE2;
@@ -71,12 +73,14 @@
 }
 :root[data-theme="dark"] {
   --oc-bg: #10161D; --oc-card: #16222E; --oc-line: #24384C; --oc-accent-soft: #1A2E42;
+  --oc-scrim: rgb(4 8 12 / 0.62);
   --oc-text: #DCEBF8; --oc-body: #A9C2D8; --oc-muted: #7FA8C9;
   --oc-accent: #5FB8FF; --oc-cursor: #8FD0FF;
   --oc-cloud: #33536F; --oc-cloud-stroke: #89BCE2;
 }
 :root[data-theme="light"] {
   --oc-bg: #F4F8FC; --oc-card: #FFFFFF; --oc-line: #D5E2EE; --oc-accent-soft: #E3F0FB;
+  --oc-scrim: rgb(22 34 46 / 0.45);
   --oc-text: #16222E; --oc-body: #33465A; --oc-muted: #54718A;
   --oc-accent: #1273C4; --oc-cursor: #3E97DF;
   --oc-cloud: #C4D8EA; --oc-cloud-stroke: #31536F;

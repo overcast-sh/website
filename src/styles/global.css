@@ -101,11 +101,134 @@ kbd {
   border: 1px solid var(--oc-line);
   background: var(--oc-card);
   color: var(--oc-muted);
+  transition:
+    color var(--oc-hover),
+    border-color var(--oc-hover);
 }
 
 .copy-button:hover {
   color: var(--oc-accent);
   border-color: var(--oc-accent);
+}
+
+/* One focus ring for the whole site. The offset keeps it clear of the control's
+ * own hairline, and the accent reads at 3:1 against both page surfaces. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--oc-accent);
+  outline-offset: 2px;
+  border-radius: var(--oc-radius-control);
+}
+
+.skip-link {
+  position: absolute;
+  left: var(--oc-space-4);
+  top: var(--oc-space-2);
+  z-index: 60;
+  transform: translateY(-200%);
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--oc-accent);
+  border-radius: var(--oc-radius-control);
+  background: var(--oc-card);
+  color: var(--oc-accent);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  text-decoration: none;
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
+/* Search --------------------------------------------------------------- */
+
+.search-open,
+.search-open body {
+  overflow: hidden;
+}
+
+.search-group {
+  margin: 0;
+  padding: 0.75rem 0.75rem 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--oc-muted);
+}
+
+.search-result {
+  display: block;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--oc-radius-control);
+  text-decoration: none;
+}
+
+.search-result:hover,
+.search-result.is-active {
+  background: var(--oc-accent-soft);
+}
+
+.search-result-title {
+  display: block;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--oc-text);
+}
+
+.search-result-url {
+  display: block;
+  margin-top: 1px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--oc-accent);
+}
+
+.search-result-excerpt {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  margin-top: 3px;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--oc-body);
+}
+
+/* The browser default for <mark> is a flat yellow block — unreadable on the
+ * dark surface and off-brand on the light one. Tint the accent instead. */
+.search-result-excerpt mark {
+  background: color-mix(in oklab, var(--oc-accent) 22%, transparent);
+  color: var(--oc-text);
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
+.search-anchors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  margin: -2px 0 6px;
+  padding: 0 0.75rem;
+}
+
+.search-anchor {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--oc-muted);
+  text-decoration: none;
+}
+
+.search-anchor:hover {
+  color: var(--oc-accent);
+}
+
+kbd {
+  border: 1px solid var(--oc-line);
+  border-radius: 4px;
+  padding: 0 4px;
+  font-size: 0.9em;
+  color: var(--oc-muted);
 }
 
 .icon {
