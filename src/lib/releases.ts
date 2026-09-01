@@ -1,4 +1,4 @@
-import type { ChangelogBulletEntry, ChangelogCategory, ChangelogSection } from "../loaders/overcast-releases";
+import type { ChangelogBulletEntry, ChangelogCategory, ChangelogSection } from "./release-schema";
 
 type ReleaseEntryLike = {
   data: {
