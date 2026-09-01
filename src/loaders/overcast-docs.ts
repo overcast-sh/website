@@ -3,6 +3,7 @@ import path from "node:path";
 import matter from "gray-matter";
 import type { Loader } from "astro/loaders";
 import { exists, resolveOvercastSourceRoot } from "./overcast-source";
+import { overcastEditRef, overcastGitHubRepo, rewriteLegacyOrgReferences } from "../lib/github-links";
 
 const publicDocFiles = [
   "README.md",
@@ -13,6 +14,9 @@ const publicDocFiles = [
   "docs/storage.md",
   "docs/performance.md",
   "docs/migration-from-localstack.md",
+  "docs/https.md",
+  "docs/local-dev.md",
+  "docs/testcontainers.md",
 ];
 
 export type OvercastDocData = {
@@ -75,12 +79,58 @@ function slugFor(docPath: string): string {
   return docPath.replace(/^docs\//, "docs/").replace(/README\.md$/, "").replace(/\.md$/, "");
 }
 
-function rewriteMarkdownLinks(markdown: string): string {
-  return markdown.replace(/\]\((?!https?:|mailto:|#)([^)]+\.md)(#[^)]+)?\)/g, (_, target: string, hash = "") => {
-    const normalized = normalizePath(target);
-    const clean = normalized.replace(/^\.\//, "");
-    const slug = clean.startsWith("docs/") ? slugFor(clean) : slugFor(`docs/${clean}`);
-    return `](/${slug}/${hash})`;
+function githubSourceUrl(kind: "blob" | "tree", relativePath: string, hash: string): string {
+  const encoded = relativePath
+    .split("/")
+    .filter(Boolean)
+    .map(encodeURIComponent)
+    .join("/");
+  const base = `https://github.com/${overcastGitHubRepo}/${kind}/${overcastEditRef}/${encoded}`;
+  return kind === "tree" ? base : `${base}${hash}`;
+}
+
+// Resolve a markdown link target against the directory of the doc it appears in (mirroring
+// how a browser/editor would resolve it), instead of always treating it as relative to the
+// docs root. `docPath.md` links from within `docs/services/*.md` or `docs/cdk/*.md`, and
+// `../`-style links that walk back up to the repo root, both depend on this.
+function resolveDocLinkTarget(sourcePath: string, rawTarget: string): string {
+  const sourceDir = path.posix.dirname(normalizePath(sourcePath));
+  const target = normalizePath(rawTarget);
+  const joined = sourceDir === "." ? target : `${sourceDir}/${target}`;
+  return path.posix.normalize(joined).replace(/\/$/, "");
+}
+
+function rewriteMarkdownLinks(markdown: string, sourcePath: string): string {
+  return markdown.replace(/\]\((?!https?:|mailto:)([^)#]+)(#[^)]*)?\)/g, (whole, rawTarget: string, rawHash?: string) => {
+    const hash = rawHash || "";
+    const isDirLink = rawTarget.endsWith("/");
+    const resolved = resolveDocLinkTarget(sourcePath, rawTarget);
+
+    // A link that walks above the repo root isn't one we can resolve (shouldn't happen for
+    // valid docs) — leave it untouched rather than emitting something nonsensical.
+    if (resolved === ".." || resolved.startsWith("../")) return whole;
+
+    // Directory-style links (e.g. `./docs/services/`, `./cdk/`) point at that directory's
+    // README, same as GitHub's own folder browsing does.
+    const docCandidate = isDirLink ? `${resolved}/README.md` : resolved;
+    if (docCandidate.endsWith(".md") && shouldPublishDoc(docCandidate)) {
+      const slug = slugFor(docCandidate).replace(/\/$/, "");
+      return `](/${slug}/${hash})`;
+    }
+
+    // The target isn't a doc the site publishes — either it's a repo file the site never
+    // renders (LICENSE, CONTRIBUTING.md, AGENTS.md, STATUS.md, source files, ...) or it's
+    // inside an area the sync deliberately excludes (docs/dev/**, docs/plans/**). Rather than
+    // emit a link into the void, send readers to the file/folder on GitHub.
+    const basename = resolved.split("/").pop() || "";
+    if (!isDirLink && basename === "LICENSE") {
+      return `](${githubSourceUrl("blob", resolved, hash)})`;
+    }
+    const hasExtension = /\.[a-zA-Z0-9]+$/.test(basename);
+    if (isDirLink || !hasExtension) {
+      return `](${githubSourceUrl("tree", resolved, "")})`;
+    }
+    return `](${githubSourceUrl("blob", resolved, hash)})`;
   });
 }
 
@@ -212,7 +262,7 @@ export function overcastDocsLoader(): Loader {
         const title = String(parsed.data.title || titleFromPath(sourcePath));
         const description = String(parsed.data.description || "");
         const slug = slugFor(sourcePath).replace(/\/$/, "");
-        const body = normalizeMarkdownTables(rewriteMarkdownLinks(parsed.content));
+        const body = normalizeMarkdownTables(rewriteMarkdownLinks(rewriteLegacyOrgReferences(parsed.content), sourcePath));
         const data = await parseData({
           id: slug,
           data: {

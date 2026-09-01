@@ -1,6 +1,7 @@
 ---
 import SiteLayout from "../components/SiteLayout.astro";
-import { PackageCheck, RotateCcwClock } from "@lucide/astro";
+import AssetDownloadList from "../components/AssetDownloadList.astro";
+import { ChevronDown, FileText, PackageCheck, PackageOpen, RotateCcwClock } from "@lucide/astro";
 import { getCollection, type CollectionEntry } from "astro:content";
 import { sortReleasesNewestFirst } from "../lib/releases";
 
@@ -20,53 +21,96 @@ const latestDate = formatReleaseDate(latest?.data.publishedAt);
     <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><RotateCcwClock class="icon" />release history</p>
     <h1 class="mt-2 font-mono text-3xl font-bold">Overcast releases</h1>
     <p class="mt-4 leading-7 text-body">
-      Release notes and asset metadata are fetched from GitHub at build time. Use this page to find published versions,
-      then check the linked GitHub release for platform assets and full change details.
+      Release notes and asset metadata are fetched from GitHub at build time. Download native binaries directly from
+      any listed release below, or follow a release to its GitHub page for the full change details.
     </p>
-    {latest?.rendered?.html && (
+
+    {latest && (
       <article class="surface mt-8 rounded-lg p-5">
-        <div class="border-b border-oc pb-4">
-          <p class="font-mono text-xs uppercase tracking-[0.16em] text-muted">latest changelog</p>
-          <h2 class="mt-2 font-mono text-xl font-bold">
-            <a href={latest.data.url}>{latest.data.name}</a>
-          </h2>
-          {latestDate && (
-            <time class="mt-1 block text-sm text-muted" datetime={latest.data.publishedAt || undefined}>
-              Published {latestDate}
-            </time>
+        <div class="flex flex-wrap items-start justify-between gap-3 border-b border-oc pb-4">
+          <div>
+            <p class="font-mono text-xs uppercase tracking-[0.16em] text-muted">latest release</p>
+            <h2 class="mt-2 flex flex-wrap items-center gap-2 font-mono text-xl font-bold">
+              {latest.data.name}
+              {latest.data.prerelease && <span class="rounded soft px-2 py-1 font-mono text-xs text-accent">prerelease</span>}
+            </h2>
+            {latestDate && (
+              <time class="mt-1 block text-sm text-muted" datetime={latest.data.publishedAt || undefined}>
+                Published {latestDate}
+              </time>
+            )}
+          </div>
+          <a class="copy-button inline-flex items-center gap-2 rounded-md px-3 py-2 font-mono text-xs no-underline" href={latest.data.url}>
+            <FileText class="icon" />View on GitHub
+          </a>
+        </div>
+
+        <div class="mt-5">
+          <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><PackageOpen class="icon" />Downloads</p>
+          {latest.data.assets.length > 0 ? (
+            <div class="surface mt-3 overflow-hidden rounded-lg">
+              <AssetDownloadList assets={latest.data.assets} />
+            </div>
+          ) : (
+            <p class="mt-3 text-sm leading-6 text-body">
+              Release asset metadata could not be loaded for this build. Use the
+              <a href={latest.data.url}> GitHub release page</a> for downloads.
+            </p>
           )}
         </div>
-        <div class="prose mt-5" set:html={latest.rendered.html}></div>
+
+        {latest.rendered?.html && (
+          <>
+            <p class="mt-6 font-mono text-xs uppercase tracking-[0.16em] text-muted">Changelog</p>
+            <div class="prose mt-3" set:html={latest.rendered.html}></div>
+          </>
+        )}
       </article>
     )}
+
     {olderReleases.length > 0 && (
-      <div class="mt-8 space-y-5">
+      <div class="mt-8">
         <h2 class="font-mono text-xl font-bold">Older versions</h2>
-        {olderReleases.map((release) => {
-          const releaseDate = formatReleaseDate(release.data.publishedAt);
-          return (
-            <article class="surface rounded-lg p-5">
-              <div class="flex flex-wrap items-center gap-3">
-                <h2 class="font-mono text-xl font-bold">
-                  <a href={release.data.url}>{release.data.name}</a>
-                </h2>
-                {release.data.prerelease && <span class="rounded soft px-2 py-1 font-mono text-xs text-accent">prerelease</span>}
-                {releaseDate && (
-                  <time class="text-sm text-muted" datetime={release.data.publishedAt || undefined}>
-                    {releaseDate}
-                  </time>
-                )}
-              </div>
-              {release.data.summary && <p class="mt-3 line-clamp-4 text-sm leading-6 text-body">{release.data.summary}</p>}
-              <div class="mt-3 flex flex-wrap items-center gap-4 font-mono text-xs text-muted">
-                {release.data.assets.length > 0 && <span class="flex items-center gap-2"><PackageCheck class="icon" />{release.data.assets.length} release assets</span>}
-                <a href={release.data.url}>View changelog</a>
-              </div>
-            </article>
-          );
-        })}
+        <div class="mt-4 space-y-3">
+          {olderReleases.map((release) => {
+            const releaseDate = formatReleaseDate(release.data.publishedAt);
+            return (
+              <details class="surface group rounded-lg">
+                <summary class="flex cursor-pointer list-none flex-wrap items-center gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
+                  <ChevronDown class="icon shrink-0 text-muted transition-transform duration-150 group-open:rotate-180" />
+                  <span class="font-mono text-base font-bold">{release.data.name}</span>
+                  {release.data.prerelease && <span class="rounded soft px-2 py-1 font-mono text-xs text-accent">prerelease</span>}
+                  {releaseDate && (
+                    <time class="text-sm text-muted" datetime={release.data.publishedAt || undefined}>
+                      {releaseDate}
+                    </time>
+                  )}
+                  {release.data.assets.length > 0 && (
+                    <span class="ml-auto flex items-center gap-2 font-mono text-xs text-muted">
+                      <PackageCheck class="icon" />{release.data.assets.length} asset{release.data.assets.length === 1 ? "" : "s"}
+                    </span>
+                  )}
+                </summary>
+                <div class="border-t border-oc px-5 py-4">
+                  {release.data.summary && <p class="text-sm leading-6 text-body">{release.data.summary}</p>}
+                  {release.data.assets.length > 0 ? (
+                    <div class="surface mt-4 overflow-hidden rounded-lg">
+                      <AssetDownloadList assets={release.data.assets} />
+                    </div>
+                  ) : (
+                    <p class="mt-4 text-sm leading-6 text-body">No release assets were published for this version.</p>
+                  )}
+                  <a class="mt-4 inline-flex items-center gap-2 font-mono text-xs" href={release.data.url}>
+                    <FileText class="icon" />View changelog on GitHub
+                  </a>
+                </div>
+              </details>
+            );
+          })}
+        </div>
       </div>
     )}
+
     {releases.length === 0 && (
       <div class="surface mt-8 rounded-lg p-5 text-sm leading-6 text-body">
         GitHub release metadata could not be loaded for this build. Check the

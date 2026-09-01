@@ -1,3 +1,11 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://overcast.sh/brand/overcast-logo-dark.svg">
+    <img alt="Overcast" src="https://overcast.sh/brand/overcast-logo-light.svg" width="360">
+  </picture>
+</p>
+<p align="center"><em>The overcast.sh website.</em></p>
+
 # Overcast website
 
 Static product and documentation website for Overcast.

@@ -1,0 +1,27 @@
+---
+import type { CollectionEntry } from "astro:content";
+
+type ReleaseAsset = CollectionEntry<"releases">["data"]["assets"][number];
+
+interface Props {
+  assets: ReleaseAsset[];
+}
+
+const { assets } = Astro.props;
+
+function formatSize(bytes: number): string {
+  return `${Math.round(bytes / 1024 / 1024)} MB`;
+}
+---
+
+<div class="divide-y divide-(--oc-line)">
+  {
+    assets.map((asset) => (
+      <a class="grid gap-2 px-5 py-3 no-underline sm:grid-cols-[1fr_auto_auto]" href={asset.downloadUrl}>
+        <span class="font-mono text-sm text-(--oc-text)">{asset.name}</span>
+        <span class="text-sm text-muted">{formatSize(asset.size)}</span>
+        <span class="font-mono text-sm">download</span>
+      </a>
+    ))
+  }
+</div>

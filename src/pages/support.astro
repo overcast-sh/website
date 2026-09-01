@@ -17,13 +17,13 @@ const services = support.services.slice().sort((a, b) => a.displayName.localeCom
       clear <code>501 Not Implemented</code> responses.
     </p>
     <div class="mt-8 surface overflow-hidden rounded-lg">
-      <div class="grid grid-cols-[1fr_100px_120px] gap-3 border-b border-oc px-4 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-muted">
+      <div class="grid grid-cols-[1fr_70px_90px] gap-3 border-b border-oc px-4 py-2 pr-5 font-mono text-[11px] uppercase tracking-[0.14em] text-muted sm:grid-cols-[1fr_100px_120px] sm:pr-4">
         <span>service</span>
         <span class="text-right">listed ops</span>
         <span class="text-right">implemented</span>
       </div>
       {services.map((service) => (
-        <a class="grid grid-cols-[1fr_100px_120px] gap-3 border-b border-oc px-4 py-3 text-sm no-underline last:border-b-0" href={`/docs/services/${service.service}/`}>
+        <a class="grid grid-cols-[1fr_70px_90px] gap-3 border-b border-oc px-4 py-3 pr-5 text-sm no-underline last:border-b-0 sm:grid-cols-[1fr_100px_120px] sm:pr-4" href={`/docs/services/${service.docSlug ?? service.service}/`}>
           <span class="font-mono text-(--oc-text)">{service.displayName}</span>
           <span class="text-right text-muted">{service.totalOps}</span>
           <span class="text-right font-mono text-accent">{service.implementedOps}</span>

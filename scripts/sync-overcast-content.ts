@@ -14,6 +14,7 @@ const publicFontsDir = path.join(cwd, "public", "fonts");
 
 type ServiceSupport = {
   service: string;
+  docSlug: string;
   displayName: string;
   totalOps: number;
   implementedOps: number;
@@ -30,7 +31,18 @@ const publicDocFiles = [
   "docs/storage.md",
   "docs/performance.md",
   "docs/migration-from-localstack.md",
+  "docs/https.md",
+  "docs/local-dev.md",
+  "docs/testcontainers.md",
 ];
+
+// Some service ids in the upstream operation-coverage data don't match their doc's
+// filename 1:1 (e.g. the coverage data calls it `elbv2`, but the doc lives at
+// docs/services/elb.md). Surface the actual doc slug alongside the service id so
+// consumers don't have to assume `docs/services/<service>.md` always exists.
+const serviceDocAliases: Record<string, string> = {
+  elbv2: "elb",
+};
 
 function isString(value: string | undefined): value is string {
   return typeof value === "string" && value.length > 0;
@@ -141,6 +153,7 @@ async function syncSupport(sourceRoot: string): Promise<ServiceSupport[]> {
   }>(supportPath, { total_ops: 0, services: [] });
   const services = (raw.services || []).map((service) => ({
     service: service.service,
+    docSlug: serviceDocAliases[service.service] || service.service,
     displayName: service.display_name,
     totalOps: service.total_ops || 0,
     implementedOps: service.implemented_ops || 0,
