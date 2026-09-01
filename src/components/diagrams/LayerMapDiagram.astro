@@ -2,6 +2,9 @@
 // /docs/ index diagram: "there's a short path and a deep path." Four stops, each one step
 // deeper than the last — this is the fix for the docs index used to BE the deepest stop.
 // Theme-aware inline SVG via --oc-* custom properties, no separate dark-mode markup needed.
+//
+// Type scale and radii intentionally match ArchitectureDiagram: 13/700 titles, 11/400 notes,
+// 8px corners on the card boxes (site's .rounded-lg), same arrowhead marker geometry.
 const stops = [
   { label: "Quickstart", note: "one command, 2 min" },
   { label: "Task guides", note: "CDK, SDKs, migration" },
@@ -9,14 +12,14 @@ const stops = [
   { label: "Source", note: "GitHub, CONTRIBUTING" },
 ];
 const boxWidth = 152;
+const boxHeight = 76;
 const gap = 24;
 const startX = 8;
 const y = 12;
-const boxHeight = 76;
 ---
 
 <svg
-  viewBox={`0 0 ${startX * 2 + stops.length * boxWidth + (stops.length - 1) * gap} 110`}
+  viewBox={`0 0 ${startX * 2 + stops.length * boxWidth + (stops.length - 1) * gap} ${y * 2 + boxHeight}`}
   role="img"
   aria-labelledby="layer-map-title"
   class="h-auto w-full"
@@ -24,7 +27,7 @@ const boxHeight = 76;
 >
   <title id="layer-map-title">Four stops, each one step deeper: quickstart, task guides, service reference, then source — start at the left, go right only as far as you need.</title>
   <defs>
-    <marker id="layer-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <marker id="layer-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M0 0 L10 5 L0 10 z" fill="var(--oc-muted)"></path>
     </marker>
   </defs>
@@ -49,15 +52,15 @@ const boxHeight = 76;
           y={y}
           width={boxWidth}
           height={boxHeight}
-          rx="10"
+          rx="8"
           fill={isFirst ? "var(--oc-accent-soft)" : "var(--oc-card)"}
           stroke={isFirst ? "var(--oc-accent)" : "var(--oc-line)"}
           stroke-width="1.5"
         ></rect>
-        <text x={x + boxWidth / 2} y={y + 32} text-anchor="middle" font-family="var(--oc-font-mono)" font-size="13" font-weight="700" fill="var(--oc-text)">
+        <text x={x + boxWidth / 2} y={y + 31} text-anchor="middle" font-family="var(--oc-font-mono)" font-size="13" font-weight="700" fill="var(--oc-text)">
           {stop.label}
         </text>
-        <text x={x + boxWidth / 2} y={y + 52} text-anchor="middle" font-family="var(--oc-font-mono)" font-size="10.5" fill="var(--oc-muted)">
+        <text x={x + boxWidth / 2} y={y + 51} text-anchor="middle" font-family="var(--oc-font-mono)" font-size="11" fill="var(--oc-muted)">
           {stop.note}
         </text>
       </>

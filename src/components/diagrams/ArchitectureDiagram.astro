@@ -4,10 +4,14 @@
 // the web console reads the same state from :4567 on the side. Static, theme-aware inline
 // SVG — colors come entirely from the site's --oc-* custom properties (brand-tokens.css),
 // so light/dark follow the page automatically with no separate dark-mode markup.
+//
+// Type scale kept to three tiers throughout (matches LayerMapDiagram): 13/700 titles,
+// 11/400 body labels, 10/400 tiny annotations. Corner radii follow the site's card system —
+// 8px on primary boxes (same as .rounded-lg surfaces), 6px on pills/badges (--oc-radius-control).
 ---
 
 <svg
-  viewBox="0 0 720 260"
+  viewBox="0 0 720 236"
   role="img"
   aria-labelledby="arch-diagram-title"
   class="h-auto w-full"
@@ -19,41 +23,44 @@
     <marker id="arch-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M0 0 L10 5 L0 10 z" fill="var(--oc-accent)"></path>
     </marker>
+    <marker id="arch-arrow-muted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="var(--oc-muted)"></path>
+    </marker>
   </defs>
 
   <!-- client box -->
-  <rect x="16" y="84" width="164" height="92" rx="10" fill="var(--oc-card)" stroke="var(--oc-line)" stroke-width="1.5"></rect>
-  <text x="98" y="118" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="14" font-weight="700" fill="var(--oc-text)">Your app</text>
-  <text x="98" y="140" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="11" fill="var(--oc-muted)">AWS CLI · CDK</text>
-  <text x="98" y="156" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="11" fill="var(--oc-muted)">SDKs</text>
+  <rect x="16" y="56" width="164" height="92" rx="8" fill="var(--oc-card)" stroke="var(--oc-line)" stroke-width="1.5"></rect>
+  <text x="98" y="90" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="13" font-weight="700" fill="var(--oc-text)">Your app</text>
+  <text x="98" y="112" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="11" fill="var(--oc-muted)">AWS CLI · CDK</text>
+  <text x="98" y="128" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="11" fill="var(--oc-muted)">SDKs</text>
 
   <!-- arrow client -> overcast -->
-  <line x1="180" y1="130" x2="266" y2="130" stroke="var(--oc-accent)" stroke-width="2" marker-end="url(#arch-arrow)"></line>
-  <text x="223" y="118" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="10" fill="var(--oc-muted)">--endpoint-url</text>
+  <line x1="180" y1="102" x2="266" y2="102" stroke="var(--oc-accent)" stroke-width="2" marker-end="url(#arch-arrow)"></line>
+  <text x="223" y="90" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="10" fill="var(--oc-muted)">--endpoint-url</text>
 
-  <!-- overcast box -->
-  <rect x="270" y="60" width="180" height="140" rx="10" fill="var(--oc-accent-soft)" stroke="var(--oc-accent)" stroke-width="1.5"></rect>
-  <text x="360" y="96" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="14" font-weight="700" fill="var(--oc-text)">Overcast</text>
-  <text x="360" y="116" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="11" fill="var(--oc-muted)">emulated API</text>
-  <rect x="300" y="132" width="120" height="26" rx="6" fill="var(--oc-card)" stroke="var(--oc-line)"></rect>
-  <text x="360" y="149" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="12" fill="var(--oc-accent)">:4566</text>
-  <text x="360" y="182" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="10" fill="var(--oc-muted)">one endpoint, one process</text>
+  <!-- overcast box (emphasis zone: this is the product) -->
+  <rect x="270" y="32" width="180" height="140" rx="8" fill="var(--oc-accent-soft)" stroke="var(--oc-accent)" stroke-width="1.5"></rect>
+  <text x="360" y="68" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="13" font-weight="700" fill="var(--oc-text)">Overcast</text>
+  <text x="360" y="88" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="11" fill="var(--oc-muted)">emulated API</text>
+  <rect x="300" y="104" width="120" height="26" rx="6" fill="var(--oc-card)" stroke="var(--oc-line)"></rect>
+  <text x="360" y="121" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="11" font-weight="700" fill="var(--oc-accent)">:4566</text>
+  <text x="360" y="154" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="10" fill="var(--oc-muted)">one endpoint, one process</text>
 
   <!-- arrow overcast -> services -->
-  <line x1="450" y1="130" x2="536" y2="130" stroke="var(--oc-accent)" stroke-width="2" marker-end="url(#arch-arrow)"></line>
+  <line x1="450" y1="102" x2="536" y2="102" stroke="var(--oc-accent)" stroke-width="2" marker-end="url(#arch-arrow)"></line>
 
   <!-- services box -->
-  <rect x="540" y="40" width="164" height="180" rx="10" fill="var(--oc-card)" stroke="var(--oc-line)" stroke-width="1.5"></rect>
-  <text x="622" y="64" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="12" font-weight="700" fill="var(--oc-text)">Services</text>
+  <rect x="540" y="12" width="164" height="180" rx="8" fill="var(--oc-card)" stroke="var(--oc-line)" stroke-width="1.5"></rect>
+  <text x="622" y="36" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="13" font-weight="700" fill="var(--oc-text)">Services</text>
   {["S3", "Lambda", "DynamoDB", "SQS / SNS", "50 more →"].map((label, i) => (
     <>
-      <rect x="556" y={76 + i * 29} width="132" height="22" rx="5" fill="var(--oc-bg)" stroke="var(--oc-line)"></rect>
-      <text x="622" y={91 + i * 29} text-anchor="middle" font-family="var(--oc-font-mono)" font-size="10.5" fill={i === 4 ? "var(--oc-muted)" : "var(--oc-body)"}>{label}</text>
+      <rect x="556" y={48 + i * 29} width="132" height="22" rx="6" fill="var(--oc-bg)" stroke="var(--oc-line)"></rect>
+      <text x="622" y={63 + i * 29} text-anchor="middle" font-family="var(--oc-font-mono)" font-size="10" fill={i === 4 ? "var(--oc-muted)" : "var(--oc-body)"}>{label}</text>
     </>
   ))}
 
   <!-- console, reading from the side -->
-  <line x1="360" y1="200" x2="360" y2="222" stroke="var(--oc-line)" stroke-width="1.5" stroke-dasharray="3 3"></line>
-  <rect x="270" y="222" width="180" height="30" rx="8" fill="var(--oc-card)" stroke="var(--oc-line)" stroke-dasharray="3 3"></rect>
-  <text x="360" y="242" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="11" fill="var(--oc-muted)">web console &#183; :4567</text>
+  <line x1="360" y1="172" x2="360" y2="190" stroke="var(--oc-muted)" stroke-width="1.5" stroke-dasharray="3 3" marker-end="url(#arch-arrow-muted)"></line>
+  <rect x="270" y="194" width="180" height="30" rx="8" fill="var(--oc-card)" stroke="var(--oc-line)" stroke-dasharray="3 3"></rect>
+  <text x="360" y="214" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="11" fill="var(--oc-muted)">web console &#183; :4567</text>
 </svg>
