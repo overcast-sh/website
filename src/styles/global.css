@@ -134,6 +134,53 @@ kbd {
   color: var(--oc-accent);
 }
 
+/* A service's identity tile. `--oc-tint` (set per instance from the service
+ * catalog) carries the ramp colour; the fill and hairline are that same colour
+ * mixed down, which is how the console pairs `text-cat-N` with `bg-cat-N/10`
+ * and `border-cat-N/30` — one hue, three weights, correct in both themes. */
+.service-tile {
+  display: inline-flex;
+  flex: none;
+  width: 1.75rem;
+  height: 1.75rem;
+  aspect-ratio: 1;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--oc-radius-control);
+  background: color-mix(in oklab, var(--oc-tint) 12%, transparent);
+  border: 1px solid color-mix(in oklab, var(--oc-tint) 26%, transparent);
+  color: var(--oc-tint);
+}
+
+.service-tile-sm {
+  width: 1.375rem;
+  height: 1.375rem;
+  border-radius: 5px;
+}
+
+.service-tile-sm .icon {
+  width: 0.8125rem;
+  height: 0.8125rem;
+}
+
+/* Hairline coverage meter. Decorative — the same ratio is stated as digits
+ * directly above it — so the accent reads as one comparable quantity across
+ * cards rather than competing with each service's identity colour. */
+.coverage-meter {
+  display: block;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--oc-line);
+  overflow: hidden;
+}
+
+.coverage-meter > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--oc-accent);
+}
+
 .prose {
   overflow-wrap: anywhere;
   --tw-prose-body: var(--oc-body);

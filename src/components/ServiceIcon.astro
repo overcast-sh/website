@@ -1,0 +1,26 @@
+---
+// A service's glyph in its own tinted tile — the console's dashboard tile,
+// shrunk to the site's scale. The tint is the service's ramp colour and drives
+// the glyph, the fill, and the hairline together, so one custom property is the
+// whole visual. Decorative: the service's name is always rendered beside it.
+import { serviceVisual } from "../lib/service-catalog";
+
+interface Props {
+  /** Service id as the support data spells it (e.g. `s3`, `cloudwatch-logs`). */
+  service: string;
+  /** `sm` for dense rows (table, diagram), `md` for cards. */
+  size?: "sm" | "md";
+  class?: string;
+}
+
+const { service, size = "md", class: className } = Astro.props;
+const { Icon, tint } = serviceVisual(service);
+---
+
+<span
+  class:list={["service-tile", size === "sm" && "service-tile-sm", className]}
+  style={`--oc-tint:${tint}`}
+  aria-hidden="true"
+>
+  <Icon class="icon" />
+</span>
