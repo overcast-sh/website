@@ -29,10 +29,12 @@ GitHub links are configurable:
 
 ## Content lifecycle
 
-- Website source changes on `main` build and deploy the site.
+- Website source changes on `main` build and deploy the site to GitHub Pages.
 - Overcast release events can trigger this repo with `repository_dispatch` type `overcast-release`.
 - Manual builds can provide `source_ref`.
-- Scheduled runs check the tracked release (`alpha` by default) and stop before build/deploy when it has not changed.
+- Absent a manual `source_ref` or dispatch tag, builds resolve the latest Overcast release via the GitHub API.
+- Scheduled runs resolve the latest release and stop before build/deploy when it matches the last deployed release
+  (tracked in `.github/overcast-release.lock`).
 
 ## Generated content
 

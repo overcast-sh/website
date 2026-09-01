@@ -26,7 +26,6 @@
     "zod4": "npm:zod@^4.4.3"
   },
   "devDependencies": {
-    "@types/node": "^26.1.1",
-    "wrangler": "^4.114.0"
+    "@types/node": "^26.1.1"
   }
 }
