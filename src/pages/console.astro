@@ -57,7 +57,7 @@ const tour = [
     icon: Inbox,
     title: "Inbox",
     lead: "Your Lambda sent a confirmation email. Read it instead of guessing whether it went out.",
-    body: "Overcast runs a mock SMTP server by default, so mail from SES, SNS email subscriptions, and Cognito lands at /inbox rather than anywhere real. SNS SMS, webhook, and mobile-push deliveries land there too — locally those usually have nowhere to go at all.",
+    body: "Overcast runs a mock SMTP server by default, so mail from SES, SNS email subscriptions, and Cognito lands at /inbox rather than anywhere real. SNS SMS and webhook deliveries land there too — locally those usually have nowhere to go at all.",
     points: [
       "Plain text, rendered HTML, and the verbatim raw message, per message",
       "One SNS publish that fans out to five subscribers is grouped as one thread",
