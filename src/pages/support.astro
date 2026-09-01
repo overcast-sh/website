@@ -1,6 +1,8 @@
 ---
 import SiteLayout from "../components/SiteLayout.astro";
-import { ShieldCheck } from "@lucide/astro";
+import Callout from "../components/Callout.astro";
+import SearchPromo from "../components/SearchPromo.astro";
+import { Search, ShieldCheck } from "@lucide/astro";
 import { getServiceSupport } from "../lib/generated-content";
 
 const support = await getServiceSupport();
@@ -12,23 +14,64 @@ const services = support.services.slice().sort((a, b) => a.displayName.localeCom
     <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><ShieldCheck class="icon" />support matrix</p>
     <h1 class="mt-2 font-mono text-3xl font-bold">Listed service operations, with visible gaps.</h1>
     <p class="mt-4 max-w-3xl leading-7 text-body">
-      This matrix reports which listed API operations are implemented in the current Overcast source. It is not a claim
-      of complete AWS compatibility; alpha behavior still needs broad real-world use. Unsupported operations return
-      clear <code>501 Not Implemented</code> responses.
+      Unsupported operations return clear <code>501 Not Implemented</code> responses.
     </p>
-    <div class="mt-8 surface overflow-hidden rounded-lg">
+    <Callout kind="note" title="Alpha">
+      This matrix tracks listed API operations, not full AWS compatibility — alpha behavior still needs broad
+      real-world use.
+    </Callout>
+
+    <div class="mt-6 max-w-sm">
+      <SearchPromo label="Know what you're looking for? Search instead" />
+    </div>
+
+    <div class="relative mt-6">
+      <Search class="icon pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+      <input
+        id="support-filter"
+        type="text"
+        placeholder="Filter by service name…"
+        autocomplete="off"
+        spellcheck="false"
+        class="w-full rounded-md border border-oc bg-card py-2.5 pl-10 pr-3 font-mono text-sm text-(--oc-text)"
+      />
+    </div>
+
+    <div id="support-table" class="mt-4 surface overflow-hidden rounded-lg">
       <div class="grid grid-cols-[1fr_70px_90px] gap-3 border-b border-oc px-4 py-2 pr-5 font-mono text-[11px] uppercase tracking-[0.14em] text-muted sm:grid-cols-[1fr_100px_120px] sm:pr-4">
         <span>service</span>
         <span class="text-right">listed ops</span>
         <span class="text-right">implemented</span>
       </div>
       {services.map((service) => (
-        <a class="grid grid-cols-[1fr_70px_90px] gap-3 border-b border-oc px-4 py-3 pr-5 text-sm no-underline last:border-b-0 sm:grid-cols-[1fr_100px_120px] sm:pr-4" href={`/docs/services/${service.docSlug ?? service.service}/`}>
+        <a
+          class="grid grid-cols-[1fr_70px_90px] gap-3 border-b border-oc px-4 py-3 pr-5 text-sm no-underline last:border-b-0 sm:grid-cols-[1fr_100px_120px] sm:pr-4"
+          href={`/docs/services/${service.docSlug ?? service.service}/`}
+          data-service-row
+          data-service-name={service.displayName.toLowerCase()}
+        >
           <span class="font-mono text-(--oc-text)">{service.displayName}</span>
           <span class="text-right text-muted">{service.totalOps}</span>
           <span class="text-right font-mono text-accent">{service.implementedOps}</span>
         </a>
       ))}
+      <p id="support-empty" class="hidden px-4 py-8 text-center text-sm text-muted">No service matches that filter.</p>
     </div>
   </section>
 </SiteLayout>
+<script>
+  const input = document.getElementById("support-filter") as HTMLInputElement | null;
+  const rows = document.querySelectorAll<HTMLElement>("[data-service-row]");
+  const empty = document.getElementById("support-empty");
+
+  input?.addEventListener("input", () => {
+    const query = input.value.trim().toLowerCase();
+    let visibleCount = 0;
+    rows.forEach((row) => {
+      const matches = !query || row.getAttribute("data-service-name")?.includes(query);
+      row.classList.toggle("hidden", !matches);
+      if (matches) visibleCount += 1;
+    });
+    empty?.classList.toggle("hidden", visibleCount > 0);
+  });
+</script>
