@@ -24,14 +24,24 @@ import {
   Waypoints,
 } from "@lucide/astro";
 
-// Screenshots come from `scripts/capture-console.mjs`, and the scenarios that need a
-// particular emulator setup are allowed to produce nothing rather than fail the run. So a
-// feature renders with its picture when the file is there and without it when it isn't,
-// instead of shipping a broken <img> or a "coming soon" box.
-const shot = (name: string) => {
-  const src = `/console/${name}.png`;
-  const onDisk = fileURLToPath(new URL(`../../public${src}`, import.meta.url));
-  return fs.existsSync(onDisk) ? src : null;
+// Screenshots come from `scripts/capture-console.mjs`, which captures each scenario once per
+// theme (`-dark.png` / `-light.png`). The scenarios that need a particular emulator setup are
+// allowed to produce nothing rather than fail the run, so a feature renders with its picture(s)
+// when at least one file is there and without any when neither is, instead of shipping a broken
+// <img> or a "coming soon" box. Until both files exist for a scenario (e.g. right after this
+// pairing lands, before the capture workflow has run again), whichever one does exist is shown
+// in both themes rather than left out.
+type Shot = { light: string | null; dark: string | null };
+
+const shot = (name: string): Shot | null => {
+  const onDisk = (theme: "light" | "dark") =>
+    fs.existsSync(fileURLToPath(new URL(`../../public/console/${name}-${theme}.png`, import.meta.url)))
+      ? `/console/${name}-${theme}.png`
+      : null;
+
+  const light = onDisk("light");
+  const dark = onDisk("dark");
+  return light || dark ? { light, dark } : null;
 };
 
 const dockerFull = `docker run --rm \\
@@ -47,7 +57,7 @@ const tour = [
     icon: Inbox,
     title: "Inbox",
     lead: "Your Lambda sent a confirmation email. Read it instead of guessing whether it went out.",
-    body: "Overcast runs a mock SMTP server by default, so mail from SES, SNS email subscriptions, and Cognito lands at /inbox rather than anywhere real. SNS SMS, webhook, and mobile-push deliveries land there too — locally those usually have nowhere to go at all.",
+    body: "Overcast runs a mock SMTP server by default, so mail from SES, SNS email subscriptions, and Cognito lands at /inbox rather than anywhere real. SNS SMS and webhook deliveries land there too — locally those usually have nowhere to go at all.",
     points: [
       "Plain text, rendered HTML, and the verbatim raw message, per message",
       "One SNS publish that fans out to five subscribers is grouped as one thread",
@@ -223,13 +233,32 @@ const alsoInside: { icon: typeof ScanSearch; service?: string; title: string; bo
         </div>
         {dashboardShot && (
           <figure class="surface m-0 overflow-hidden rounded-lg">
-            <img
-              src={dashboardShot}
-              alt="The Overcast console dashboard: emulated AWS services as cards, split into fully emulated, partially emulated, and not emulated."
-              width="1600"
-              height="1000"
-              class="block w-full"
-            />
+            {dashboardShot.light && dashboardShot.dark ? (
+              <>
+                <img
+                  src={dashboardShot.light}
+                  alt="The Overcast console dashboard: emulated AWS services as cards, split into fully emulated, partially emulated, and not emulated."
+                  width="1600"
+                  height="1000"
+                  class="theme-light-only block w-full"
+                />
+                <img
+                  src={dashboardShot.dark}
+                  alt="The Overcast console dashboard: emulated AWS services as cards, split into fully emulated, partially emulated, and not emulated."
+                  width="1600"
+                  height="1000"
+                  class="theme-dark-only block w-full"
+                />
+              </>
+            ) : (
+              <img
+                src={dashboardShot.light ?? dashboardShot.dark}
+                alt="The Overcast console dashboard: emulated AWS services as cards, split into fully emulated, partially emulated, and not emulated."
+                width="1600"
+                height="1000"
+                class="block w-full"
+              />
+            )}
             <figcaption class="border-t border-oc px-4 py-3 text-xs text-muted">
               The dashboard sorts every service by how completely Overcast emulates it, so you can see what is worth
               building against before you start.
@@ -269,7 +298,35 @@ const alsoInside: { icon: typeof ScanSearch; service?: string; title: string; bo
             </div>
             {feature.shot && (
               <figure class="surface m-0 overflow-hidden rounded-lg">
-                <img src={feature.shot} alt={feature.alt} width="1600" height="1000" loading="lazy" class="block w-full" />
+                {feature.shot.light && feature.shot.dark ? (
+                  <>
+                    <img
+                      src={feature.shot.light}
+                      alt={feature.alt}
+                      width="1600"
+                      height="1000"
+                      loading="lazy"
+                      class="theme-light-only block w-full"
+                    />
+                    <img
+                      src={feature.shot.dark}
+                      alt={feature.alt}
+                      width="1600"
+                      height="1000"
+                      loading="lazy"
+                      class="theme-dark-only block w-full"
+                    />
+                  </>
+                ) : (
+                  <img
+                    src={feature.shot.light ?? feature.shot.dark}
+                    alt={feature.alt}
+                    width="1600"
+                    height="1000"
+                    loading="lazy"
+                    class="block w-full"
+                  />
+                )}
               </figure>
             )}
           </div>

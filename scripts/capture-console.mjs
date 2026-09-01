@@ -44,6 +44,9 @@ const navigationTimeout = 90_000; // the console is lazy-loaded, so the first ro
 const actionTimeout = 30_000;
 const attemptsPerScenario = 2;
 
+// Every scenario is captured once per theme, to `${scenario.name}-${theme}.png`.
+const themes = ["dark", "light"];
+
 // One clock base for the whole run, so all four screenshots agree on "now". Time keeps ticking
 // while the page loads (clock.install resumes real time), then pauses at a fixed offset just
 // before the shot: that stops counters, ageing pills and re-render churn between the readiness
@@ -238,18 +241,26 @@ async function captureViewport(page, file) {
   await page.screenshot({ path: file, animations: "disabled", caret: "hide", scale: "css" });
 }
 
-async function runScenario(browser, scenario, attempt) {
+async function runScenario(browser, scenario, theme, attempt) {
   // A fresh context per attempt: empty localStorage means the dashboard is in its default grid
-  // view with no "recently visited" reordering, so the grid looks the same every run.
+  // view with no "recently visited" reordering, so the grid looks the same every run — except
+  // for the one key this script itself seeds below, to pin the app's own theme.
   const context = await browser.newContext({
     viewport,
     deviceScaleFactor: 1,
-    colorScheme: "dark",
+    colorScheme: theme,
     reducedMotion: "reduce",
   });
   context.setDefaultTimeout(actionTimeout);
   context.setDefaultNavigationTimeout(navigationTimeout);
-  await context.tracing.start({ name: scenario.name, screenshots: true, snapshots: true });
+  // Belt and suspenders: colorScheme above only steers `prefers-color-scheme`, which the app
+  // falls back to when its own preference is "system". Writing its localStorage key directly
+  // (before any page script runs, so it's there for the very first render) makes the theme
+  // deterministic regardless of the app's own default.
+  await context.addInitScript((themeValue) => {
+    window.localStorage.setItem("overcast:theme", themeValue);
+  }, theme);
+  await context.tracing.start({ name: `${scenario.name}-${theme}`, screenshots: true, snapshots: true });
 
   const page = await context.newPage();
   const pageLog = [];
@@ -275,11 +286,11 @@ async function runScenario(browser, scenario, attempt) {
     await page.waitForTimeout(pausedRenderSettleMs);
 
     const capture = scenario.capture || captureViewport;
-    await capture(page, path.join(outputDir, `${scenario.name}.png`));
+    await capture(page, path.join(outputDir, `${scenario.name}-${theme}.png`));
 
     await context.tracing.stop();
   } catch (error) {
-    const prefix = path.join(debugDir, `${scenario.name}-attempt-${attempt}`);
+    const prefix = path.join(debugDir, `${scenario.name}-${theme}-attempt-${attempt}`);
     await fs.mkdir(debugDir, { recursive: true });
     await context.tracing.stop({ path: `${prefix}.trace.zip` }).catch(() => {});
     await page.screenshot({ path: `${prefix}.png`, fullPage: true }).catch(() => {});
@@ -314,14 +325,17 @@ async function main() {
 
   try {
     for (const scenario of selected) {
-      for (let attempt = 1; attempt <= attemptsPerScenario; attempt++) {
-        try {
-          await runScenario(browser, scenario, attempt);
-          console.log(`Captured ${scenario.name} from ${consoleUrl}${scenario.route}`);
-          break;
-        } catch (error) {
-          console.error(`Attempt ${attempt}/${attemptsPerScenario} for ${scenario.name} failed: ${error.message}`);
-          if (attempt === attemptsPerScenario) (scenario.optional ? skipped : failed).push(scenario.name);
+      for (const theme of themes) {
+        const label = `${scenario.name}-${theme}`;
+        for (let attempt = 1; attempt <= attemptsPerScenario; attempt++) {
+          try {
+            await runScenario(browser, scenario, theme, attempt);
+            console.log(`Captured ${label} from ${consoleUrl}${scenario.route}`);
+            break;
+          } catch (error) {
+            console.error(`Attempt ${attempt}/${attemptsPerScenario} for ${label} failed: ${error.message}`);
+            if (attempt === attemptsPerScenario) (scenario.optional ? skipped : failed).push(label);
+          }
         }
       }
     }

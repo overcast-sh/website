@@ -1,4 +1,6 @@
 ---
+import fs from "node:fs";
+import { fileURLToPath } from "node:url";
 import SiteLayout from "../components/SiteLayout.astro";
 import CodeBlock from "../components/CodeBlock.astro";
 import ArchitectureDiagram from "../components/diagrams/ArchitectureDiagram.astro";
@@ -37,6 +39,23 @@ const topServices = featured
 
 const releases = sortReleasesNewestFirst(await getCollection("releases"));
 const latestVersion = releases[0]?.data.tagName ?? "";
+
+// Same theme-paired screenshot handling as /console (see src/pages/console.astro): capture
+// produces `${name}-dark.png` / `${name}-light.png`, and this shows whichever exist.
+type Shot = { light: string | null; dark: string | null };
+
+const shot = (name: string): Shot | null => {
+  const onDisk = (theme: "light" | "dark") =>
+    fs.existsSync(fileURLToPath(new URL(`../../public/console/${name}-${theme}.png`, import.meta.url)))
+      ? `/console/${name}-${theme}.png`
+      : null;
+
+  const light = onDisk("light");
+  const dark = onDisk("dark");
+  return light || dark ? { light, dark } : null;
+};
+
+const dashboardShot = shot("console-dashboard");
 
 const runCommand = `docker run --rm \\
   -p 4566:4566 \\
@@ -184,7 +203,7 @@ const firstCall = `aws --endpoint-url http://localhost:4566 \\
             <span class="icon-tile"><Inbox class="icon" /></span>
             <span class="text-sm leading-6 text-body">
               <strong class="font-mono text-(--oc-text)">Inbox</strong> — captures the mail your app sends through SES,
-              SNS, and Cognito, plus the SNS SMS, webhook, and push deliveries that have nowhere to go locally.
+              SNS, and Cognito, plus the SNS SMS and webhook deliveries that have nowhere to go locally.
             </span>
           </li>
           <li class="flex gap-3">
@@ -206,17 +225,42 @@ const firstCall = `aws --endpoint-url http://localhost:4566 \\
           Tour the console<ArrowRight class="icon" />
         </a>
       </div>
-      <figure class="surface m-0 overflow-hidden rounded-lg">
-        <img
-          src="/console/console-dashboard.png"
-          alt="The Overcast console dashboard: emulated AWS services as cards, split into fully emulated, partially emulated, and not emulated."
-          width="1600"
-          height="1000"
-          loading="lazy"
-          decoding="async"
-          class="block w-full"
-        />
-      </figure>
+      {dashboardShot && (
+        <figure class="surface m-0 overflow-hidden rounded-lg">
+          {dashboardShot.light && dashboardShot.dark ? (
+            <>
+              <img
+                src={dashboardShot.light}
+                alt="The Overcast console dashboard: emulated AWS services as cards, split into fully emulated, partially emulated, and not emulated."
+                width="1600"
+                height="1000"
+                loading="lazy"
+                decoding="async"
+                class="theme-light-only block w-full"
+              />
+              <img
+                src={dashboardShot.dark}
+                alt="The Overcast console dashboard: emulated AWS services as cards, split into fully emulated, partially emulated, and not emulated."
+                width="1600"
+                height="1000"
+                loading="lazy"
+                decoding="async"
+                class="theme-dark-only block w-full"
+              />
+            </>
+          ) : (
+            <img
+              src={dashboardShot.light ?? dashboardShot.dark}
+              alt="The Overcast console dashboard: emulated AWS services as cards, split into fully emulated, partially emulated, and not emulated."
+              width="1600"
+              height="1000"
+              loading="lazy"
+              decoding="async"
+              class="block w-full"
+            />
+          )}
+        </figure>
+      )}
     </div>
   </section>
 
