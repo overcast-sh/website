@@ -11,7 +11,7 @@ const { code, label = "terminal", language = "bash" } = Astro.props;
 const highlightedCode = await codeToHtml(code, {
   lang: language,
   themes: {
-    light: "github-light",
+    light: "github-light-default",
     dark: "github-dark-default",
   },
   defaultColor: false,

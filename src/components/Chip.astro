@@ -18,9 +18,14 @@ const toneVar = { accent: "--oc-accent", success: "--oc-success", warning: "--oc
 const textVar = tone === "muted" ? "--oc-body" : toneVar;
 ---
 
+{/* The tint mixes into --oc-card rather than `transparent`. A translucent tint takes
+    its lightness from whatever the chip happens to be sitting on — a chip inside an
+    open <details> inside a tinted panel came out several steps darker than the same
+    chip on the page, and dragged the label with it. Mixing into a known surface makes
+    the pair fixed, which is what lets the tones above be tuned once. */}
 <span
   class="inline-flex items-center gap-1.5 rounded px-2 py-0.5 font-mono text-xs font-medium"
-  style={`background:color-mix(in srgb, var(${toneVar}) 14%, transparent); color:var(${textVar})`}
+  style={`background:color-mix(in srgb, var(${toneVar}) 14%, var(--oc-card)); color:var(${textVar})`}
 >
   <slot />
 </span>

@@ -109,7 +109,11 @@ const navCurrent = (href: string): "page" | "true" | undefined => {
       </p>
     </div>
     <header class="sticky top-0 z-30 border-b border-oc bg-card/95 backdrop-blur">
-      <div class="mx-auto flex max-w-7xl items-center gap-5 px-4 py-3 sm:px-6 lg:px-8">
+      {/* `flex-wrap` is the escape hatch for a reader whose browser default font is
+          larger than 16px: every label in this row grows with it, and without somewhere
+          to go the row pushes the whole page into a horizontal scroll. At the default
+          size nothing wraps. */}
+      <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 sm:px-6 lg:px-8">
         <a href="/" class="flex shrink-0 items-center gap-2 no-underline" aria-label="Overcast home">
           <span class="relative h-8 w-8 shrink-0">
             <img src="/brand/mark-light.svg" alt="" class="theme-light-only h-8 w-8" />
@@ -117,7 +121,11 @@ const navCurrent = (href: string): "page" | "true" | undefined => {
           </span>
           <span class="leading-none">
             <span class="block font-mono text-xl font-bold text-(--oc-text)">overcast</span>
-            <span class="block font-mono text-2xs uppercase tracking-[0.16em] text-muted">local AWS emulator</span>
+            {/* Hidden on a phone: at the 12px floor the tagline is 164px wide, and
+                brand + tagline + the three controls came to 388px inside a 375px
+                viewport — a horizontal scroll on the whole page for a line that only
+                repeats what the page already says. The wordmark carries it there. */}
+            <span class="hidden font-mono text-2xs uppercase tracking-[0.16em] text-muted sm:block">local AWS emulator</span>
           </span>
         </a>
         <nav class="hidden items-center gap-3.5 font-mono text-xs whitespace-nowrap text-muted xl:flex" aria-label="Main">

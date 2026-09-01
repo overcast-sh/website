@@ -14,11 +14,13 @@ export default defineConfig({
     rehypePlugins: [rehypeTableA11y],
     shikiConfig: {
       themes: {
-        light: "github-light",
-        // github-dark is tuned for GitHub's near-black #0d1117; the site paints code
-        // blocks on --oc-card, which is lighter, and its comment and punctuation
-        // tokens land at 3.3-3.5:1 there. github-dark-default is the same palette
-        // pitched brighter and clears 4.5:1 on this surface.
+        // GitHub's current pair rather than the legacy `github-light`/`github-dark`.
+        // The legacy two both carry tokens that fail on this site's code surface:
+        // github-light's parameter orange lands at 3.5:1 on --oc-card, and
+        // github-dark is tuned for GitHub's near-black #0d1117 while the site paints
+        // code on the lighter --oc-card, which drops its comments to 3.3:1. The
+        // `-default` pair is the same palette re-tuned and clears 4.5:1 on both.
+        light: "github-light-default",
         dark: "github-dark-default",
       },
       defaultColor: false,

@@ -57,7 +57,10 @@ const STATES = [
     name: "search-open",
     when: () => true,
     apply: async (page) => {
-      await page.click("#search-open");
+      // The header is sticky, so a mid-page scroll position can leave the trigger under
+      // the banner while the layout settles; start from the top.
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.locator("#search-open").click({ timeout: 15_000 });
       await page.waitForSelector("#search-overlay:not(.hidden)");
       await page.fill("#search-input", "s3");
       // Results are debounced and pagefind loads lazily; wait for rendered rows.
@@ -69,7 +72,8 @@ const STATES = [
     name: "menu-open",
     when: (_url, viewport) => viewport.name === "mobile",
     apply: async (page) => {
-      await page.click("#menu-toggle");
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.locator("#menu-toggle").click({ timeout: 15_000 });
       await page.waitForSelector("#mobile-menu:not(.hidden)");
     },
   },
