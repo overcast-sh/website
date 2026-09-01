@@ -60,7 +60,9 @@ const supportLevels: Array<{ label: string; tone: "success" | "accent" | "warnin
       Everything below routes somewhere more specific.
     </p>
 
-    <div class="mt-8 grid gap-6 lg:grid-cols-[minmax(0,320px)_1fr]">
+    <!-- 340px is the width the quickstart command needs before it starts
+         scrolling inside its own box; the diagram takes the rest. -->
+    <div class="mt-8 grid gap-6 lg:grid-cols-[minmax(0,340px)_1fr]">
       <CodeBlock code={quickStart} label="start overcast" />
       <div class="surface flex items-center rounded-lg p-4">
         <LayerMapDiagram />

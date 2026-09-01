@@ -1,69 +1,160 @@
 ---
-// /docs/ index diagram: "there's a short path and a deep path." Four stops, each one step
-// deeper than the last — this is the fix for the docs index used to BE the deepest stop.
-// Theme-aware inline SVG via --oc-* custom properties, no separate dark-mode markup needed.
+// /docs/ index diagram: "there's a short path and a deep path." Four numbered stops, each
+// one step deeper than the last, with the quickstart as the lit entry point.
 //
-// Type scale and radii intentionally match ArchitectureDiagram: 13/700 titles, 11/400 notes,
-// 8px corners on the card boxes (site's .rounded-lg), same arrowhead marker geometry.
+// Built from HTML rather than a scaled SVG, for the same reason as ArchitectureDiagram: the
+// slot is ~585px on desktop and ~310px on a phone, and a fixed viewBox has to shrink to fit
+// the narrow case. Here it also buys the layout change that a viewBox cannot — a container
+// query folds the four-across track into a 2x2 grid, instead of shrinking the type to fit.
+//
+// Each stop carries its own ramp slot, the same colour system the service tiles use, so the
+// four stops read as four different places rather than four grey boxes. The step numbers
+// carry the order once the connectors drop away in the folded layout.
+import { GitBranch, Table2, Terminal, Wrench } from "@lucide/astro";
+
 const stops = [
-  { label: "Quickstart", note: "one command, 2 min" },
-  { label: "Task guides", note: "CDK, SDKs, migration" },
-  { label: "Service reference", note: "per-operation tables" },
-  { label: "Source", note: "GitHub, CONTRIBUTING" },
+  { step: "01", label: "Quickstart", note: "one command, 2 min", icon: Terminal, tint: "var(--oc-accent)", start: true },
+  { step: "02", label: "Task guides", note: "CDK, SDKs, migration", icon: Wrench, tint: "var(--oc-cat-5)", start: false },
+  { step: "03", label: "Service reference", note: "per-operation tables", icon: Table2, tint: "var(--oc-cat-2)", start: false },
+  { step: "04", label: "Source", note: "GitHub, CONTRIBUTING", icon: GitBranch, tint: "var(--oc-cat-8)", start: false },
 ];
-const boxWidth = 152;
-const boxHeight = 76;
-const gap = 24;
-const startX = 8;
-const y = 12;
 ---
 
-<svg
-  viewBox={`0 0 ${startX * 2 + stops.length * boxWidth + (stops.length - 1) * gap} ${y * 2 + boxHeight}`}
+<figure
+  class="lmap"
   role="img"
-  aria-labelledby="layer-map-title"
-  class="h-auto w-full"
-  xmlns="http://www.w3.org/2000/svg"
+  aria-label="Four stops, each one step deeper: quickstart, task guides, service reference, then source. Start at the first and go on only as far as you need."
 >
-  <title id="layer-map-title">Four stops, each one step deeper: quickstart, task guides, service reference, then source — start at the left, go right only as far as you need.</title>
-  <defs>
-    <marker id="layer-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M0 0 L10 5 L0 10 z" fill="var(--oc-muted)"></path>
-    </marker>
-  </defs>
-  {stops.map((stop, i) => {
-    const x = startX + i * (boxWidth + gap);
-    const isFirst = i === 0;
-    return (
+  <div class="lmap-track">
+    {stops.map(({ step, label, note, icon: Icon, tint, start }, i) => (
       <>
-        {i > 0 && (
-          <line
-            x1={x - gap + 4}
-            y1={y + boxHeight / 2}
-            x2={x - 4}
-            y2={y + boxHeight / 2}
-            stroke="var(--oc-muted)"
-            stroke-width="1.5"
-            marker-end="url(#layer-arrow)"
-          ></line>
-        )}
-        <rect
-          x={x}
-          y={y}
-          width={boxWidth}
-          height={boxHeight}
-          rx="8"
-          fill={isFirst ? "var(--oc-accent-soft)" : "var(--oc-card)"}
-          stroke={isFirst ? "var(--oc-accent)" : "var(--oc-line)"}
-          stroke-width="1.5"
-        ></rect>
-        <text x={x + boxWidth / 2} y={y + 31} text-anchor="middle" font-family="var(--oc-font-mono)" font-size="13" font-weight="700" fill="var(--oc-text)">
-          {stop.label}
-        </text>
-        <text x={x + boxWidth / 2} y={y + 51} text-anchor="middle" font-family="var(--oc-font-mono)" font-size="11" fill="var(--oc-muted)">
-          {stop.note}
-        </text>
+        {i > 0 && <span class="lmap-arrow"></span>}
+        <span class="lmap-stop" style={`--oc-tint:${tint}`}>
+          <span class:list={["lmap-step", start && "is-start"]}>{step}</span>
+          <span class:list={["lmap-tile", start && "is-start"]}>
+            <Icon class="icon" />
+          </span>
+          <span class="lmap-label">{label}</span>
+          <span class="lmap-note">{note}</span>
+        </span>
       </>
-    );
-  })}
-</svg>
+    ))}
+  </div>
+</figure>
+
+<style>
+  .lmap {
+    container-type: inline-size;
+    margin: 0;
+    width: 100%;
+    font-family: var(--oc-font-mono);
+  }
+
+  .lmap-track {
+    display: flex;
+    align-items: flex-start;
+  }
+
+  .lmap-stop {
+    display: flex;
+    flex: 1 1 0;
+    min-width: 0;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .lmap-step {
+    font-size: 10px;
+    line-height: 14px;
+    letter-spacing: 0.14em;
+    color: var(--oc-muted);
+  }
+
+  .lmap-step.is-start {
+    color: var(--oc-accent);
+  }
+
+  /* 36px tile, 10px below the 14px step line — which is what puts the
+   * connector's centre at 24 + 18 = 42px from the top of a stop. */
+  .lmap-tile {
+    display: inline-flex;
+    flex: none;
+    width: 36px;
+    height: 36px;
+    margin-top: 10px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: color-mix(in oklab, var(--oc-tint) 12%, var(--oc-card));
+    border: 1px solid color-mix(in oklab, var(--oc-tint) 32%, transparent);
+    color: var(--oc-tint);
+  }
+
+  /* The entry point: the one solid tile, with a soft ring so the eye starts here. */
+  .lmap-tile.is-start {
+    background: var(--oc-tint);
+    border-color: var(--oc-tint);
+    color: var(--oc-card);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--oc-tint) 18%, transparent);
+  }
+
+  .lmap-tile :global(.icon) {
+    width: 18px;
+    height: 18px;
+  }
+
+  .lmap-label {
+    margin-top: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--oc-text);
+  }
+
+  .lmap-note {
+    margin-top: 2px;
+    font-size: 10px;
+    line-height: 1.45;
+    color: var(--oc-muted);
+  }
+
+  /* Connector: a hairline across the gutter with a triangle at its head, sitting
+   * on the tiles' centre line. */
+  .lmap-arrow {
+    position: relative;
+    flex: none;
+    width: 18px;
+    height: 2px;
+    margin-top: 41px;
+    background: var(--oc-line);
+  }
+
+  .lmap-arrow::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: -1px;
+    margin-top: -4px;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    border-left: 6px solid var(--oc-muted);
+  }
+
+  /* Too narrow for four across: fold to 2x2 and let the step numbers carry the
+   * order, rather than shrinking every label to fit. */
+  @container (max-width: 520px) {
+    .lmap-track {
+      flex-wrap: wrap;
+      row-gap: var(--oc-space-5);
+    }
+
+    .lmap-stop {
+      flex: 1 1 44%;
+    }
+
+    .lmap-arrow {
+      display: none;
+    }
+  }
+</style>

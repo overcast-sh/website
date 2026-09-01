@@ -2,6 +2,7 @@
 import SiteLayout from "../components/SiteLayout.astro";
 import CodeBlock from "../components/CodeBlock.astro";
 import ArchitectureDiagram from "../components/diagrams/ArchitectureDiagram.astro";
+import ServiceIcon from "../components/ServiceIcon.astro";
 import { ArrowRight, BookOpen, CloudOff, GitCompare, Network, Route, ScanSearch, ShieldCheck, Terminal } from "@lucide/astro";
 import { getServiceSupport } from "../lib/generated-content";
 
@@ -43,15 +44,15 @@ const quickStart = `docker run --rm \\
         <div class="grid grid-cols-3 gap-3">
           <div class="surface rounded-lg p-4">
             <div class="font-mono text-2xl font-bold">{support.services.length}</div>
-            <div class="mt-1 text-xs text-muted">services registered</div>
+            <div class="mt-1 text-[11px] leading-4 text-muted">services registered</div>
           </div>
           <div class="surface rounded-lg p-4">
             <div class="font-mono text-2xl font-bold">{support.implementedOps}</div>
-            <div class="mt-1 text-xs text-muted">implemented operations</div>
+            <div class="mt-1 text-[11px] leading-4 text-muted">implemented operations</div>
           </div>
           <div class="surface rounded-lg p-4">
             <div class="font-mono text-2xl font-bold">4566</div>
-            <div class="mt-1 text-xs text-muted">default API port</div>
+            <div class="mt-1 text-[11px] leading-4 text-muted">default API port</div>
           </div>
         </div>
       </div>
@@ -105,11 +106,15 @@ const quickStart = `docker run --rm \\
       <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {topServices.map((service) => (
           <a class="surface rounded-lg p-4 no-underline" href={`/docs/services/${service.docSlug ?? service.service}/`}>
-            <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2.5">
+              <ServiceIcon service={service.service} />
               <strong class="font-mono text-sm text-(--oc-text)">{service.displayName}</strong>
-              <span class="font-mono text-xs text-accent">{service.implementedOps}/{service.totalOps}</span>
             </div>
-            <p class="mt-2 text-xs text-muted">listed operations implemented</p>
+            <div class="mt-3 font-mono text-xs text-accent">{service.implementedOps}/{service.totalOps}</div>
+            <p class="mt-1 text-xs text-muted">listed operations implemented</p>
+            <span class="coverage-meter mt-3" aria-hidden="true">
+              <span style={`width:${service.totalOps ? Math.round((service.implementedOps / service.totalOps) * 100) : 0}%`}></span>
+            </span>
           </a>
         ))}
       </div>
