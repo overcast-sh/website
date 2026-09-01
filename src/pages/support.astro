@@ -7,7 +7,20 @@ import { Search, ShieldCheck } from "@lucide/astro";
 import { getServiceSupport } from "../lib/generated-content";
 
 const support = await getServiceSupport();
-const services = support.services.slice().sort((a, b) => a.displayName.localeCompare(b.displayName));
+
+// The gap — listed minus implemented — is the number this page exists to show, and
+// it was the one number the table made you work out yourself. CloudFormation at
+// 24/52 read the same as IAM at 74/74 until you did the subtraction on every row.
+const services = support.services
+  .map((service) => ({
+    ...service,
+    gap: Math.max(0, service.totalOps - service.implementedOps),
+    percent: service.totalOps ? Math.round((service.implementedOps / service.totalOps) * 100) : 0,
+  }))
+  .sort((a, b) => a.displayName.localeCompare(b.displayName));
+
+const completeCount = services.filter((service) => service.gap === 0).length;
+const totalGap = services.reduce((sum, service) => sum + service.gap, 0);
 ---
 
 <SiteLayout title="Support Matrix" description="Overcast service and operation implementation status." searchTitle="Support matrix">
@@ -15,67 +28,169 @@ const services = support.services.slice().sort((a, b) => a.displayName.localeCom
     <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><ShieldCheck class="icon" />support matrix</p>
     <h1 class="mt-2 font-mono text-3xl font-bold">Listed service operations, with visible gaps.</h1>
     <p class="mt-4 max-w-3xl leading-7 text-body">
-      Unsupported operations return clear <code>501 Not Implemented</code> responses.
+      Every operation Overcast tracks, per service. The ones it hasn't implemented return
+      <code>501 Not Implemented</code> rather than failing in a way you have to diagnose.
     </p>
+
+    <dl class="mt-6 grid gap-3 sm:grid-cols-3">
+      <div class="surface rounded-lg p-4">
+        <dd class="m-0 font-mono text-2xl font-bold">{support.implementedOps}<span class="text-muted">/{support.totalOps}</span></dd>
+        <dt class="mt-1 text-xs text-muted">listed operations implemented</dt>
+      </div>
+      <div class="surface rounded-lg p-4">
+        <dd class="m-0 font-mono text-2xl font-bold">{completeCount}<span class="text-muted">/{services.length}</span></dd>
+        <dt class="mt-1 text-xs text-muted">services with no gaps</dt>
+      </div>
+      <div class="surface rounded-lg p-4">
+        <dd class="m-0 font-mono text-2xl font-bold text-(--oc-warning)">{totalGap}</dd>
+        <dt class="mt-1 text-xs text-muted">operations that return 501</dt>
+      </div>
+    </dl>
+
     <Callout kind="note" title="Alpha">
       This matrix tracks listed API operations, not full AWS compatibility — alpha behavior still needs broad
       real-world use.
     </Callout>
 
-    <div class="mt-6 max-w-sm">
-      <SearchPromo label="Know what you're looking for? Search instead" />
-    </div>
-
-    <div class="relative mt-6">
-      <Search class="icon pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-      <input
-        id="support-filter"
-        type="text"
-        placeholder="Filter by service name…"
-        autocomplete="off"
-        spellcheck="false"
-        class="w-full rounded-md border border-oc bg-card py-2.5 pl-10 pr-3 font-mono text-sm text-(--oc-text)"
-      />
-    </div>
-
-    <div id="support-table" class="mt-4 surface overflow-hidden rounded-lg">
-      <div class="grid grid-cols-[1fr_70px_90px] gap-3 border-b border-oc px-4 py-2 pr-5 font-mono text-[11px] uppercase tracking-[0.14em] text-muted sm:grid-cols-[1fr_100px_120px] sm:pr-4">
-        <span>service</span>
-        <span class="text-right">listed ops</span>
-        <span class="text-right">implemented</span>
+    <div class="mt-6 flex flex-col gap-3 sm:flex-row">
+      <div class="relative flex-1">
+        <Search class="icon pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+        <input
+          id="support-filter"
+          type="text"
+          placeholder="Filter services…"
+          autocomplete="off"
+          spellcheck="false"
+          aria-describedby="support-count"
+          class="w-full rounded-md border border-oc bg-card py-2.5 pl-10 pr-3 font-mono text-sm text-(--oc-text)"
+        />
       </div>
-      {services.map((service) => (
-        <a
-          class="grid grid-cols-[1fr_70px_90px] gap-3 border-b border-oc px-4 py-3 pr-5 text-sm no-underline last:border-b-0 sm:grid-cols-[1fr_100px_120px] sm:pr-4"
-          href={`/docs/services/${service.docSlug ?? service.service}/`}
-          data-service-row
-          data-service-name={service.displayName.toLowerCase()}
+      <label class="flex items-center gap-2 font-mono text-xs text-muted">
+        <span class="shrink-0 uppercase tracking-[0.16em]">sort</span>
+        <select
+          id="support-sort"
+          class="w-full rounded-md border border-oc bg-card px-3 py-2.5 font-mono text-sm text-(--oc-text) sm:w-auto"
         >
-          <span class="flex items-center gap-2.5 font-mono text-(--oc-text)">
-            <ServiceIcon service={service.service} size="sm" />
-            {service.displayName}
-          </span>
-          <span class="text-right text-muted">{service.totalOps}</span>
-          <span class="text-right font-mono text-accent">{service.implementedOps}</span>
-        </a>
-      ))}
+          <option value="name">Name (A–Z)</option>
+          <option value="gaps">Biggest gaps first</option>
+          <option value="coverage">Most complete first</option>
+          <option value="size">Most operations first</option>
+        </select>
+      </label>
+    </div>
+
+    <p id="support-count" class="mt-3 font-mono text-xs text-muted" role="status" aria-live="polite">
+      Showing all {services.length} services
+    </p>
+
+    <div class="surface mt-3 overflow-hidden rounded-lg">
+      <div class="hidden grid-cols-[1fr_130px_110px_96px] gap-4 border-b border-oc px-4 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-muted sm:grid">
+        <span>service</span>
+        <span>coverage</span>
+        <span class="text-right">implemented</span>
+        <span class="text-right">gap</span>
+      </div>
+      <div id="support-rows">
+        {/* One line per service at every width. The meter is the only thing that drops
+            on a phone: keeping it stacked each row onto two lines, which made a 50-row
+            table half as long again as the one it replaced. The counts beside it carry
+            the same fact exactly. */}
+        {services.map((service) => (
+          <a
+            class="flex items-center gap-3 border-b border-oc px-4 py-2.5 text-sm no-underline last:border-b-0 hover:bg-(--oc-accent-soft) sm:grid sm:grid-cols-[1fr_130px_110px_96px] sm:items-center sm:gap-4 sm:py-3"
+            href={`/docs/services/${service.docSlug ?? service.service}/`}
+            data-service-row
+            data-name={service.displayName.toLowerCase()}
+            data-id={service.service}
+            data-gap={service.gap}
+            data-coverage={service.percent}
+            data-size={service.totalOps}
+          >
+            <span class="flex min-w-0 flex-1 items-center gap-2.5 font-mono text-(--oc-text) sm:flex-none">
+              <ServiceIcon service={service.service} size="sm" />
+              <span class="truncate">{service.displayName}</span>
+            </span>
+            <span class="coverage-meter hidden sm:block" title={`${service.percent}% implemented`}>
+              <span style={`width:${service.percent}%`}></span>
+            </span>
+            <span class="shrink-0 font-mono text-xs text-muted sm:text-right sm:text-sm">
+              <span class="text-accent">{service.implementedOps}</span>/{service.totalOps}
+            </span>
+            <span class="w-6 shrink-0 text-right font-mono text-xs sm:w-auto sm:text-sm">
+              {service.gap > 0 ? (
+                <span class="text-(--oc-warning)">{service.gap}</span>
+              ) : (
+                <span class="text-muted"><span class="sr-only">no gaps</span>—</span>
+              )}
+            </span>
+          </a>
+        ))}
+      </div>
       <p id="support-empty" class="hidden px-4 py-8 text-center text-sm text-muted">No service matches that filter.</p>
+    </div>
+
+    <div class="mt-4 grid gap-4 text-sm text-muted lg:grid-cols-[1.4fr_1fr] lg:items-start">
+      <p class="m-0 leading-6">
+        <strong class="font-mono text-(--oc-text)">Coverage</strong> is implemented operations over listed ones — the
+        operations Overcast tracks for that service, not every operation the AWS API has.
+        <strong class="font-mono text-(--oc-text)">Gap</strong> is the rest: calls that answer <code>501</code> today.
+        Open a service for the per-operation table and its notes.
+      </p>
+      <SearchPromo label="Looking for one operation? Search the docs" />
     </div>
   </section>
 </SiteLayout>
 <script>
   const input = document.getElementById("support-filter") as HTMLInputElement | null;
-  const rows = document.querySelectorAll<HTMLElement>("[data-service-row]");
+  const sort = document.getElementById("support-sort") as HTMLSelectElement | null;
+  const container = document.getElementById("support-rows");
   const empty = document.getElementById("support-empty");
+  const count = document.getElementById("support-count");
+  const rows = Array.from(document.querySelectorAll<HTMLElement>("[data-service-row]"));
+  const total = rows.length;
 
-  input?.addEventListener("input", () => {
-    const query = input.value.trim().toLowerCase();
-    let visibleCount = 0;
+  const num = (row: HTMLElement, key: string) => Number(row.dataset[key] ?? 0);
+
+  const comparators: Record<string, (a: HTMLElement, b: HTMLElement) => number> = {
+    name: (a, b) => (a.dataset.name ?? "").localeCompare(b.dataset.name ?? ""),
+    gaps: (a, b) => num(b, "gap") - num(a, "gap") || comparators.name(a, b),
+    coverage: (a, b) => num(b, "coverage") - num(a, "coverage") || comparators.name(a, b),
+    size: (a, b) => num(b, "size") - num(a, "size") || comparators.name(a, b),
+  };
+
+  function apply() {
+    const query = (input?.value ?? "").trim().toLowerCase();
+    let visible = 0;
     rows.forEach((row) => {
-      const matches = !query || row.getAttribute("data-service-name")?.includes(query);
+      // Match the id too, so "cloudwatch-logs" and "apigateway" find their row even
+      // though the display names are "CloudWatch Logs" and "API Gateway".
+      const haystack = `${row.dataset.name ?? ""} ${row.dataset.id ?? ""}`;
+      const matches = !query || haystack.includes(query);
       row.classList.toggle("hidden", !matches);
-      if (matches) visibleCount += 1;
+      if (matches) visible += 1;
     });
-    empty?.classList.toggle("hidden", visibleCount > 0);
+
+    empty?.classList.toggle("hidden", visible > 0);
+    if (count) {
+      count.textContent = query
+        ? `${visible} of ${total} services match "${query}"`
+        : `Showing all ${total} services`;
+    }
+  }
+
+  function reorder() {
+    if (!container) return;
+    const comparator = comparators[sort?.value ?? "name"] ?? comparators.name;
+    // One fragment, one reflow — appending 50 rows straight back into the live
+    // container would lay the table out 50 times.
+    const fragment = document.createDocumentFragment();
+    rows.slice().sort(comparator).forEach((row) => fragment.appendChild(row));
+    container.appendChild(fragment);
+  }
+
+  input?.addEventListener("input", apply);
+  sort?.addEventListener("change", () => {
+    reorder();
+    apply();
   });
 </script>

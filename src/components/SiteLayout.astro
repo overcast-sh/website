@@ -10,6 +10,8 @@ interface Props {
   title?: string;
   description?: string;
   editUrl?: string;
+  /** Keep a page out of search engines (the 404, which every unknown URL renders). */
+  noindex?: boolean;
   /**
    * Title to index this page under in site search. Docs pages mark their own
    * `data-pagefind-body` on the article, so they leave this unset; every other
@@ -24,11 +26,15 @@ const {
   description = "A fast, free, open-source local AWS emulator for development and CI.",
   editUrl,
   searchTitle,
+  noindex = false,
 } = Astro.props;
 const pageEditUrl = editUrl ?? websiteEditUrlFromRoute(Astro.routePattern);
 const pageTitle = title === "Overcast" ? title : `${title} | Overcast`;
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site || "https://overcast.sh");
-const socialImageUrl = new URL("/brand/github-social-card.svg", Astro.site || "https://overcast.sh");
+// A raster card, not the SVG one this used to point at: X, Slack, LinkedIn and
+// Facebook all refuse to render an SVG og:image, so every link to the site
+// unfurled with no picture at all. Generated from brand/github-social-card.svg.
+const socialImageUrl = new URL("/brand/social-card.png", Astro.site || "https://overcast.sh");
 const sourceManifest = await getSourceManifest();
 const builtDate = formatDate(sourceManifest.generatedAt);
 const builtIso = toIsoDate(sourceManifest.generatedAt);
@@ -49,13 +55,21 @@ const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/rele
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonicalUrl} />
     <meta property="og:image" content={socialImageUrl} />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="640" />
+    <meta property="og:image:alt" content="Overcast — local AWS emulator" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={pageTitle} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={socialImageUrl} />
+    <meta name="twitter:image:alt" content="Overcast — local AWS emulator" />
     <title>{pageTitle}</title>
     <link rel="icon" href="/brand/favicon.svg" type="image/svg+xml" />
     <link rel="alternate icon" href="/brand/favicon.ico" />
+    <meta name="theme-color" content="#F4F8FC" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#10161D" media="(prefers-color-scheme: dark)" />
+    {noindex && <meta name="robots" content="noindex, follow" />}
     <script is:inline>
       const theme = localStorage.getItem("overcast-theme");
       if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;

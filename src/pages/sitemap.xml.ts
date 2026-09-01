@@ -4,6 +4,7 @@ import { getCollection, type CollectionEntry } from "astro:content";
 const staticRoutes = [
   "/",
   "/docs/",
+  "/console/",
   "/contributing/",
   "/downloads/",
   "/releases/",

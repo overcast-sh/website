@@ -25,9 +25,16 @@ const checksumsPattern = /^sha256sums/i;
 
 <div class="divide-y divide-(--oc-line)">
   {
+    /* Phone: the name owns the first line, then size and the download affordance share
+       the second — the plain `grid gap-2` stacked all three, turning eleven assets into
+       a 33-row scroll. From sm up it is the same three-column row it always was. */
     assets.map((asset) => (
-      <a class="grid gap-2 px-5 py-3 no-underline sm:grid-cols-[1fr_auto_auto]" href={asset.downloadUrl} data-asset-name={asset.name}>
-        <span class="flex flex-wrap items-center gap-2">
+      <a
+        class="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3 no-underline hover:bg-(--oc-accent-soft) sm:grid sm:grid-cols-[1fr_auto_auto] sm:gap-4"
+        href={asset.downloadUrl}
+        data-asset-name={asset.name}
+      >
+        <span class="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <span class="font-mono text-sm text-(--oc-text)">{asset.name}</span>
           {checksumsPattern.test(asset.name) && <span class="text-xs text-muted">checksums</span>}
           {platformAssetPattern.test(asset.name) && (
@@ -36,8 +43,8 @@ const checksumsPattern = /^sha256sums/i;
             </span>
           )}
         </span>
-        <span class="text-sm text-muted">{formatSize(asset.size)}</span>
-        <span class="font-mono text-sm">download</span>
+        <span class="text-sm text-muted sm:text-right">{formatSize(asset.size)}</span>
+        <span class="ml-auto font-mono text-sm text-accent sm:ml-0">download</span>
       </a>
     ))
   }
