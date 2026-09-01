@@ -24,9 +24,15 @@ const { label = "Looking for something specific? Search the docs" } = Astro.prop
   <kbd class="text-xs text-muted">/</kbd>
 </button>
 <script>
+  // stopPropagation matters here: #search-open's own listener opens the panel
+  // synchronously (nested inside this handler), but this button sits outside both
+  // the panel and the trigger, so if this click keeps bubbling to <body>'s "click
+  // outside the panel" listener, it reads as an outside click and closes the panel
+  // it just opened.
   document.querySelectorAll("[data-search-promo]").forEach((button) => {
-    button.addEventListener("click", () => {
-      document.getElementById("search-open")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      document.getElementById("search-open")?.click();
     });
   });
 </script>
