@@ -35,7 +35,7 @@ const totalGap = services.reduce((sum, service) => sum + service.gap, 0);
 ---
 
 <SiteLayout title="Support Matrix" description="Overcast service and operation implementation status." searchTitle="Support matrix">
-  <section class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+  <section class="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
     <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><ShieldCheck class="icon" />support matrix</p>
     <h1 class="mt-2 font-mono text-3xl font-bold">Listed service operations, with visible gaps.</h1>
     <p class="mt-4 max-w-3xl leading-7 text-body">
@@ -43,34 +43,39 @@ const totalGap = services.reduce((sum, service) => sum + service.gap, 0);
       <code>501 Not Implemented</code> rather than failing in a way you have to diagnose.
     </p>
 
-    <div class="mt-4 flex flex-wrap items-center gap-2">
+    <div class="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 sm:mt-8">
       <span class="font-mono text-xs text-muted">Status legend:</span>
       {supportLevels.map((level) => (
         <Chip tone={level.tone}>{level.label}</Chip>
       ))}
     </div>
 
-    <dl class="mt-6 grid gap-3 sm:grid-cols-3">
-      <div class="surface rounded-lg p-4">
+    <dl class="mt-6 grid gap-4 sm:mt-8 sm:grid-cols-3">
+      <div class="surface rounded-lg p-5">
         <dd class="m-0 font-mono text-2xl font-bold">{support.implementedOps}<span class="text-muted">/{support.totalOps}</span></dd>
-        <dt class="mt-1 text-xs text-muted">listed operations implemented</dt>
+        <dt class="mt-2 text-xs text-muted">listed operations implemented</dt>
       </div>
-      <div class="surface rounded-lg p-4">
+      <div class="surface rounded-lg p-5">
         <dd class="m-0 font-mono text-2xl font-bold">{completeCount}<span class="text-muted">/{services.length}</span></dd>
-        <dt class="mt-1 text-xs text-muted">services with no gaps</dt>
+        <dt class="mt-2 text-xs text-muted">services with no gaps</dt>
       </div>
-      <div class="surface rounded-lg p-4">
+      <div class="surface rounded-lg p-5">
         <dd class="m-0 font-mono text-2xl font-bold text-(--oc-warning)">{totalGap}</dd>
-        <dt class="mt-1 text-xs text-muted">operations that return 501</dt>
+        <dt class="mt-2 text-xs text-muted">operations that return 501</dt>
       </div>
     </dl>
 
-    <Callout kind="note" title="Alpha">
-      This matrix tracks listed API operations, not full AWS compatibility — alpha behavior still needs broad
-      real-world use.
-    </Callout>
+    {/* The callout qualifies the three numbers directly above it, so it sits one
+        `group` step below them — flush against them, which is what it used to be,
+        read as a fourth tile that had lost its box. */}
+    <div class="mt-4">
+      <Callout kind="note" title="Alpha">
+        This matrix tracks listed API operations, not full AWS compatibility — alpha behavior still needs broad
+        real-world use.
+      </Callout>
+    </div>
 
-    <div class="mt-6 flex flex-col gap-3 sm:flex-row">
+    <div class="mt-6 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:gap-4">
       <div class="relative flex-1">
         <Search class="icon pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
         <input
@@ -97,12 +102,15 @@ const totalGap = services.reduce((sum, service) => sum + service.gap, 0);
       </label>
     </div>
 
-    <p id="support-count" class="mt-3 font-mono text-xs text-muted" role="status" aria-live="polite">
+    {/* The count labels the table, so it keeps a `group` gap to it and takes the
+        full `block` gap from the filters above — the three used to stack at 12px
+        each and read as one undifferentiated pile. */}
+    <p id="support-count" class="mt-6 font-mono text-xs text-muted sm:mt-8" role="status" aria-live="polite">
       Showing all {services.length} services
     </p>
 
-    <div class="surface mt-3 overflow-hidden rounded-lg">
-      <div class="hidden grid-cols-[1fr_130px_110px_96px] gap-4 border-b border-oc px-4 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-muted sm:grid">
+    <div class="surface mt-4 overflow-hidden rounded-lg">
+      <div class="hidden grid-cols-[1fr_130px_110px_96px] gap-4 border-b border-oc px-5 py-3 font-mono text-[11px] uppercase tracking-[0.14em] text-muted sm:grid">
         <span>service</span>
         <span>coverage</span>
         <span class="text-right">implemented</span>
@@ -115,7 +123,7 @@ const totalGap = services.reduce((sum, service) => sum + service.gap, 0);
             the same fact exactly. */}
         {services.map((service) => (
           <a
-            class="flex items-center gap-3 border-b border-oc px-4 py-2.5 text-sm no-underline last:border-b-0 hover:bg-(--oc-accent-soft) sm:grid sm:grid-cols-[1fr_130px_110px_96px] sm:items-center sm:gap-4 sm:py-3"
+            class="flex items-center gap-3 border-b border-oc px-4 py-3 text-sm no-underline last:border-b-0 hover:bg-(--oc-accent-soft) sm:grid sm:grid-cols-[1fr_130px_110px_96px] sm:items-center sm:gap-4 sm:px-5 sm:py-3.5"
             href={`/docs/services/${service.docSlug ?? service.service}/`}
             data-service-row
             data-name={service.displayName.toLowerCase()}
@@ -124,7 +132,7 @@ const totalGap = services.reduce((sum, service) => sum + service.gap, 0);
             data-coverage={service.percent}
             data-size={service.totalOps}
           >
-            <span class="flex min-w-0 flex-1 items-center gap-2.5 font-mono text-(--oc-text) sm:flex-none">
+            <span class="flex min-w-0 flex-1 items-center gap-3 font-mono text-(--oc-text) sm:flex-none">
               <ServiceIcon service={service.service} size="sm" />
               <span class="truncate">{service.displayName}</span>
             </span>
@@ -144,10 +152,10 @@ const totalGap = services.reduce((sum, service) => sum + service.gap, 0);
           </a>
         ))}
       </div>
-      <p id="support-empty" class="hidden px-4 py-8 text-center text-sm text-muted">No service matches that filter.</p>
+      <p id="support-empty" class="hidden px-5 py-10 text-center text-sm text-muted">No service matches that filter.</p>
     </div>
 
-    <div class="mt-4 grid gap-4 text-sm text-muted lg:grid-cols-[1.4fr_1fr] lg:items-start">
+    <div class="mt-6 grid gap-4 text-sm text-muted sm:mt-8 lg:grid-cols-[1.4fr_1fr] lg:items-start">
       <p class="m-0 leading-6">
         <strong class="font-mono text-(--oc-text)">Coverage</strong> is implemented operations over listed ones — the
         operations Overcast tracks for that service, not every operation the AWS API has.

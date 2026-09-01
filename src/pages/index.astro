@@ -67,13 +67,13 @@ const firstCall = `aws --endpoint-url http://localhost:4566 \\
 
 <SiteLayout searchTitle="Overcast — local AWS emulator">
   <section class="border-b border-oc">
-    <div class="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:px-8 lg:py-20">
+    <div class="mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:px-6 sm:py-14 lg:grid-cols-2 lg:px-8 lg:py-20">
       <div class="flex flex-col">
         <p class="font-mono text-xs uppercase tracking-[0.16em] text-accent">alpha local cloud emulation for developers</p>
         <h1 class="mt-4 text-balance font-mono text-[2rem] font-bold leading-[1.15] tracking-normal text-(--oc-text) sm:text-4xl lg:text-[2.75rem]">
           Develop against AWS-compatible services on your laptop and in CI.
         </h1>
-        <p class="mt-5 max-w-2xl text-lg leading-8 text-body">
+        <p class="mt-4 max-w-2xl text-lg leading-8 text-body">
           Overcast is a free, MIT-licensed local emulator for AWS APIs. Run it with Docker, point supported AWS CLI,
           CDK, or SDK workflows at <code>localhost:4566</code>, and inspect what your app creates in the included web
           UI.
@@ -86,21 +86,21 @@ const firstCall = `aws --endpoint-url http://localhost:4566 \\
             Download<ArrowRight class="icon" />
           </a>
         </div>
-        <dl class="mt-auto grid grid-cols-3 gap-3 pt-10">
-          <div class="surface rounded-lg p-4">
+        <dl class="mt-auto grid grid-cols-3 gap-4 pt-10">
+          <div class="surface rounded-lg p-5">
             <dd class="m-0 font-mono text-2xl font-bold">{support.services.length}</dd>
-            <dt class="mt-1 text-[11px] leading-4 text-muted">services registered</dt>
+            <dt class="mt-2 text-[11px] leading-4 text-muted">services registered</dt>
           </div>
-          <div class="surface rounded-lg p-4">
+          <div class="surface rounded-lg p-5">
             <dd class="m-0 font-mono text-2xl font-bold">{support.implementedOps}</dd>
-            <dt class="mt-1 text-[11px] leading-4 text-muted">implemented operations</dt>
+            <dt class="mt-2 text-[11px] leading-4 text-muted">implemented operations</dt>
           </div>
-          <div class="surface min-w-0 rounded-lg p-4">
+          <div class="surface min-w-0 rounded-lg p-5">
             {/* A version string is longer than the two counts beside it; keeping it at
                 text-2xl truncated it to "v0.0.1-al…". Smaller type, same 2rem line box,
                 so the three tiles still line up. */}
             <dd class="m-0 font-mono text-base font-bold leading-8">{latestVersion || "4566"}</dd>
-            <dt class="mt-1 text-[11px] leading-4 text-muted">
+            <dt class="mt-2 text-[11px] leading-4 text-muted">
               {latestVersion ? <a href="/releases/">current release</a> : "default API port"}
             </dt>
           </div>
@@ -117,14 +117,14 @@ const firstCall = `aws --endpoint-url http://localhost:4566 \\
             <CodeBlock code={firstCall} label="first call" />
           </li>
         </ol>
-        <div class="surface rounded-lg p-4">
+        <div class="surface rounded-lg p-5">
           <ArchitectureDiagram />
         </div>
       </div>
     </div>
   </section>
 
-  <section class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+  <section class="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
     <div class="grid gap-4 md:grid-cols-3">
       <article class="surface rounded-lg p-5">
         <div class="flex items-center gap-3">
@@ -160,8 +160,8 @@ const firstCall = `aws --endpoint-url http://localhost:4566 \\
   </section>
 
   <section class="border-y border-oc bg-card">
-    <div class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-      <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+      <div class="mb-6 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p class="font-mono text-xs uppercase tracking-[0.16em] text-muted">service implementation</p>
           <h2 class="mt-2 font-mono text-2xl font-bold">Check listed operations before you depend on them</h2>
@@ -170,16 +170,16 @@ const firstCall = `aws --endpoint-url http://localhost:4566 \\
           All {support.services.length} services<ArrowRight class="icon" />
         </a>
       </div>
-      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {topServices.map((service) => (
-          <a class="surface rounded-lg p-4 no-underline" href={`/docs/services/${service.docSlug ?? service.service}/`}>
-            <div class="flex items-center gap-2.5">
+          <a class="surface rounded-lg p-5 no-underline" href={`/docs/services/${service.docSlug ?? service.service}/`}>
+            <div class="flex items-center gap-3">
               <ServiceIcon service={service.service} />
               <strong class="font-mono text-sm text-(--oc-text)">{service.displayName}</strong>
             </div>
-            <div class="mt-3 font-mono text-xs text-accent">{service.implementedOps}/{service.totalOps}</div>
-            <p class="mt-1 text-xs text-muted">listed operations implemented</p>
-            <span class="coverage-meter mt-3" aria-hidden="true">
+            <div class="mt-4 font-mono text-xs text-accent">{service.implementedOps}/{service.totalOps}</div>
+            <p class="mt-2 text-xs text-muted">listed operations implemented</p>
+            <span class="coverage-meter mt-4" aria-hidden="true">
               <span style={`width:${service.totalOps ? Math.round((service.implementedOps / service.totalOps) * 100) : 0}%`}></span>
             </span>
           </a>
@@ -188,7 +188,7 @@ const firstCall = `aws --endpoint-url http://localhost:4566 \\
     </div>
   </section>
 
-  <section class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+  <section class="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
     <div class="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
       <div>
         <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted">
@@ -198,7 +198,7 @@ const firstCall = `aws --endpoint-url http://localhost:4566 \\
         <p class="mt-4 leading-7 text-body">
           The full image serves a management UI alongside the API. Three things in it are easy to miss:
         </p>
-        <ul class="m-0 mt-5 flex list-none flex-col gap-4 p-0">
+        <ul class="m-0 mt-6 flex list-none flex-col gap-4 p-0">
           <li class="flex gap-3">
             <span class="icon-tile"><Inbox class="icon" /></span>
             <span class="text-sm leading-6 text-body">
@@ -221,7 +221,7 @@ const firstCall = `aws --endpoint-url http://localhost:4566 \\
             </span>
           </li>
         </ul>
-        <a class="mt-6 inline-flex items-center gap-2 font-mono text-sm" href="/console/">
+        <a class="mt-6 inline-flex items-center gap-2 font-mono text-sm sm:mt-8" href="/console/">
           Tour the console<ArrowRight class="icon" />
         </a>
       </div>
@@ -264,42 +264,42 @@ const firstCall = `aws --endpoint-url http://localhost:4566 \\
     </div>
   </section>
 
-  <section class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+  <section class="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
     <p class="font-mono text-xs uppercase tracking-[0.16em] text-muted">where to start</p>
     <h2 class="mt-2 font-mono text-2xl font-bold">Pick the path you're on.</h2>
-    <div class="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div class="mt-6 grid gap-4 sm:mt-8 sm:grid-cols-2 lg:grid-cols-3">
       <a class="surface rounded-lg p-5 no-underline" href="/docs/">
-        <h3 class="flex items-center gap-2.5 font-mono text-base font-bold text-(--oc-text)">
+        <h3 class="flex items-center gap-3 font-mono text-base font-bold text-(--oc-text)">
           <span class="icon-tile"><BookOpen class="icon" /></span>First time here
         </h3>
         <p class="mt-3 text-sm leading-6 text-body">One command to start it, one call to prove it works, then the guides.</p>
       </a>
       <a class="surface rounded-lg p-5 no-underline" href="/docs/sdk-cli/">
-        <h3 class="flex items-center gap-2.5 font-mono text-base font-bold text-(--oc-text)">
+        <h3 class="flex items-center gap-3 font-mono text-base font-bold text-(--oc-text)">
           <span class="icon-tile"><Terminal class="icon" /></span>Wiring up an app
         </h3>
         <p class="mt-3 text-sm leading-6 text-body">Endpoint, credentials, and addressing for the AWS CLI and every SDK.</p>
       </a>
       <a class="surface rounded-lg p-5 no-underline" href="/docs/cdk/">
-        <h3 class="flex items-center gap-2.5 font-mono text-base font-bold text-(--oc-text)">
+        <h3 class="flex items-center gap-3 font-mono text-base font-bold text-(--oc-text)">
           <span class="icon-tile"><Network class="icon" /></span>Deploying with CDK
         </h3>
         <p class="mt-3 text-sm leading-6 text-body">Bootstrap, deploy, and destroy stacks against the local endpoint.</p>
       </a>
       <a class="surface rounded-lg p-5 no-underline" href="/support/">
-        <h3 class="flex items-center gap-2.5 font-mono text-base font-bold text-(--oc-text)">
+        <h3 class="flex items-center gap-3 font-mono text-base font-bold text-(--oc-text)">
           <span class="icon-tile"><ShieldCheck class="icon" /></span>Evaluating for a team
         </h3>
         <p class="mt-3 text-sm leading-6 text-body">Per-service coverage, the gaps behind it, and what alpha commits to.</p>
       </a>
       <a class="surface rounded-lg p-5 no-underline" href="/docs/migration-from-localstack/">
-        <h3 class="flex items-center gap-2.5 font-mono text-base font-bold text-(--oc-text)">
+        <h3 class="flex items-center gap-3 font-mono text-base font-bold text-(--oc-text)">
           <span class="icon-tile"><GitCompare class="icon" /></span>Coming from LocalStack
         </h3>
         <p class="mt-3 text-sm leading-6 text-body">The environment-variable mapping and every known behavioural difference.</p>
       </a>
       <a class="surface rounded-lg p-5 no-underline" href="/contributing/">
-        <h3 class="flex items-center gap-2.5 font-mono text-base font-bold text-(--oc-text)">
+        <h3 class="flex items-center gap-3 font-mono text-base font-bold text-(--oc-text)">
           <span class="icon-tile"><GitPullRequest class="icon" /></span>Contributing
         </h3>
         <p class="mt-3 text-sm leading-6 text-body">Where the source lives, how to build it, and how to report a gap.</p>

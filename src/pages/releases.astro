@@ -24,7 +24,7 @@ const latestDate = formatDate(latest?.data.publishedAt);
 ---
 
 <SiteLayout title="Releases" description="Overcast release history and release assets." searchTitle="Releases">
-  <section class="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
+  <section class="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
     <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><RotateCcwClock class="icon" />release history</p>
     <h1 class="mt-2 font-mono text-3xl font-bold">Overcast releases</h1>
     <p class="mt-4 leading-7 text-body">
@@ -33,14 +33,14 @@ const latestDate = formatDate(latest?.data.publishedAt);
     </p>
 
     {releases.length > 1 && (
-      <div class="mt-6">
+      <div class="mt-6 sm:mt-8">
         <VersionJumpSelect releases={releases.map((release) => ({ tagName: release.data.tagName, name: release.data.name, publishedAt: release.data.publishedAt }))} />
       </div>
     )}
 
     {latest && (
       <article id={latest.data.tagName} class="surface mt-8 scroll-mt-24 rounded-lg p-5">
-        <div class="flex flex-wrap items-start justify-between gap-3 border-b border-oc pb-4">
+        <div class="flex flex-wrap items-start justify-between gap-3 border-b border-oc pb-5">
           <div>
             <p class="font-mono text-xs uppercase tracking-[0.16em] text-muted">latest release</p>
             <h2 class="mt-2 flex flex-wrap items-center gap-2 font-mono text-xl font-bold">
@@ -48,7 +48,7 @@ const latestDate = formatDate(latest?.data.publishedAt);
               {latest.data.prerelease && <span class="rounded soft px-2 py-1 font-mono text-xs text-accent">prerelease</span>}
             </h2>
             {latestDate && (
-              <p class="mt-1 text-sm text-muted">
+              <p class="mt-2 text-sm text-muted">
                 Published <time datetime={toIsoDate(latest.data.publishedAt)} title={formatDateTimeTitle(latest.data.publishedAt)}>{latestDate}</time>
               </p>
             )}
@@ -60,15 +60,15 @@ const latestDate = formatDate(latest?.data.publishedAt);
 
         <div class="mt-5">
           <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><Container class="icon" />Docker images</p>
-          <div class="mt-3">
+          <div class="mt-4">
             <DockerImageRefs version={dockerVersion(latest.data.tagName)} />
           </div>
         </div>
 
-        <div class="mt-5">
+        <div class="mt-6">
           <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><PackageOpen class="icon" />Downloads</p>
           {latest.data.assets.length > 0 ? (
-            <div class="surface mt-3 overflow-hidden rounded-lg">
+            <div class="surface mt-4 overflow-hidden rounded-lg">
               <AssetDownloadList assets={latest.data.assets} />
             </div>
           ) : (
@@ -79,7 +79,7 @@ const latestDate = formatDate(latest?.data.publishedAt);
           )}
         </div>
 
-        <div class="mt-6 border-t border-oc pt-6">
+        <div class="mt-6 border-t border-oc pt-5">
           <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><FileText class="icon" />Changelog</p>
           {latest.data.changelogSections.length > 0 ? (
             <div class="mt-4">
@@ -159,22 +159,22 @@ const latestDate = formatDate(latest?.data.publishedAt);
                     </div>
                   )}
                 </summary>
-                <div class="border-t border-oc px-5 py-4">
+                <div class="border-t border-oc p-5">
                   <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><Container class="icon" />Docker images</p>
-                  <div class="mt-3">
+                  <div class="mt-4">
                     <DockerImageRefs version={dockerVersion(release.data.tagName)} />
                   </div>
 
-                  <p class="mt-5 flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><PackageOpen class="icon" />Downloads</p>
+                  <p class="mt-6 flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><PackageOpen class="icon" />Downloads</p>
                   {release.data.assets.length > 0 ? (
-                    <div class="surface mt-3 overflow-hidden rounded-lg">
+                    <div class="surface mt-4 overflow-hidden rounded-lg">
                       <AssetDownloadList assets={release.data.assets} />
                     </div>
                   ) : (
                     <p class="mt-3 text-sm leading-6 text-body">No release assets were published for this version.</p>
                   )}
 
-                  <div class="mt-5 border-t border-oc pt-5">
+                  <div class="mt-6 border-t border-oc pt-5">
                     <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><FileText class="icon" />Changelog</p>
                     {release.data.changelogSections.length > 0 ? (
                       <div class="mt-4">
@@ -196,7 +196,7 @@ const latestDate = formatDate(latest?.data.publishedAt);
                     )}
                   </div>
 
-                  <a class="mt-5 inline-flex items-center gap-2 font-mono text-xs" href={release.data.url}>
+                  <a class="mt-6 inline-flex items-center gap-2 font-mono text-xs" href={release.data.url}>
                     <FileText class="icon" />View on GitHub
                   </a>
                 </div>
