@@ -1,0 +1,341 @@
+name: Refresh console screenshots
+
+on:
+  repository_dispatch:
+    types: [overcast-release]
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: refresh-screenshots
+  cancel-in-progress: false
+
+env:
+  OVERCAST_REPO: overcast-sh/overcast
+  EXAMPLES_REPO: overcast-sh/examples
+  OVERCAST_IMAGE: ghcr.io/overcast-sh/overcast:latest
+  EMULATOR_CONTAINER: overcast-console-capture
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      should_capture: ${{ steps.fingerprint.outputs.should_capture }}
+      source_ref: ${{ steps.fingerprint.outputs.source_ref }}
+      fingerprint: ${{ steps.fingerprint.outputs.fingerprint }}
+    steps:
+      - name: Checkout website
+        uses: actions/checkout@v4
+
+      - name: Fingerprint console UI
+        id: fingerprint
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DISPATCH_TAG: ${{ github.event.client_payload.tag }}
+        run: |
+          set -euo pipefail
+
+          source_ref="${DISPATCH_TAG:-}"
+          if [[ -z "$source_ref" ]]; then
+            source_ref="$(gh api "repos/$OVERCAST_REPO/releases" --jq '.[0].tag_name' 2>/dev/null || true)"
+          fi
+
+          if [[ -z "$source_ref" || "$source_ref" == "null" ]]; then
+            echo "::error::No releases found for $OVERCAST_REPO; cannot resolve a source ref." >&2
+            exit 1
+          fi
+
+          # The console UI is the only thing these screenshots show, so the fingerprint is the
+          # git tree hash of web/ at the release tag — a release that didn't touch the console
+          # can't change the screenshots. Two cheap API calls, no clone.
+          commit_sha="$(gh api "repos/$OVERCAST_REPO/commits/$source_ref" --jq '.sha')"
+          web_tree="$(gh api "repos/$OVERCAST_REPO/git/trees/$commit_sha" --jq '.tree[] | select(.path == "web" and .type == "tree") | .sha')"
+
+          if [[ -z "$web_tree" ]]; then
+            echo "::error::No web/ directory in $OVERCAST_REPO at $source_ref; cannot fingerprint the console UI." >&2
+            exit 1
+          fi
+
+          fingerprint="$source_ref|$web_tree"
+          previous="$(cat .github/console-ui.lock 2>/dev/null || true)"
+
+          should_capture="true"
+          if [[ "$fingerprint" == "$previous" && "${{ github.event_name }}" != "workflow_dispatch" ]]; then
+            should_capture="false"
+          fi
+
+          echo "source_ref=$source_ref" >> "$GITHUB_OUTPUT"
+          echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
+          echo "should_capture=$should_capture" >> "$GITHUB_OUTPUT"
+
+      - name: Stop run when console UI is unchanged
+        if: steps.fingerprint.outputs.should_capture != 'true'
+        run: echo "Console UI at ${{ steps.fingerprint.outputs.source_ref }} matches .github/console-ui.lock; no capture needed."
+
+  capture:
+    needs: gate
+    if: needs.gate.outputs.should_capture == 'true'
+    # Plain ubuntu-latest rather than the mcr.microsoft.com/playwright container: the capture
+    # needs the emulator on the runner's own localhost (CDK asset publishing resolves
+    # localhost.overcast.sh to 127.0.0.1) and needs to mount the runner's Docker socket for
+    # real Lambda execution. From inside a job container both of those become docker-in-docker
+    # plumbing; a cached browser install costs a few seconds and keeps the topology flat.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      # Dummy credentials for the local emulator — not secrets, and no real AWS is reachable.
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_REGION: us-east-1
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_ENDPOINT_URL: http://localhost.overcast.sh:4566
+      CDK_OUTPUTS_FILE: .cache/cdk-outputs.json
+      CAPTURE_DEBUG_DIR: .tmp/capture-debug
+    steps:
+      - name: Checkout website
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        env:
+          # Browsers are installed (and cached) explicitly below; npm ci should not pull all
+          # three engines through Playwright's postinstall.
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+        run: npm ci
+
+      - name: Resolve Playwright version
+        id: playwright
+        run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Restore Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright.outputs.version }}
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Start Overcast emulator
+        run: |
+          set -euo pipefail
+
+          # OVERCAST_HOSTNAME gives CDK asset publishing a virtual-hosted S3 address; that
+          # hostname is public wildcard DNS pointing at 127.0.0.1. The Docker socket mount is
+          # what makes Lambda invocations run for real instead of stubbing out with 502s.
+          docker run -d --pull always \
+            --name "$EMULATOR_CONTAINER" \
+            -p 4566:4566 \
+            -p 4567:4567 \
+            -e OVERCAST_HOSTNAME=localhost.overcast.sh \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            "$OVERCAST_IMAGE"
+
+      - name: Wait for emulator
+        run: |
+          set -euo pipefail
+
+          if ! getent hosts localhost.overcast.sh > /dev/null; then
+            echo "::error::localhost.overcast.sh does not resolve on this runner; CDK asset publishing will fail." >&2
+            exit 1
+          fi
+
+          # Poll both ports rather than sleeping. The console (4567) is lazy-loaded, so the
+          # first request here is also what warms it up.
+          deadline=$((SECONDS + 240))
+          for port in 4566 4567; do
+            until curl -sS -o /dev/null -m 5 "http://localhost:$port/"; do
+              if [[ "$(docker inspect -f '{{.State.Running}}' "$EMULATOR_CONTAINER")" != "true" ]]; then
+                echo "::error::Emulator container exited before port $port answered." >&2
+                docker logs "$EMULATOR_CONTAINER" || true
+                exit 1
+              fi
+              if (( SECONDS > deadline )); then
+                echo "::error::Emulator port $port did not answer within the timeout." >&2
+                docker logs "$EMULATOR_CONTAINER" || true
+                exit 1
+              fi
+              sleep 2
+            done
+            echo "Emulator port $port is answering."
+          done
+
+      - name: Checkout Overcast examples
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.EXAMPLES_REPO }}
+          path: .cache/source/examples
+
+      - name: Deploy sample stacks
+        working-directory: .cache/source/examples/cdk
+        run: |
+          set -euo pipefail
+
+          if [[ -f package-lock.json ]]; then npm ci; else npm install; fi
+          npm run build
+          npm run bootstrap
+
+          # -c scheduler=false keeps scheduled rules from firing during the capture. CDK ignores
+          # context keys the app doesn't read, so this stays valid if the examples app drops it.
+          npm run deploy -- --all --require-approval never \
+            -c scheduler=false \
+            --outputs-file "$GITHUB_WORKSPACE/$CDK_OUTPUTS_FILE"
+
+          npm run seed
+
+      - name: Resolve S3 bucket from stack outputs
+        id: outputs
+        run: |
+          set -euo pipefail
+
+          bucket="$(jq -r '
+            [ .[] | to_entries[]
+              | select(.key | test("bucket"; "i"))
+              | select(.value | type == "string" and test("^[a-z0-9][a-z0-9.-]{2,62}$"))
+              | .value ]
+            | first // empty' "$CDK_OUTPUTS_FILE")"
+
+          if [[ -z "$bucket" ]]; then
+            echo "::error::No bucket-shaped stack output found in $CDK_OUTPUTS_FILE." >&2
+            cat "$CDK_OUTPUTS_FILE" >&2 || true
+            exit 1
+          fi
+
+          echo "Capturing the object browser for bucket $bucket."
+          echo "bucket=$bucket" >> "$GITHUB_OUTPUT"
+
+      - name: Capture console screenshots
+        env:
+          OVERCAST_CONSOLE_URL: http://localhost:4567
+          OVERCAST_S3_BUCKET: ${{ steps.outputs.outputs.bucket }}
+          OVERCAST_CAPTURE_DEBUG_DIR: ${{ env.CAPTURE_DEBUG_DIR }}
+        run: node scripts/capture-console.mjs
+
+      - name: Emulator logs
+        if: failure()
+        run: docker logs "$EMULATOR_CONTAINER" || true
+
+      - name: Stop Overcast emulator
+        if: always()
+        run: docker rm -f "$EMULATOR_CONTAINER" || true
+
+      - name: Upload capture traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: console-capture-traces
+          path: ${{ env.CAPTURE_DEBUG_DIR }}
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: console-screenshots
+          path: public/console/*.png
+          retention-days: 1
+
+  pull-request:
+    needs: [gate, capture]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout website
+        uses: actions/checkout@v4
+
+      - name: Download screenshots
+        uses: actions/download-artifact@v4
+        with:
+          name: console-screenshots
+          path: public/console
+
+      - name: Record console UI fingerprint
+        id: diff
+        env:
+          FINGERPRINT: ${{ needs.gate.outputs.fingerprint }}
+        run: |
+          set -euo pipefail
+
+          printf '%s\n' "$FINGERPRINT" > .github/console-ui.lock
+          # --untracked-files=all so a brand new public/console lists its files, not just the dir.
+          images="$(git status --porcelain --untracked-files=all -- public/console | awk '{ print $NF }')"
+
+          # Lock-only updates never open a PR: a PR with no visual change is pure review noise.
+          # The lock rides along with the next run that does change an image; until then the
+          # gate re-captures, which is the cheap half of the trade.
+          if [[ -z "$images" ]]; then
+            echo "Console screenshots are unchanged; leaving .github/console-ui.lock at its previous value."
+            git checkout -- .github/console-ui.lock
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          {
+            echo "images<<EOF"
+            printf '%s\n' "$images" | sed 's/^/- `/; s/$/`/'
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      # PRs authored with the default GITHUB_TOKEN do not trigger other workflows, so
+      # deploy.yml's pull_request `build` check never runs on them — and main's ruleset requires
+      # that check, which would leave the PR permanently unmergeable. A GitHub App token makes
+      # the PR an ordinary authored PR, so checks run as usual.
+      - name: Mint GitHub App token
+        id: app-token
+        if: steps.diff.outputs.changed == 'true'
+        continue-on-error: true
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          owner: overcast-sh
+          repositories: website
+
+      - name: Warn about GITHUB_TOKEN fallback
+        if: steps.diff.outputs.changed == 'true' && steps.app-token.outputs.token == ''
+        run: |
+          echo "::warning::No RELEASE_APP_CLIENT_ID / RELEASE_APP_PRIVATE_KEY on this repo, so the PR is authored by github-actions. Required checks will not run on it: add the App secrets, or merge it with a ruleset bypass."
+
+      - name: Open screenshot refresh PR
+        if: steps.diff.outputs.changed == 'true'
+        # Third-party action, pinned by SHA (v8.1.1). Also requires "Allow GitHub Actions to
+        # create and approve pull requests" in the repository's Actions settings.
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1
+        with:
+          token: ${{ steps.app-token.outputs.token || github.token }}
+          base: main
+          branch: screenshots/refresh-${{ needs.gate.outputs.source_ref }}
+          delete-branch: true
+          add-paths: |
+            public/console
+            .github/console-ui.lock
+          commit-message: "Refresh console screenshots for ${{ needs.gate.outputs.source_ref }}"
+          title: "Refresh console screenshots (${{ needs.gate.outputs.source_ref }})"
+          body: |
+            Automated console screenshot refresh from `${{ env.OVERCAST_REPO }}` release
+            **${{ needs.gate.outputs.source_ref }}**.
+
+            Updated images:
+
+            ${{ steps.diff.outputs.images }}
+
+            `.github/console-ui.lock` is bumped to `${{ needs.gate.outputs.fingerprint }}` so
+            later scheduled runs skip this release.
