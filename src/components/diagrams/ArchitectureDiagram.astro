@@ -1,66 +1,272 @@
 ---
-// Homepage hero diagram: "one endpoint stands in for AWS." Your app / CLI / CDK / SDK talk
-// to Overcast's emulated API on :4566, which fans out to the emulated services behind it;
-// the web console reads the same state from :4567 on the side. Static, theme-aware inline
-// SVG — colors come entirely from the site's --oc-* custom properties (brand-tokens.css),
-// so light/dark follow the page automatically with no separate dark-mode markup.
+// Homepage hero diagram: "one endpoint stands in for AWS." Your app talks to Overcast's
+// emulated API, which fans out to the emulated services; the console reads the same
+// process on its own port.
 //
-// Type scale kept to three tiers throughout (matches LayerMapDiagram): 13/700 titles,
-// 11/400 body labels, 10/400 tiny annotations. Corner radii follow the site's card system —
-// 8px on primary boxes (same as .rounded-lg surfaces), 6px on pills/badges (--oc-radius-control).
+// Built from HTML and the site's own tokens rather than as a scaled SVG drawing. The slot
+// it renders into is ~525px on desktop and ~310px on a phone: a fixed viewBox has to shrink
+// to fit the narrow case, which took the old version's labels down to ~6px. Real elements
+// keep type at real sizes at every width and let the rows reflow instead of scaling.
+//
+// Three tiers of type throughout: 15/700 hero title, 13/700 node titles, 11 for labels and
+// chips. Three depths of surface: --oc-bg for the two ordinary nodes (recessed against the
+// card this sits on), --oc-accent-soft for the hero, --oc-card for the chips on top of both.
+import ServiceIcon from "../ServiceIcon.astro";
+
+const clients = ["aws cli", "cdk", "sdk"];
+const ports = [
+  { port: ":4566", role: "emulated AWS API", primary: true },
+  { port: ":4567", role: "web console", primary: false },
+];
+const services = [
+  { service: "s3", label: "S3" },
+  { service: "lambda", label: "Lambda" },
+  { service: "dynamodb", label: "DynamoDB" },
+  { service: "sqs", label: "SQS" },
+  { service: "sns", label: "SNS" },
+];
 ---
 
-<svg
-  viewBox="0 0 720 236"
+<figure
+  class="arch"
   role="img"
-  aria-labelledby="arch-diagram-title"
-  class="h-auto w-full"
-  xmlns="http://www.w3.org/2000/svg"
+  aria-label="Your app, the AWS CLI, CDK, or an SDK point at Overcast's emulated API on port 4566. One Overcast process serves that API and the web console on port 4567, and fans out to the emulated AWS services behind it."
 >
-  <title id="arch-diagram-title">Your app, the AWS CLI, CDK, or an SDK talk to Overcast's emulated API on port 4566, which fans out to the emulated AWS services; the web console reads the same state on port 4567.</title>
+  <div class="arch-node">
+    <span class="arch-node-title">Your app</span>
+    <span class="arch-chip-row">
+      {clients.map((client) => <span class="arch-chip">{client}</span>)}
+    </span>
+  </div>
 
-  <defs>
-    <marker id="arch-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M0 0 L10 5 L0 10 z" fill="var(--oc-accent)"></path>
-    </marker>
-    <marker id="arch-arrow-muted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-      <path d="M0 0 L10 5 L0 10 z" fill="var(--oc-muted)"></path>
-    </marker>
-  </defs>
+  <div class="arch-link">
+    <span class="arch-link-note">--endpoint-url</span>
+  </div>
 
-  <!-- client box -->
-  <rect x="16" y="56" width="164" height="92" rx="8" fill="var(--oc-card)" stroke="var(--oc-line)" stroke-width="1.5"></rect>
-  <text x="98" y="90" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="13" font-weight="700" fill="var(--oc-text)">Your app</text>
-  <text x="98" y="112" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="11" fill="var(--oc-muted)">AWS CLI · CDK</text>
-  <text x="98" y="128" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="11" fill="var(--oc-muted)">SDKs</text>
+  <div class="arch-hero">
+    <div class="arch-hero-head">
+      <span class="arch-mark-tile">
+        <img src="/brand/mark-light.svg" alt="" width="22" height="22" class="brand-logo-light arch-mark" />
+        <img src="/brand/mark-dark.svg" alt="" width="22" height="22" class="brand-logo-dark arch-mark" />
+      </span>
+      <span>
+        <span class="arch-hero-title">Overcast</span>
+        <span class="arch-hero-note">one process, one endpoint</span>
+      </span>
+    </div>
+    <div class="arch-port-row">
+      {ports.map(({ port, role, primary }) => (
+        <span class="arch-port">
+          <span class:list={["arch-port-num", primary && "is-primary"]}>{port}</span>
+          <span class="arch-port-role">{role}</span>
+        </span>
+      ))}
+    </div>
+  </div>
 
-  <!-- arrow client -> overcast -->
-  <line x1="180" y1="102" x2="266" y2="102" stroke="var(--oc-accent)" stroke-width="2" marker-end="url(#arch-arrow)"></line>
-  <text x="223" y="90" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="10" fill="var(--oc-muted)">--endpoint-url</text>
+  <div class="arch-link"></div>
 
-  <!-- overcast box (emphasis zone: this is the product) -->
-  <rect x="270" y="32" width="180" height="140" rx="8" fill="var(--oc-accent-soft)" stroke="var(--oc-accent)" stroke-width="1.5"></rect>
-  <text x="360" y="68" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="13" font-weight="700" fill="var(--oc-text)">Overcast</text>
-  <text x="360" y="88" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="11" fill="var(--oc-muted)">emulated API</text>
-  <rect x="300" y="104" width="120" height="26" rx="6" fill="var(--oc-card)" stroke="var(--oc-line)"></rect>
-  <text x="360" y="121" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="11" font-weight="700" fill="var(--oc-accent)">:4566</text>
-  <text x="360" y="154" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="10" fill="var(--oc-muted)">one endpoint, one process</text>
+  <div class="arch-node">
+    <span class="arch-node-head">
+      <span class="arch-node-title">Services</span>
+      <span class="arch-more">50 more &#8594;</span>
+    </span>
+    <span class="arch-chip-row">
+      {services.map(({ service, label }) => (
+        <span class="arch-service">
+          <ServiceIcon service={service} size="sm" />
+          {label}
+        </span>
+      ))}
+    </span>
+  </div>
+</figure>
 
-  <!-- arrow overcast -> services -->
-  <line x1="450" y1="102" x2="536" y2="102" stroke="var(--oc-accent)" stroke-width="2" marker-end="url(#arch-arrow)"></line>
+<style>
+  .arch {
+    margin: 0;
+    font-family: var(--oc-font-mono);
+  }
 
-  <!-- services box -->
-  <rect x="540" y="12" width="164" height="180" rx="8" fill="var(--oc-card)" stroke="var(--oc-line)" stroke-width="1.5"></rect>
-  <text x="622" y="36" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="13" font-weight="700" fill="var(--oc-text)">Services</text>
-  {["S3", "Lambda", "DynamoDB", "SQS / SNS", "50 more →"].map((label, i) => (
-    <>
-      <rect x="556" y={48 + i * 29} width="132" height="22" rx="6" fill="var(--oc-bg)" stroke="var(--oc-line)"></rect>
-      <text x="622" y={63 + i * 29} text-anchor="middle" font-family="var(--oc-font-mono)" font-size="10" fill={i === 4 ? "var(--oc-muted)" : "var(--oc-body)"}>{label}</text>
-    </>
-  ))}
+  /* The two ordinary nodes: recessed a step below the card the figure sits on,
+   * so the accent hero between them is the only thing that comes forward. */
+  .arch-node {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--oc-space-2) var(--oc-space-4);
+    padding: var(--oc-space-3) var(--oc-space-4);
+    border: 1px solid var(--oc-line);
+    border-radius: var(--oc-radius-card);
+    background: var(--oc-bg);
+  }
 
-  <!-- console, reading from the side -->
-  <line x1="360" y1="172" x2="360" y2="190" stroke="var(--oc-muted)" stroke-width="1.5" stroke-dasharray="3 3" marker-end="url(#arch-arrow-muted)"></line>
-  <rect x="270" y="194" width="180" height="30" rx="8" fill="var(--oc-card)" stroke="var(--oc-line)" stroke-dasharray="3 3"></rect>
-  <text x="360" y="214" text-anchor="middle" font-family="var(--oc-font-mono)" font-size="11" fill="var(--oc-muted)">web console &#183; :4567</text>
-</svg>
+  .arch-node-head {
+    display: flex;
+    flex: 1 1 100%;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--oc-space-3);
+  }
+
+  .arch-node-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--oc-text);
+  }
+
+  .arch-more {
+    font-size: 11px;
+    color: var(--oc-accent);
+  }
+
+  .arch-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--oc-space-2);
+  }
+
+  .arch-chip {
+    padding: 3px 8px;
+    border: 1px solid var(--oc-line);
+    border-radius: 5px;
+    background: var(--oc-card);
+    font-size: 11px;
+    color: var(--oc-muted);
+  }
+
+  .arch-service {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 10px 4px 4px;
+    border: 1px solid var(--oc-line);
+    border-radius: 7px;
+    background: var(--oc-card);
+    font-size: 11px;
+    color: var(--oc-body);
+  }
+
+  /* Connector: a 2px rule down the centre line with a triangle at its foot.
+   * Drawn from tokens rather than a marker so it stays crisp at any width. */
+  .arch-link {
+    position: relative;
+    height: 30px;
+  }
+
+  .arch-link::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 7px;
+    left: 50%;
+    width: 2px;
+    margin-left: -1px;
+    background: var(--oc-accent);
+  }
+
+  .arch-link::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    margin-left: -5px;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 8px solid var(--oc-accent);
+  }
+
+  .arch-link-note {
+    position: absolute;
+    top: 50%;
+    left: calc(50% + 12px);
+    transform: translateY(-50%);
+    font-size: 11px;
+    line-height: 1;
+    color: var(--oc-muted);
+    white-space: nowrap;
+  }
+
+  /* The hero. One soft accent glow, and it is the only shadow in the figure. */
+  .arch-hero {
+    padding: var(--oc-space-4);
+    border: 1px solid var(--oc-accent);
+    border-radius: 12px;
+    background: var(--oc-accent-soft);
+    box-shadow: 0 10px 30px -14px color-mix(in oklab, var(--oc-accent) 65%, transparent);
+  }
+
+  .arch-hero-head {
+    display: flex;
+    align-items: center;
+    gap: var(--oc-space-3);
+  }
+
+  /* The mark sits on its own card-coloured tile: on the accent panel behind it
+   * neither the light nor the dark mark has enough contrast on its own. */
+  .arch-mark-tile {
+    display: inline-flex;
+    flex: none;
+    width: 34px;
+    height: 34px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9px;
+    background: var(--oc-card);
+    border: 1px solid color-mix(in oklab, var(--oc-accent) 28%, transparent);
+  }
+
+  .arch-mark {
+    flex: none;
+    width: 22px;
+    height: 22px;
+  }
+
+  .arch-hero-title {
+    display: block;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--oc-text);
+  }
+
+  .arch-hero-note {
+    display: block;
+    font-size: 11px;
+    line-height: 1.45;
+    color: var(--oc-muted);
+  }
+
+  .arch-port-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--oc-space-2);
+    margin-top: var(--oc-space-3);
+  }
+
+  .arch-port {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 7px;
+    padding: 5px 10px;
+    border: 1px solid var(--oc-line);
+    border-radius: var(--oc-radius-control);
+    background: var(--oc-card);
+  }
+
+  .arch-port-num {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--oc-body);
+  }
+
+  .arch-port-num.is-primary {
+    color: var(--oc-accent);
+  }
+
+  .arch-port-role {
+    font-size: 11px;
+    color: var(--oc-muted);
+  }
+</style>
