@@ -1,0 +1,235 @@
+@import "tailwindcss";
+@import "./brand-tokens.css";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --font-mono: var(--oc-font-mono);
+  --font-sans: var(--oc-font-sans);
+}
+
+html {
+  background: var(--oc-bg);
+  color: var(--oc-text);
+  font-family: var(--oc-font-sans);
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+a:not([class]) {
+  color: var(--oc-accent);
+  text-decoration: none;
+}
+
+a:not([class]):hover {
+  text-decoration: underline;
+}
+
+code,
+pre,
+kbd {
+  font-family: var(--font-mono);
+}
+
+.surface {
+  background: var(--oc-card);
+  border: 1px solid var(--oc-line);
+}
+
+.brand-logo-dark {
+  display: none;
+}
+
+:root[data-theme="dark"] .brand-logo-light {
+  display: none;
+}
+
+:root[data-theme="dark"] .brand-logo-dark {
+  display: block;
+}
+
+:root[data-theme="light"] .brand-logo-light {
+  display: block;
+}
+
+:root[data-theme="light"] .brand-logo-dark {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .brand-logo-light {
+    display: none;
+  }
+
+  :root:not([data-theme="light"]) .brand-logo-dark {
+    display: block;
+  }
+}
+
+.soft {
+  background: var(--oc-accent-soft);
+}
+
+.text-body {
+  color: var(--oc-body);
+}
+
+.text-muted {
+  color: var(--oc-muted);
+}
+
+.text-accent {
+  color: var(--oc-accent);
+}
+
+.border-oc {
+  border-color: var(--oc-line);
+}
+
+.bg-page {
+  background: var(--oc-bg);
+}
+
+.bg-card {
+  background: var(--oc-card);
+}
+
+.copy-button {
+  border: 1px solid var(--oc-line);
+  background: var(--oc-card);
+  color: var(--oc-muted);
+}
+
+.copy-button:hover {
+  color: var(--oc-accent);
+  border-color: var(--oc-accent);
+}
+
+.icon {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  stroke-width: 1.75;
+}
+
+.icon-tile {
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--oc-radius-control);
+  background: var(--oc-accent-soft);
+  color: var(--oc-accent);
+}
+
+.prose {
+  --tw-prose-body: var(--oc-body);
+  --tw-prose-headings: var(--oc-text);
+  --tw-prose-links: var(--oc-accent);
+  --tw-prose-bold: var(--oc-text);
+  --tw-prose-counters: var(--oc-muted);
+  --tw-prose-bullets: var(--oc-line);
+  --tw-prose-hr: var(--oc-line);
+  --tw-prose-quotes: var(--oc-text);
+  --tw-prose-quote-borders: var(--oc-line);
+  --tw-prose-captions: var(--oc-muted);
+  --tw-prose-code: var(--oc-text);
+  --tw-prose-pre-code: var(--oc-text);
+  --tw-prose-pre-bg: var(--oc-card);
+  --tw-prose-th-borders: var(--oc-line);
+  --tw-prose-td-borders: var(--oc-line);
+  max-width: none;
+}
+
+.prose pre {
+  border: 1px solid var(--oc-line);
+  border-radius: 8px;
+}
+
+.code-block .shiki,
+.prose .astro-code {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.7;
+  overflow-x: auto;
+  padding: 1rem;
+}
+
+.code-block .shiki {
+  background: #0d1117 !important;
+  color: var(--shiki-dark) !important;
+}
+
+.prose .astro-code {
+  background: var(--oc-card) !important;
+  color: var(--shiki-light) !important;
+  margin-block: 1.7142857em;
+}
+
+.code-block .shiki span {
+  color: var(--shiki-dark) !important;
+  font-style: var(--shiki-dark-font-style) !important;
+  font-weight: var(--shiki-dark-font-weight) !important;
+  text-decoration: var(--shiki-dark-text-decoration) !important;
+}
+
+.prose .astro-code span {
+  color: var(--shiki-light) !important;
+  font-style: var(--shiki-light-font-style) !important;
+  font-weight: var(--shiki-light-font-weight) !important;
+  text-decoration: var(--shiki-light-text-decoration) !important;
+}
+
+:root[data-theme="dark"] .prose .astro-code span {
+  color: var(--shiki-dark) !important;
+  font-style: var(--shiki-dark-font-style) !important;
+  font-weight: var(--shiki-dark-font-weight) !important;
+  text-decoration: var(--shiki-dark-text-decoration) !important;
+}
+
+:root[data-theme="dark"] .prose .astro-code {
+  color: var(--shiki-dark) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .prose .astro-code span {
+    color: var(--shiki-dark) !important;
+    font-style: var(--shiki-dark-font-style) !important;
+    font-weight: var(--shiki-dark-font-weight) !important;
+    text-decoration: var(--shiki-dark-text-decoration) !important;
+  }
+
+  :root:not([data-theme="light"]) .prose .astro-code {
+    color: var(--shiki-dark) !important;
+  }
+}
+
+.prose :not(pre) > code {
+  background: var(--oc-accent-soft);
+  border-radius: 4px;
+  padding: 0.15em 0.35em;
+}
+
+.prose :not(pre) > code::before,
+.prose :not(pre) > code::after {
+  content: none;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/JetBrainsMono-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/JetBrainsMono-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}

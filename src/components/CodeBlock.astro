@@ -1,0 +1,36 @@
+---
+import { codeToHtml, type BundledLanguage } from "shiki";
+
+interface Props {
+  code: string;
+  label?: string;
+  language?: BundledLanguage;
+}
+
+const { code, label = "terminal", language = "bash" } = Astro.props;
+const highlightedCode = await codeToHtml(code, {
+  lang: language,
+  themes: {
+    light: "github-light",
+    dark: "github-dark",
+  },
+  defaultColor: false,
+});
+---
+
+<div class="surface overflow-hidden rounded-lg">
+  <div class="flex items-center justify-between border-b border-oc px-4 py-2 font-mono text-xs text-muted">
+    <span>&gt;_ {label}</span>
+    <button class="copy-button rounded px-2 py-1" data-copy={code}>copy</button>
+  </div>
+  <div class="code-block overflow-x-auto" set:html={highlightedCode}></div>
+</div>
+<script>
+  document.querySelectorAll("[data-copy]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      await navigator.clipboard.writeText(button.getAttribute("data-copy") || "");
+      button.textContent = "copied";
+      window.setTimeout(() => (button.textContent = "copy"), 1200);
+    });
+  });
+</script>

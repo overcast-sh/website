@@ -1,0 +1,140 @@
+---
+import SiteLayout from "../components/SiteLayout.astro";
+import CodeBlock from "../components/CodeBlock.astro";
+import { ArrowRight, BookOpen, CloudOff, GitCompare, Network, Route, ScanSearch, ShieldCheck, Terminal } from "@lucide/astro";
+import { getServiceSupport, getSourceManifest } from "../lib/generated-content";
+
+const support = await getServiceSupport();
+const source = await getSourceManifest();
+const topServices = support.services.slice().sort((a, b) => b.implementedOps - a.implementedOps).slice(0, 8);
+const quickStart = `docker run --rm \\
+  -p 4566:4566 \\
+  -p 4567:4567 \\
+  ghcr.io/neaox/overcast:latest`;
+---
+
+<SiteLayout>
+  <section class="border-b border-oc">
+    <div class="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:py-24">
+      <div>
+        <p class="font-mono text-xs uppercase tracking-[0.16em] text-accent">alpha local cloud emulation for developers</p>
+        <h1 class="mt-4 max-w-4xl font-mono text-4xl font-bold leading-tight tracking-normal text-(--oc-text) sm:text-5xl">
+          Develop against AWS-compatible services on your laptop and in CI.
+        </h1>
+        <p class="mt-5 max-w-2xl text-lg leading-8 text-body">
+          Overcast is a free, MIT-licensed local emulator for AWS APIs. Run it with Docker, point supported AWS CLI,
+          CDK, or SDK workflows at <code>localhost:4566</code>, and inspect what your app creates in the included web
+          UI.
+        </p>
+        <div class="mt-8 flex flex-wrap gap-3">
+          <a class="inline-flex items-center gap-2 rounded-md border border-(--oc-accent) bg-(--oc-accent) px-4 py-2 font-mono text-sm font-bold text-white no-underline" href="/docs/">
+            <Terminal class="icon" />Read the docs
+          </a>
+          <a class="inline-flex items-center gap-2 rounded-md border border-oc px-4 py-2 font-mono text-sm text-(--oc-text) no-underline" href="/downloads/">
+            Download<ArrowRight class="icon" />
+          </a>
+        </div>
+      </div>
+      <div class="space-y-4">
+        <CodeBlock code={quickStart} label="start overcast" />
+        <div class="grid grid-cols-3 gap-3">
+          <div class="surface rounded-lg p-4">
+            <div class="font-mono text-2xl font-bold">{support.services.length}</div>
+            <div class="mt-1 text-xs text-muted">services registered</div>
+          </div>
+          <div class="surface rounded-lg p-4">
+            <div class="font-mono text-2xl font-bold">{support.implementedOps}</div>
+            <div class="mt-1 text-xs text-muted">implemented operations</div>
+          </div>
+          <div class="surface rounded-lg p-4">
+            <div class="font-mono text-2xl font-bold">4566</div>
+            <div class="mt-1 text-xs text-muted">default API port</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+    <div class="grid gap-4 md:grid-cols-3">
+      <article class="surface rounded-lg p-5">
+        <div class="flex items-center gap-3">
+          <span class="icon-tile"><GitCompare class="icon" /></span>
+          <h2 class="font-mono text-lg font-bold">Use familiar AWS tooling</h2>
+        </div>
+        <p class="mt-3 text-sm leading-6 text-body">
+          Keep the CLI, CDK, SDKs, and Terraform workflows where Overcast already supports the services you need.
+          Start by changing the endpoint URL, then check the support matrix for gaps.
+        </p>
+      </article>
+      <article class="surface rounded-lg p-5">
+        <div class="flex items-center gap-3">
+          <span class="icon-tile"><CloudOff class="icon" /></span>
+          <h2 class="font-mono text-lg font-bold">No paid feature gates</h2>
+        </div>
+        <p class="mt-3 text-sm leading-6 text-body">
+          Use implemented features without an auth token, telemetry, usage limits, or a paid tier. The support matrix
+          shows what works today and what intentionally returns <code>501</code>.
+        </p>
+      </article>
+      <article class="surface rounded-lg p-5">
+        <div class="flex items-center gap-3">
+          <span class="icon-tile"><ScanSearch class="icon" /></span>
+          <h2 class="font-mono text-lg font-bold">Inspect local state</h2>
+        </div>
+        <p class="mt-3 text-sm leading-6 text-body">
+          Use the web UI to inspect resources, follow the event stream, view metrics, and debug SNS, SQS, Lambda, and
+          email flows while your tests run.
+        </p>
+      </article>
+    </div>
+  </section>
+
+  <section class="border-y border-oc bg-card">
+    <div class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+      <div class="mb-6 flex items-end justify-between gap-4">
+        <div>
+          <p class="font-mono text-xs uppercase tracking-[0.16em] text-muted">service implementation</p>
+          <h2 class="mt-2 font-mono text-2xl font-bold">Check listed operations before you depend on them</h2>
+        </div>
+        <a class="font-mono text-sm" href="/support/">View full matrix</a>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {topServices.map((service) => (
+          <a class="surface rounded-lg p-4 no-underline" href={`/docs/services/${service.service}/`}>
+            <div class="flex items-center justify-between gap-3">
+              <strong class="font-mono text-sm text-(--oc-text)">{service.displayName}</strong>
+              <span class="font-mono text-xs text-accent">{service.implementedOps}/{service.totalOps}</span>
+            </div>
+            <p class="mt-2 text-xs text-muted">listed operations implemented</p>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+    <div class="grid gap-8 lg:grid-cols-[0.85fr_1.15fr]">
+      <div>
+        <p class="font-mono text-xs uppercase tracking-[0.16em] text-muted">docs from release source</p>
+        <h2 class="mt-2 flex items-center gap-3 font-mono text-2xl font-bold">
+          <span class="icon-tile"><BookOpen class="icon" /></span>Documentation follows the tracked Overcast release.
+        </h2>
+        <p class="mt-4 leading-7 text-body">
+          This site includes {source.docsCount} public documentation pages from the configured Overcast source ref
+          <code class="mx-1 rounded soft px-1.5 py-0.5">{source.sourceRef}</code>. Published docs stay tied to the
+          release they describe, while internal plans and contributor-only notes stay out of the public site.
+        </p>
+      </div>
+      <div class="surface rounded-lg p-5">
+        <h3 class="font-mono text-sm font-bold">Common first steps</h3>
+        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+          <a class="inline-flex items-center gap-2 rounded-md border border-oc p-3 no-underline" href="/docs/sdk-cli/"><Terminal class="icon text-accent" />Configure AWS CLI and SDKs</a>
+          <a class="inline-flex items-center gap-2 rounded-md border border-oc p-3 no-underline" href="/docs/cdk/"><Network class="icon text-accent" />Use CDK locally</a>
+          <a class="inline-flex items-center gap-2 rounded-md border border-oc p-3 no-underline" href="/docs/networking/"><Route class="icon text-accent" />Host-routed endpoints</a>
+          <a class="inline-flex items-center gap-2 rounded-md border border-oc p-3 no-underline" href="/compare/localstack/"><ShieldCheck class="icon text-accent" />Migrate from LocalStack</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</SiteLayout>

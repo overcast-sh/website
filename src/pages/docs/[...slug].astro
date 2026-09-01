@@ -1,0 +1,58 @@
+---
+import SiteLayout from "../../components/SiteLayout.astro";
+import { getCollection, type CollectionEntry } from "astro:content";
+import { overcastEditUrl } from "../../lib/github-links";
+
+type DocEntry = CollectionEntry<"docs">;
+
+export async function getStaticPaths() {
+  const docs: DocEntry[] = await getCollection("docs");
+  return docs.map((doc) => ({
+    params: { slug: doc.data.slug === "docs" ? undefined : doc.data.slug.replace(/^docs\//, "") },
+    props: { doc },
+  }));
+}
+
+const { doc } = Astro.props as { doc: DocEntry };
+const docs: DocEntry[] = await getCollection("docs");
+const html = doc.rendered?.html ?? "";
+const editUrl = await overcastEditUrl(doc.data.sourcePath);
+const grouped = Object.entries(
+  docs.reduce<Record<string, DocEntry[]>>((groups, entry) => {
+    groups[entry.data.section] ??= [];
+    groups[entry.data.section].push(entry);
+    return groups;
+  }, {}),
+);
+---
+
+<SiteLayout title={doc.data.title} description={doc.data.description} editUrl={editUrl}>
+  <div class="mx-auto grid max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[260px_1fr] lg:px-8">
+    <aside class="lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+      <a class="mb-4 block font-mono text-sm font-bold" href="/docs/">Documentation</a>
+      {grouped.map(([section, entries]) => (
+        <div class="mb-5">
+          <h2 class="mb-2 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">{section}</h2>
+          <nav class="space-y-1">
+            {entries?.map((entry) => (
+              <a
+                class={`block rounded-md px-2 py-1.5 text-sm no-underline ${entry.data.slug === doc.data.slug ? "soft text-(--oc-text)" : "text-muted"}`}
+                href={`/${entry.data.slug}/`}
+              >
+                {entry.data.title}
+              </a>
+            ))}
+          </nav>
+        </div>
+      ))}
+    </aside>
+    <article class="min-w-0">
+      <div class="mb-8 border-b border-oc pb-6">
+        <p class="font-mono text-xs uppercase tracking-[0.16em] text-muted">{doc.data.section}</p>
+        <h1 class="mt-2 font-mono text-3xl font-bold">{doc.data.title}</h1>
+        {doc.data.description && <p class="mt-3 max-w-3xl text-body">{doc.data.description}</p>}
+      </div>
+      <div class="prose" set:html={html} data-pagefind-body></div>
+    </article>
+  </div>
+</SiteLayout>

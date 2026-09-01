@@ -1,0 +1,32 @@
+{
+  "name": "@overcast-sh/website",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "predev": "npm run content:sync",
+    "dev": "node scripts/run-command.ts astro dev",
+    "prebuild": "npm run content:sync",
+    "build": "node scripts/run-command.ts astro build && node scripts/run-command.ts pagefind --site dist",
+    "preview": "node scripts/run-command.ts astro preview",
+    "content:sync": "node scripts/sync-overcast-content.ts",
+    "check": "node scripts/run-command.ts astro check"
+  },
+  "dependencies": {
+    "@astrojs/check": "^0.9.4",
+    "@lucide/astro": "^1.27.0",
+    "@tailwindcss/typography": "^0.5.15",
+    "@tailwindcss/vite": "^4.0.0",
+    "astro": "^5.13.0",
+    "gray-matter": "^4.0.3",
+    "pagefind": "^1.1.1",
+    "shiki": "^3.23.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.2",
+    "zod4": "npm:zod@^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "wrangler": "^4.114.0"
+  }
+}

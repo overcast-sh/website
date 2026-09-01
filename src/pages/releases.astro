@@ -1,0 +1,77 @@
+---
+import SiteLayout from "../components/SiteLayout.astro";
+import { PackageCheck, RotateCcwClock } from "@lucide/astro";
+import { getCollection, type CollectionEntry } from "astro:content";
+import { sortReleasesNewestFirst } from "../lib/releases";
+
+const releases: CollectionEntry<"releases">[] = sortReleasesNewestFirst(await getCollection("releases"));
+const latest = releases[0];
+const olderReleases = releases.slice(1);
+
+function formatReleaseDate(publishedAt: string | null | undefined): string {
+  return publishedAt ? new Date(publishedAt).toLocaleDateString("en-NZ", { dateStyle: "medium" }) : "";
+}
+
+const latestDate = formatReleaseDate(latest?.data.publishedAt);
+---
+
+<SiteLayout title="Releases" description="Overcast release history and release assets.">
+  <section class="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
+    <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><RotateCcwClock class="icon" />release history</p>
+    <h1 class="mt-2 font-mono text-3xl font-bold">Overcast releases</h1>
+    <p class="mt-4 leading-7 text-body">
+      Release notes and asset metadata are fetched from GitHub at build time. Use this page to find published versions,
+      then check the linked GitHub release for platform assets and full change details.
+    </p>
+    {latest?.rendered?.html && (
+      <article class="surface mt-8 rounded-lg p-5">
+        <div class="border-b border-oc pb-4">
+          <p class="font-mono text-xs uppercase tracking-[0.16em] text-muted">latest changelog</p>
+          <h2 class="mt-2 font-mono text-xl font-bold">
+            <a href={latest.data.url}>{latest.data.name}</a>
+          </h2>
+          {latestDate && (
+            <time class="mt-1 block text-sm text-muted" datetime={latest.data.publishedAt || undefined}>
+              Published {latestDate}
+            </time>
+          )}
+        </div>
+        <div class="prose mt-5" set:html={latest.rendered.html}></div>
+      </article>
+    )}
+    {olderReleases.length > 0 && (
+      <div class="mt-8 space-y-5">
+        <h2 class="font-mono text-xl font-bold">Older versions</h2>
+        {olderReleases.map((release) => {
+          const releaseDate = formatReleaseDate(release.data.publishedAt);
+          return (
+            <article class="surface rounded-lg p-5">
+              <div class="flex flex-wrap items-center gap-3">
+                <h2 class="font-mono text-xl font-bold">
+                  <a href={release.data.url}>{release.data.name}</a>
+                </h2>
+                {release.data.prerelease && <span class="rounded soft px-2 py-1 font-mono text-xs text-accent">prerelease</span>}
+                {releaseDate && (
+                  <time class="text-sm text-muted" datetime={release.data.publishedAt || undefined}>
+                    {releaseDate}
+                  </time>
+                )}
+              </div>
+              {release.data.summary && <p class="mt-3 line-clamp-4 text-sm leading-6 text-body">{release.data.summary}</p>}
+              <div class="mt-3 flex flex-wrap items-center gap-4 font-mono text-xs text-muted">
+                {release.data.assets.length > 0 && <span class="flex items-center gap-2"><PackageCheck class="icon" />{release.data.assets.length} release assets</span>}
+                <a href={release.data.url}>View changelog</a>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    )}
+    {releases.length === 0 && (
+      <div class="surface mt-8 rounded-lg p-5 text-sm leading-6 text-body">
+        GitHub release metadata could not be loaded for this build. Check the
+        <a href="https://github.com/Neaox/overcast/releases"> GitHub releases page</a> for published versions and assets.
+      </div>
+    )}
+  </section>
+</SiteLayout>

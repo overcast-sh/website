@@ -1,0 +1,130 @@
+---
+import SiteLayout from "../components/SiteLayout.astro";
+import CodeBlock from "../components/CodeBlock.astro";
+import { Binary, Container, Download, FileText, PackageOpen, RotateCcwClock } from "@lucide/astro";
+import { getCollection, type CollectionEntry } from "astro:content";
+import { repositoryUrl } from "../lib/github-links";
+import { newestReleaseWithAssets, sortReleasesNewestFirst } from "../lib/releases";
+
+type ReleaseEntry = CollectionEntry<"releases">;
+type ReleaseAsset = ReleaseEntry["data"]["assets"][number];
+
+function formatReleaseDate(publishedAt: string | null | undefined): string {
+  return publishedAt ? new Date(publishedAt).toLocaleDateString("en-NZ", { dateStyle: "medium" }) : "";
+}
+
+const releases: ReleaseEntry[] = sortReleasesNewestFirst(await getCollection("releases"));
+const latestRelease = releases[0];
+const latestWithAssets = newestReleaseWithAssets(releases);
+const dockerFull = `docker run --rm \\
+  -p 4566:4566 \\
+  -p 4567:4567 \\
+  ghcr.io/neaox/overcast:latest`;
+const dockerSlim = `docker run --rm \\
+  -p 4566:4566 \\
+  ghcr.io/neaox/overcast-slim:latest`;
+const assets: ReleaseAsset[] = latestWithAssets?.data.assets || [];
+const releasesUrl = latestWithAssets?.data.url || `${repositoryUrl()}/releases`;
+const latestChangelogHtml = latestRelease?.rendered?.html || "";
+const latestReleaseDate = formatReleaseDate(latestRelease?.data.publishedAt);
+const assetsReleaseDate = formatReleaseDate(latestWithAssets?.data.publishedAt);
+---
+
+<SiteLayout title="Downloads" description="Download Overcast Docker images and native binaries.">
+  <section class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+    <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><Download class="icon" />downloads</p>
+    <h1 class="mt-2 font-mono text-3xl font-bold">Start with Docker. Use native binaries when you need them.</h1>
+    <p class="mt-4 max-w-3xl leading-7 text-body">
+      The full image includes the AWS-compatible API on port <code>4566</code> and the web management console on
+      port <code>4567</code>. The slim image is intended for headless CI and local service tests.
+    </p>
+    <div class="mt-6 flex flex-wrap gap-3">
+      <a class="copy-button inline-flex items-center gap-2 rounded-md px-3 py-2 font-mono text-sm no-underline" href="/releases/">
+        <RotateCcwClock class="icon" />Older versions
+      </a>
+      <a class="copy-button inline-flex items-center gap-2 rounded-md px-3 py-2 font-mono text-sm no-underline" href={releasesUrl}>
+        <FileText class="icon" />GitHub releases
+      </a>
+    </div>
+  </section>
+
+  <section class="mx-auto grid max-w-7xl gap-6 px-4 pb-12 sm:px-6 lg:grid-cols-2 lg:px-8">
+    <div>
+      <div class="mb-3 flex items-center gap-2 font-mono text-sm"><span class="icon-tile"><Container class="icon" /></span>Full image</div>
+      <CodeBlock code={dockerFull} label="full image with web UI" language="bash" />
+    </div>
+    <div>
+      <div class="mb-3 flex items-center gap-2 font-mono text-sm"><span class="icon-tile"><Binary class="icon" /></span>Slim image</div>
+      <CodeBlock code={dockerSlim} label="slim CI image" language="bash" />
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-7xl px-4 pb-14 sm:px-6 lg:px-8">
+    <div class="surface overflow-hidden rounded-lg">
+      <div class="border-b border-oc px-5 py-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 class="flex items-center gap-2 font-mono text-lg font-bold"><PackageOpen class="icon" />Native binaries</h2>
+          <a class="inline-flex items-center gap-2 font-mono text-xs" href="/releases/">
+            <RotateCcwClock class="icon" />Older versions
+          </a>
+        </div>
+        <p class="mt-1 text-sm text-muted">
+          Release asset metadata is fetched from GitHub at build time.
+          {latestWithAssets && (
+            <>
+              {" "}Showing assets from <a href={latestWithAssets.data.url}>{latestWithAssets.data.name}</a>
+              {assetsReleaseDate && <> published <time datetime={latestWithAssets.data.publishedAt || undefined}>{assetsReleaseDate}</time></>}.
+            </>
+          )}
+        </p>
+      </div>
+      {assets.length > 0 ? (
+        <div class="divide-y divide-(--oc-line)">
+          {assets.map((asset: ReleaseAsset) => (
+            <a class="grid gap-2 px-5 py-3 no-underline sm:grid-cols-[1fr_auto_auto]" href={asset.downloadUrl}>
+              <span class="font-mono text-sm text-(--oc-text)">{asset.name}</span>
+              <span class="text-sm text-muted">{Math.round(asset.size / 1024 / 1024)} MB</span>
+              <span class="font-mono text-sm">download</span>
+            </a>
+          ))}
+        </div>
+      ) : (
+        <div class="px-5 py-8 text-sm text-body">
+          Native binary links could not be loaded for this build. Use the
+          <a href={releasesUrl}> GitHub releases page</a> for the latest assets.
+        </div>
+      )}
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-7xl px-4 pb-14 sm:px-6 lg:px-8">
+    <div class="surface rounded-lg p-5">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-oc pb-4">
+        <div>
+          <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted">
+            <FileText class="icon" />latest changelog
+          </p>
+          <h2 class="mt-2 font-mono text-xl font-bold">{latestRelease?.data.name || "Latest release"}</h2>
+          {latestReleaseDate && (
+            <time class="mt-1 block text-sm text-muted" datetime={latestRelease?.data.publishedAt || undefined}>
+              Published {latestReleaseDate}
+            </time>
+          )}
+        </div>
+        {latestRelease && (
+          <a class="copy-button inline-flex items-center gap-2 rounded-md px-3 py-2 font-mono text-xs no-underline" href={latestRelease.data.url}>
+            View on GitHub
+          </a>
+        )}
+      </div>
+      {latestRelease && latestChangelogHtml ? (
+        <div class="prose mt-5" set:html={latestChangelogHtml}></div>
+      ) : (
+        <p class="mt-5 text-sm leading-6 text-body">
+          GitHub release notes could not be loaded for this build. Check the
+          <a href={`${repositoryUrl()}/releases`}> GitHub releases page</a> for the latest changelog.
+        </p>
+      )}
+    </div>
+  </section>
+</SiteLayout>

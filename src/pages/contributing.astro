@@ -1,0 +1,28 @@
+---
+import SiteLayout from "../components/SiteLayout.astro";
+import { CircleAlert, GitPullRequest } from "@lucide/astro";
+import { repositoryUrl } from "../lib/github-links";
+
+const overcastRepoUrl = repositoryUrl();
+---
+
+<SiteLayout title="Contributing" description="Contribute to Overcast and the Overcast website.">
+  <section class="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+    <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><GitPullRequest class="icon" />open source</p>
+    <h1 class="mt-2 font-mono text-3xl font-bold">Contributing</h1>
+    <p class="mt-4 leading-7 text-body">
+      Overcast is MIT licensed and built in public. Compatibility reports, documentation fixes, service implementation
+      work, and website improvements are all welcome.
+    </p>
+    <div class="mt-8 grid gap-4 md:grid-cols-2">
+      <a class="surface rounded-lg p-5 no-underline" href={`${overcastRepoUrl}/blob/main/CONTRIBUTING.md`}>
+        <h2 class="flex items-center gap-2 font-mono text-lg font-bold text-(--oc-text)"><GitPullRequest class="icon" />Project contribution guide</h2>
+        <p class="mt-2 text-sm text-body">Build setup, coding standards, and service implementation workflow.</p>
+      </a>
+      <a class="surface rounded-lg p-5 no-underline" href={`${overcastRepoUrl}/issues/new/choose`}>
+        <h2 class="flex items-center gap-2 font-mono text-lg font-bold text-(--oc-text)"><CircleAlert class="icon" />Report compatibility gaps</h2>
+        <p class="mt-2 text-sm text-body">File concrete differences between Overcast and AWS-compatible client behavior.</p>
+      </a>
+    </div>
+  </section>
+</SiteLayout>

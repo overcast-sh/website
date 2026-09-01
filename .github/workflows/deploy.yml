@@ -1,0 +1,128 @@
+name: Build and deploy
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  repository_dispatch:
+    types: [overcast-release]
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: "Overcast ref/tag to build docs from"
+        required: false
+        type: string
+  schedule:
+    - cron: "0 2 * * *"
+
+permissions:
+  contents: write
+  pull-requests: read
+
+env:
+  OVERCAST_REPO: Neaox/overcast
+  OVERCAST_TRACKING_REF: alpha
+  CLOUDFLARE_PAGES_PROJECT: overcast-sh
+
+jobs:
+  build:
+    if: github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip deploy]')
+    runs-on: ubuntu-latest
+    outputs:
+      should_deploy: ${{ steps.release.outputs.should_deploy }}
+      source_ref: ${{ steps.release.outputs.source_ref }}
+      fingerprint: ${{ steps.release.outputs.fingerprint }}
+    steps:
+      - name: Checkout website
+        uses: actions/checkout@v4
+
+      - name: Resolve Overcast source
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DISPATCH_TAG: ${{ github.event.client_payload.tag }}
+          MANUAL_REF: ${{ inputs.source_ref }}
+        run: |
+          set -euo pipefail
+
+          source_ref="${MANUAL_REF:-${DISPATCH_TAG:-$OVERCAST_TRACKING_REF}}"
+          fingerprint="$source_ref"
+          should_deploy="true"
+
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            release_json="$(gh api "repos/$OVERCAST_REPO/releases/tags/$OVERCAST_TRACKING_REF" 2>/dev/null || true)"
+            if [[ -z "$release_json" ]]; then
+              echo "No release found for $OVERCAST_TRACKING_REF; skipping scheduled deploy."
+              should_deploy="false"
+            else
+              source_ref="$(jq -r '.tag_name' <<<"$release_json")"
+              fingerprint="$(jq -r '[.tag_name, .target_commitish, .published_at, (.id|tostring)] | join("|")' <<<"$release_json")"
+              previous="$(cat .github/overcast-release.lock 2>/dev/null || true)"
+              if [[ "$fingerprint" == "$previous" ]]; then
+                should_deploy="false"
+              fi
+            fi
+          fi
+
+          echo "source_ref=$source_ref" >> "$GITHUB_OUTPUT"
+          echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
+          echo "should_deploy=$should_deploy" >> "$GITHUB_OUTPUT"
+
+      - name: Stop scheduled run when release is unchanged
+        if: github.event_name == 'schedule' && steps.release.outputs.should_deploy != 'true'
+        run: echo "Tracked Overcast release has not changed; no build or deploy needed."
+
+      - name: Setup Node
+        if: github.event_name != 'schedule' || steps.release.outputs.should_deploy == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Checkout Overcast source
+        if: github.event_name != 'schedule' || steps.release.outputs.should_deploy == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.OVERCAST_REPO }}
+          ref: ${{ steps.release.outputs.source_ref }}
+          path: .cache/source/overcast
+
+      - name: Install dependencies
+        if: github.event_name != 'schedule' || steps.release.outputs.should_deploy == 'true'
+        run: npm ci
+
+      - name: Build
+        if: github.event_name != 'schedule' || steps.release.outputs.should_deploy == 'true'
+        env:
+          OVERCAST_LOCAL_PATH: .cache/source/overcast
+          OVERCAST_SOURCE_REF: ${{ steps.release.outputs.source_ref }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run build
+
+      - name: Deploy to Cloudflare Pages
+        if: github.event_name != 'pull_request' && (github.event_name != 'schedule' || steps.release.outputs.should_deploy == 'true')
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node scripts/run-command.ts wrangler pages deploy dist --project-name="$CLOUDFLARE_PAGES_PROJECT"
+
+      - name: Deploy preview to Cloudflare Pages
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node scripts/run-command.ts wrangler pages deploy dist --project-name="$CLOUDFLARE_PAGES_PROJECT" --branch="pr-${{ github.event.pull_request.number }}"
+
+      - name: Record deployed Overcast release
+        if: github.event_name != 'pull_request' && github.event_name != 'push' && steps.release.outputs.should_deploy == 'true'
+        run: |
+          set -euo pipefail
+          printf '%s\n' '${{ steps.release.outputs.fingerprint }}' > .github/overcast-release.lock
+          if git diff --quiet -- .github/overcast-release.lock; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/overcast-release.lock
+          git commit -m "Record deployed Overcast release [skip deploy]"
+          git push

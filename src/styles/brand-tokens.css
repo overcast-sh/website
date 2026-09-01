@@ -1,0 +1,72 @@
+/* Overcast design tokens — drop-in custom properties.
+ * Source of truth: design-system/tokens.json (keep in sync).
+ * Theming: media query carries the OS preference; a data-theme attribute
+ * stamped on <html> overrides it in both directions. Style components
+ * through the tokens only — never inside the media query directly. */
+
+:root {
+  /* surfaces */
+  --oc-bg: #F4F8FC;
+  --oc-card: #FFFFFF;
+  --oc-line: #D5E2EE;
+  --oc-accent-soft: #E3F0FB;
+  --oc-tile: #16222E;          /* icon tile is ink on every surface */
+
+  /* text */
+  --oc-text: #16222E;
+  --oc-body: #33465A;
+  --oc-muted: #54718A;
+
+  /* brand */
+  --oc-accent: #1273C4;        /* signal, on-light */
+  --oc-cursor: #3E97DF;
+  --oc-cloud: #C4D8EA;         /* cloud fill, on-light */
+  --oc-cloud-stroke: #31536F;
+
+  /* semantic (does not replace the accent) */
+  --oc-success: #2E9E6B;
+  --oc-warning: #C08A2D;
+  --oc-danger: #C9564A;
+
+  /* type */
+  --oc-font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Consolas, monospace;
+  --oc-font-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* space (4px base; top step ≈ ×φ) */
+  --oc-space-1: 4px;  --oc-space-2: 8px;  --oc-space-3: 12px;
+  --oc-space-4: 16px; --oc-space-5: 24px; --oc-space-6: 40px; --oc-space-7: 64px;
+
+  /* radii */
+  --oc-radius-control: 6px;
+  --oc-radius-card: 10px;
+
+  /* motion */
+  --oc-blink: 1.1s;
+  --oc-hover: 120ms ease-out;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --oc-bg: #10161D; --oc-card: #16222E; --oc-line: #24384C; --oc-accent-soft: #1A2E42;
+    --oc-text: #DCEBF8; --oc-body: #A9C2D8; --oc-muted: #7FA8C9;
+    --oc-accent: #5FB8FF; --oc-cursor: #8FD0FF;
+    --oc-cloud: #33536F; --oc-cloud-stroke: #89BCE2;
+  }
+}
+:root[data-theme="dark"] {
+  --oc-bg: #10161D; --oc-card: #16222E; --oc-line: #24384C; --oc-accent-soft: #1A2E42;
+  --oc-text: #DCEBF8; --oc-body: #A9C2D8; --oc-muted: #7FA8C9;
+  --oc-accent: #5FB8FF; --oc-cursor: #8FD0FF;
+  --oc-cloud: #33536F; --oc-cloud-stroke: #89BCE2;
+}
+:root[data-theme="light"] {
+  --oc-bg: #F4F8FC; --oc-card: #FFFFFF; --oc-line: #D5E2EE; --oc-accent-soft: #E3F0FB;
+  --oc-text: #16222E; --oc-body: #33465A; --oc-muted: #54718A;
+  --oc-accent: #1273C4; --oc-cursor: #3E97DF;
+  --oc-cloud: #C4D8EA; --oc-cloud-stroke: #31536F;
+}
+
+/* The one sanctioned brand animation: the blinking cursor. */
+@keyframes oc-blink { 0%, 49.9% { opacity: 1; } 50%, 99.9% { opacity: 0; } }
+.oc-cursor-blink { animation: oc-blink var(--oc-blink) steps(1) infinite; }
+@media (prefers-reduced-motion: reduce) { .oc-cursor-blink { animation: none; } }

@@ -1,0 +1,22 @@
+---
+import SiteLayout from "../components/SiteLayout.astro";
+import { ArrowRight, SearchX } from "@lucide/astro";
+---
+
+<SiteLayout title="Page Not Found" description="The requested Overcast page could not be found.">
+  <section class="mx-auto max-w-3xl px-4 py-20 sm:px-6 lg:px-8">
+    <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><SearchX class="icon" />not found</p>
+    <h1 class="mt-3 font-mono text-4xl font-bold">This page is not here.</h1>
+    <p class="mt-4 leading-7 text-body">
+      The documentation may have moved with the latest Overcast release, or the URL may be incorrect.
+    </p>
+    <div class="mt-8 flex flex-wrap gap-3">
+      <a class="inline-flex items-center gap-2 rounded-md border border-(--oc-accent) bg-(--oc-accent) px-4 py-2 font-mono text-sm font-bold text-white no-underline" href="/docs/">
+        Browse docs<ArrowRight class="icon" />
+      </a>
+      <a class="inline-flex items-center gap-2 rounded-md border border-oc px-4 py-2 font-mono text-sm text-(--oc-text) no-underline" href="/">
+        Back home
+      </a>
+    </div>
+  </section>
+</SiteLayout>
