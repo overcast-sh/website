@@ -17,9 +17,9 @@ const { label = "Looking for something specific? Search the docs" } = Astro.prop
   data-search-promo
   class="copy-button flex w-full items-center justify-between gap-3 rounded-lg px-4 py-3 font-mono text-sm"
 >
-  <span class="flex items-center gap-2">
+  <span class="flex min-w-0 items-center gap-2 text-left">
     <Search class="icon text-accent" />
-    {label}
+    <span class="min-w-0">{label}</span>
   </span>
   <kbd class="text-xs text-muted">/</kbd>
 </button>
