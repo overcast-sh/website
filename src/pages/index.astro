@@ -9,10 +9,14 @@ import {
   CloudOff,
   GitCompare,
   GitPullRequest,
+  Inbox,
+  Monitor,
   Network,
-  ScanSearch,
+  Route,
+  ServerCog,
   ShieldCheck,
   Terminal,
+  Waypoints,
 } from "@lucide/astro";
 import { getCollection } from "astro:content";
 import { getServiceSupport } from "../lib/generated-content";
@@ -125,12 +129,12 @@ const firstCall = `aws --endpoint-url http://localhost:4566 \\
       </article>
       <article class="surface rounded-lg p-5">
         <div class="flex items-center gap-3">
-          <span class="icon-tile"><ScanSearch class="icon" /></span>
-          <h2 class="font-mono text-lg font-bold">Inspect local state</h2>
+          <span class="icon-tile"><ServerCog class="icon" /></span>
+          <h2 class="font-mono text-lg font-bold">The same image in CI</h2>
         </div>
         <p class="mt-3 text-sm leading-6 text-body">
-          Use the web UI to inspect resources, follow the event stream, view metrics, and debug SNS, SQS, Lambda, and
-          email flows while your tests run.
+          One process, one endpoint, no sign-in. A slim headless image drops the console for build agents that only
+          need the API.
         </p>
       </article>
     </div>
@@ -162,6 +166,57 @@ const firstCall = `aws --endpoint-url http://localhost:4566 \\
           </a>
         ))}
       </div>
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+    <div class="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
+      <div>
+        <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted">
+          <Monitor class="icon" />web console
+        </p>
+        <h2 class="mt-2 font-mono text-2xl font-bold">Port 4567 is a console, not a status page.</h2>
+        <p class="mt-4 leading-7 text-body">
+          The full image serves a management UI alongside the API. Three things in it are easy to miss:
+        </p>
+        <ul class="m-0 mt-5 flex list-none flex-col gap-4 p-0">
+          <li class="flex gap-3">
+            <span class="icon-tile"><Inbox class="icon" /></span>
+            <span class="text-sm leading-6 text-body">
+              <strong class="font-mono text-(--oc-text)">Inbox</strong> — captures the mail your app sends through SES,
+              SNS, and Cognito, plus the SNS SMS, webhook, and push deliveries that have nowhere to go locally.
+            </span>
+          </li>
+          <li class="flex gap-3">
+            <span class="icon-tile"><Route class="icon" /></span>
+            <span class="text-sm leading-6 text-body">
+              <strong class="font-mono text-(--oc-text)">Request traces</strong> — one PutObject and everything it set
+              off, with bodies at each hop and a copy-as-curl on every row.
+            </span>
+          </li>
+          <li class="flex gap-3">
+            <span class="icon-tile"><Waypoints class="icon" /></span>
+            <span class="text-sm leading-6 text-body">
+              <strong class="font-mono text-(--oc-text)">System map</strong> — your topology drawn from what the
+              emulator actually holds, with edges lighting up as data moves.
+            </span>
+          </li>
+        </ul>
+        <a class="mt-6 inline-flex items-center gap-2 font-mono text-sm" href="/console/">
+          Tour the console<ArrowRight class="icon" />
+        </a>
+      </div>
+      <figure class="surface m-0 overflow-hidden rounded-lg">
+        <img
+          src="/console/console-dashboard.png"
+          alt="The Overcast console dashboard: emulated AWS services as cards, split into fully emulated, partially emulated, and not emulated."
+          width="1600"
+          height="1000"
+          loading="lazy"
+          decoding="async"
+          class="block w-full"
+        />
+      </figure>
     </div>
   </section>
 

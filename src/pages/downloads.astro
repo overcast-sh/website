@@ -3,7 +3,7 @@ import SiteLayout from "../components/SiteLayout.astro";
 import CodeBlock from "../components/CodeBlock.astro";
 import AssetDownloadList from "../components/AssetDownloadList.astro";
 import Chip from "../components/Chip.astro";
-import { ArrowRight, Binary, Container, Download, FileText, PackageOpen, RotateCcwClock } from "@lucide/astro";
+import { ArrowRight, Binary, Container, Download, FileText, Monitor, PackageOpen, RotateCcwClock } from "@lucide/astro";
 import { getCollection, type CollectionEntry } from "astro:content";
 import { repositoryUrl } from "../lib/github-links";
 import { formatDate, toIsoDate } from "../lib/format-date";
@@ -44,6 +44,9 @@ const topRollup = latestRelease ? changelogRollup(latestRelease.data.changelogSe
       </a>
       <a class="copy-button inline-flex items-center gap-2 rounded-md px-3 py-2 font-mono text-sm no-underline" href={releasesUrl}>
         <FileText class="icon" />GitHub releases
+      </a>
+      <a class="copy-button inline-flex items-center gap-2 rounded-md px-3 py-2 font-mono text-sm no-underline" href="/console/">
+        <Monitor class="icon" />What's in the console
       </a>
     </div>
   </section>
