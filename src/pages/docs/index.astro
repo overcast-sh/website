@@ -9,8 +9,10 @@ import CodeBlock from "../../components/CodeBlock.astro";
 import LayerMapDiagram from "../../components/diagrams/LayerMapDiagram.astro";
 import SearchPromo from "../../components/SearchPromo.astro";
 import Chip from "../../components/Chip.astro";
+import Callout from "../../components/Callout.astro";
 import { BookOpen, Compass, FileStack, Network, ShieldCheck, Terminal } from "@lucide/astro";
 import { getCollection, type CollectionEntry } from "astro:content";
+import { repositoryUrl } from "../../lib/github-links";
 
 type DocEntry = CollectionEntry<"docs">;
 
@@ -125,6 +127,20 @@ const supportLevels: Array<{ label: string; tone: "success" | "accent" | "warnin
           <Chip tone={level.tone}>{level.label}</Chip>
         ))}
       </div>
+    </section>
+
+    <section id="alpha-stability" class="mt-10 scroll-mt-24">
+      <Callout kind="warning" title="Alpha stability">
+        <p class="m-0">Any release may change behavior, config, or APIs — nothing is stable yet.</p>
+        <ul class="m-0 mt-2 list-none space-y-1 p-0">
+          <li>
+            Pin an exact tag for anything you depend on: <code>ghcr.io/overcast-sh/overcast:0.0.1-alpha.NN</code>, not
+            the moving <code>:alpha</code>.
+          </li>
+          <li>Check the <a href="/releases/">release changelog</a> before upgrading.</li>
+          <li>Hit something unexpected? <a href={`${repositoryUrl()}/issues`}>Report it on GitHub</a>.</li>
+        </ul>
+      </Callout>
     </section>
 
     <div class="mt-10">
