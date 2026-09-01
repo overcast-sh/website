@@ -4,9 +4,12 @@ import AssetDownloadList from "../components/AssetDownloadList.astro";
 import DockerImageRefs from "../components/DockerImageRefs.astro";
 import ReleaseChangelog from "../components/ReleaseChangelog.astro";
 import VersionJumpSelect from "../components/VersionJumpSelect.astro";
+import Chip from "../components/Chip.astro";
 import { ChevronDown, Container, FileText, PackageCheck, PackageOpen, RotateCcwClock } from "@lucide/astro";
 import { getCollection, type CollectionEntry } from "astro:content";
-import { sortReleasesNewestFirst } from "../lib/releases";
+import { cappedAreas, changelogRollup, sortReleasesNewestFirst } from "../lib/releases";
+
+const headerAreaCap = 5;
 
 const releases: CollectionEntry<"releases">[] = sortReleasesNewestFirst(await getCollection("releases"));
 const latest = releases[0];
@@ -83,7 +86,7 @@ const latestDate = formatReleaseDate(latest?.data.publishedAt);
           <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><FileText class="icon" />Changelog</p>
           {latest.data.changelogSections.length > 0 ? (
             <div class="mt-4">
-              <ReleaseChangelog sections={latest.data.changelogSections} />
+              <ReleaseChangelog sections={latest.data.changelogSections} defaultOpen />
             </div>
           ) : latest.rendered?.html ? (
             <details class="group mt-4 rounded-lg border border-oc">
@@ -109,21 +112,51 @@ const latestDate = formatReleaseDate(latest?.data.publishedAt);
         <div class="mt-4 space-y-3">
           {olderReleases.map((release) => {
             const releaseDate = formatReleaseDate(release.data.publishedAt);
+            const rollup = changelogRollup(release.data.changelogSections);
+            const areaPreview = rollup ? cappedAreas(rollup.areas, headerAreaCap) : null;
             return (
               <details id={release.data.tagName} class="surface group scroll-mt-24 rounded-lg">
-                <summary class="flex cursor-pointer list-none flex-wrap items-center gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
-                  <ChevronDown class="icon shrink-0 text-muted transition-transform duration-150 group-open:rotate-180" />
-                  <span class="font-mono text-base font-bold">{release.data.name}</span>
-                  {release.data.prerelease && <span class="rounded soft px-2 py-1 font-mono text-xs text-accent">prerelease</span>}
-                  {releaseDate && (
-                    <time class="text-sm text-muted" datetime={release.data.publishedAt || undefined}>
-                      {releaseDate}
-                    </time>
-                  )}
-                  {release.data.assets.length > 0 && (
-                    <span class="ml-auto flex items-center gap-2 font-mono text-xs text-muted">
-                      <PackageCheck class="icon" />{release.data.assets.length} asset{release.data.assets.length === 1 ? "" : "s"}
-                    </span>
+                <summary class="flex cursor-pointer list-none flex-col gap-1.5 px-5 py-4 [&::-webkit-details-marker]:hidden">
+                  <div class="flex flex-wrap items-center gap-3">
+                    <ChevronDown class="icon shrink-0 text-muted transition-transform duration-150 group-open:rotate-180" />
+                    <span class="font-mono text-base font-bold">{release.data.name}</span>
+                    {release.data.prerelease && <span class="rounded soft px-2 py-1 font-mono text-xs text-accent">prerelease</span>}
+                    {releaseDate && (
+                      <time class="text-sm text-muted" datetime={release.data.publishedAt || undefined}>
+                        {releaseDate}
+                      </time>
+                    )}
+                    {release.data.assets.length > 0 && (
+                      <span class="ml-auto flex items-center gap-2 font-mono text-xs text-muted">
+                        <PackageCheck class="icon" />{release.data.assets.length} asset{release.data.assets.length === 1 ? "" : "s"}
+                      </span>
+                    )}
+                  </div>
+                  {rollup && (
+                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1 pl-7 font-mono text-xs text-muted">
+                      <span>
+                        {rollup.counts.map((count, index) => (
+                          <>
+                            {index > 0 && " · "}
+                            {`${count.count} ${count.label.toLowerCase()}`}
+                          </>
+                        ))}
+                        {rollup.breakingCount > 0 && (
+                          <>
+                            {" "}
+                            · <span class="text-(--oc-danger)">{rollup.breakingCount} breaking</span>
+                          </>
+                        )}
+                      </span>
+                      {areaPreview && areaPreview.shown.length > 0 && (
+                        <span class="flex flex-wrap items-center gap-1">
+                          {areaPreview.shown.map((area) => (
+                            <Chip tone="muted">{area}</Chip>
+                          ))}
+                          {areaPreview.more > 0 && <span>+{areaPreview.more} more</span>}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </summary>
                 <div class="border-t border-oc px-5 py-4">
