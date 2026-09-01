@@ -54,6 +54,17 @@ const leadIsDescription =
   (leadPlain === describedLead || (describedLead.length >= 40 && leadPlain.startsWith(describedLead.slice(0, 60))));
 const html = leadIsDescription ? body.slice(leadMatch![0].length) : body;
 const leadHtml = leadIsDescription ? leadMatch![1] : null;
+// Cross-references in the source markdown are written as repo paths — "see
+// networking.md § How Overcast decides who owns a Host". The href is already
+// rewritten to the published route, but the visible text still reads as a filename
+// on 40-odd pages, which is a link to a file the reader can't open and a page they
+// can. Swap the filename for the page's own title, keeping any "§ Heading" suffix.
+// Inert once the source stops naming files: nothing matches and nothing changes.
+const titleByRoute = new Map<string, string>(docs.map((entry) => [`/${entry.data.slug}/`, entry.data.title]));
+const withNamedLinks = html.replace(
+  /(<a href="(\/docs\/[^"#]*\/)(?:#[^"]*)?"[^>]*>)([A-Za-z0-9._-]+\.md)(?=(\s*§[^<]*)?<\/a>)/g,
+  (_match: string, open: string, route: string, filename: string) => `${open}${titleByRoute.get(route) ?? filename}`,
+);
 const editUrl = await overcastEditUrl(doc.data.sourcePath);
 const support = await getServiceSupport();
 const navDocs = docs.map((entry) => ({ slug: entry.data.slug, title: entry.data.title, section: entry.data.section }));
@@ -119,7 +130,7 @@ const serviceLandingSlug = serviceGroup?.landing?.slug;
         )}
         <ServiceSubNav items={subNavItems} currentSlug={doc.data.slug} />
       </div>
-      <div class="prose" set:html={html} data-pagefind-body></div>
+      <div class="prose" set:html={withNamedLinks} data-pagefind-body></div>
     </article>
   </div>
 </SiteLayout>
