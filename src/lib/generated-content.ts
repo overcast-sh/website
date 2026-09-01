@@ -64,3 +64,29 @@ export function getSourceManifest(): Promise<SourceManifest> {
     serviceCount: 0,
   });
 }
+
+// `coverageTier` comes straight from parsing upstream's generated service table (see
+// scripts/sync-overcast-content.ts) and reads like internal engineering shorthand —
+// "Comprehensive / broad support", "IaC/discovery-oriented stub". Anywhere this gets
+// shown to a reader (the docs sidebar today; possibly the hub or support matrix later)
+// should go through this map instead of rendering the raw string. Single source of
+// truth so every caller stays in sync, with a safe fallback so an upstream tier we don't
+// recognize yet (a new one added, wording tweaked) degrades to a readable title-cased
+// string instead of breaking the build.
+const COVERAGE_TIER_LABELS: Record<string, string> = {
+  "Comprehensive / broad support": "Most complete",
+  "Core CRUD + common workflows": "Core operations",
+  "Minimal / targeted support": "Partial",
+  "IaC/discovery-oriented stub": "Stubs for IaC",
+};
+
+function titleCase(value: string): string {
+  return value.replace(/\w\S*/g, (word) => word[0].toUpperCase() + word.slice(1).toLowerCase());
+}
+
+/** Reader-facing label for a service's coverage tier. Pass the raw `coverageTier`
+ * string (or null/undefined for a doc with no matching service). */
+export function coverageTierLabel(tier: string | null | undefined): string {
+  if (!tier) return "Other";
+  return COVERAGE_TIER_LABELS[tier] ?? titleCase(tier);
+}

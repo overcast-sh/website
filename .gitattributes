@@ -1,0 +1,14 @@
+# Normalise line endings on checkin so Windows editors/tools can't flip a text file to
+# CRLF and turn every line of a future diff into a line-ending change.
+* text=auto eol=lf
+
+*.png binary
+*.ico binary
+*.ttf binary
+*.woff binary
+*.woff2 binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.zip binary
+*.pdf binary

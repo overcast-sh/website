@@ -6,7 +6,7 @@
 // tier, and each optionally holding sub-pages (operations, limitations, ...). Sub-pages
 // are only listed under the service you're currently reading, which is what keeps a
 // 50-service list from turning into a 250-link list.
-import { getServiceSupport, type ServiceSupportManifest } from "../lib/generated-content";
+import { coverageTierLabel, getServiceSupport, type ServiceSupportManifest } from "../lib/generated-content";
 import { groupServiceDocs, parseServiceDocSlug, type ServiceDocLike } from "../lib/service-docs";
 
 type NavEntry = ServiceDocLike & { section: string };
@@ -39,12 +39,14 @@ const grouped = Object.entries(
   }, {}),
 );
 
-// The "Service Reference" section is a flat, alphabetical list of ~50 doc pages — the same
-// coverage-tier grouping already shown on the homepage's "top services" tiles and in the
-// upstream service table (Comprehensive / Core CRUD / Minimal / IaC-stub) turns that into
-// four labeled clusters instead of one long scroll. coverageTier comes from parsing
-// docs/README.md's generated service table at sync time (see sync-overcast-content.ts);
-// a doc with no match (e.g. the services index page itself) falls into "Other".
+// The "Service Reference" section is a flat, alphabetical list of ~50 doc pages — the
+// coverage-tier grouping from the upstream service table turns that into four labeled
+// clusters instead of one long scroll. coverageTier comes from parsing docs/README.md's
+// generated service table at sync time (see sync-overcast-content.ts); a doc with no
+// match (e.g. the services index page itself) falls into "Other". The raw tier strings
+// are engineering jargon, so headings go through coverageTierLabel() (generated-content.ts)
+// for reader-facing wording — tierOrder below stays keyed on the raw strings so sorting
+// doesn't depend on the display text.
 const tierOrder = [
   "Comprehensive / broad support",
   "Core CRUD + common workflows",
@@ -78,7 +80,7 @@ const subPagesFor = (entry: NavEntry) => {
     {section === "Service Reference" ? (
       servicesByTier(entries).map(([tier, tierEntries]) => (
         <div class="mb-3 last:mb-0">
-          <p class="mb-1 font-mono text-[10px] uppercase tracking-[0.12em] text-muted opacity-75">{tier}</p>
+          <p class="mb-1 font-mono text-[10px] uppercase tracking-[0.12em] text-muted opacity-75">{coverageTierLabel(tier)}</p>
           <nav class="space-y-1">
             {tierEntries.map((entry) => (
               <div>

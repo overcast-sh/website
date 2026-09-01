@@ -3,10 +3,21 @@ import SiteLayout from "../components/SiteLayout.astro";
 import Callout from "../components/Callout.astro";
 import SearchPromo from "../components/SearchPromo.astro";
 import ServiceIcon from "../components/ServiceIcon.astro";
+import Chip from "../components/Chip.astro";
 import { Search, ShieldCheck } from "@lucide/astro";
 import { getServiceSupport } from "../lib/generated-content";
 
 const support = await getServiceSupport();
+
+// The status a service or operation can carry — shown here, and on each service page's
+// own `**Status:** ✅ Supported` line. This is the one place these four terms are
+// defined, so keep it here rather than duplicating it near every place they show up.
+const supportLevels: Array<{ label: string; tone: "success" | "accent" | "warning" | "muted" }> = [
+  { label: "✅ Supported", tone: "success" },
+  { label: "⚠️ Partial", tone: "warning" },
+  { label: "🚧 WIP", tone: "accent" },
+  { label: "❌ Unsupported", tone: "muted" },
+];
 
 // The gap — listed minus implemented — is the number this page exists to show, and
 // it was the one number the table made you work out yourself. CloudFormation at
@@ -31,6 +42,13 @@ const totalGap = services.reduce((sum, service) => sum + service.gap, 0);
       Every operation Overcast tracks, per service. The ones it hasn't implemented return
       <code>501 Not Implemented</code> rather than failing in a way you have to diagnose.
     </p>
+
+    <div class="mt-4 flex flex-wrap items-center gap-2">
+      <span class="font-mono text-xs text-muted">Status legend:</span>
+      {supportLevels.map((level) => (
+        <Chip tone={level.tone}>{level.label}</Chip>
+      ))}
+    </div>
 
     <dl class="mt-6 grid gap-3 sm:grid-cols-3">
       <div class="surface rounded-lg p-4">
