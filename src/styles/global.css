@@ -7,6 +7,39 @@
   --font-sans: var(--oc-font-sans);
 }
 
+/* Vertical rhythm ------------------------------------------------------
+ *
+ * One spacing scale for the whole site. Every step is roughly double the
+ * one below it, so the size of a gap tells you how related two things are
+ * before you have read either of them. Section → block → item, always.
+ *
+ *   inside    8px   mt-2  / gap-2   parts of one thing: eyebrow→heading,
+ *                                   value→caption, chips in a row
+ *   row      12px   mt-3  / gap-3   dense repeats and tight pairs: table
+ *                                   rows, icon tile→label, card heading→body
+ *   group    16px   mt-4  / gap-4   one group: heading→body copy, cards in
+ *                                   a grid, a caption and the table it names
+ *   block    32px   mt-8            distinct blocks inside a section
+ *                                   (24px / mt-6 below sm)
+ *   section  56px   py-14 / mt-14   a page's own sections and page bands
+ *                                   (40px / py-10 below sm)
+ *
+ * Cards pad at 20px (p-5) everywhere, and a hairline divider inside a card
+ * clears that same 20px on both sides. Mobile tightens the top two steps
+ * only — `inside`, `row` and `group` are already at their minimum.
+ *
+ * The custom properties below are for CSS that can't reach a Tailwind class
+ * (the callout, mainly); prefer the classes in markup so the scale stays
+ * greppable. */
+:root {
+  --oc-gap-inside: 8px;
+  --oc-gap-row: 12px;
+  --oc-gap-group: 16px;
+  --oc-gap-block: 32px;
+  --oc-gap-section: 56px;
+  --oc-pad-card: 20px;
+}
+
 html {
   background: var(--oc-bg);
   color: var(--oc-text);
@@ -485,8 +518,8 @@ kbd {
 .callout {
   --oc-tint: var(--oc-accent);
   display: flex;
-  gap: 0.75rem;
-  padding: 1rem;
+  gap: var(--oc-gap-row);
+  padding: var(--oc-pad-card);
   border-radius: var(--oc-radius-card);
   border: 1px solid var(--oc-line);
   border-left: 4px solid var(--oc-tint);

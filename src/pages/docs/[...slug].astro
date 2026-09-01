@@ -84,7 +84,7 @@ const serviceLandingSlug = serviceGroup?.landing?.slug;
 ---
 
 <SiteLayout title={doc.data.title} description={doc.data.description} editUrl={editUrl}>
-  <div class="mx-auto grid max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[260px_1fr] lg:px-8">
+  <div class="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 sm:py-14 lg:grid-cols-[260px_1fr] lg:px-8">
     <aside class="lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
       <a class="mb-4 hidden font-mono text-sm font-bold lg:block" href="/docs/">Documentation</a>
 
@@ -103,7 +103,7 @@ const serviceLandingSlug = serviceGroup?.landing?.slug;
       </div>
     </aside>
     <article class="min-w-0">
-      <div class="mb-8 border-b border-oc pb-6">
+      <div class="mb-8 border-b border-oc pb-8">
         {serviceDoc ? (
           <nav class="flex flex-wrap items-center gap-1.5 font-mono text-xs uppercase tracking-[0.16em] text-muted" aria-label="Breadcrumb">
             <a class="no-underline text-muted hover:text-(--oc-text)" href="/docs/">Docs</a>
@@ -124,9 +124,9 @@ const serviceLandingSlug = serviceGroup?.landing?.slug;
           <h1 class="min-w-0 font-mono text-3xl font-bold">{doc.data.title}</h1>
         </div>
         {leadHtml ? (
-          <p class="mt-3 max-w-3xl text-body" set:html={leadHtml}></p>
+          <p class="mt-4 max-w-3xl text-body" set:html={leadHtml}></p>
         ) : (
-          doc.data.description && <p class="mt-3 max-w-3xl text-body">{doc.data.description}</p>
+          doc.data.description && <p class="mt-4 max-w-3xl text-body">{doc.data.description}</p>
         )}
         <ServiceSubNav items={subNavItems} currentSlug={doc.data.slug} />
       </div>
