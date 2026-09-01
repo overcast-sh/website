@@ -1,6 +1,12 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import {
+  exists,
+  shouldPublishDoc,
+  walk,
+  warnMissingAllowlistedDocs,
+} from "../src/lib/overcast-doc-allowlist.ts";
 
 const repo = process.env.OVERCAST_REPO || "overcast-sh/overcast";
 const sourceRef = process.env.OVERCAST_SOURCE_REF || process.env.OVERCAST_TRACKING_REF || "alpha";
@@ -23,20 +29,6 @@ type ServiceSupport = {
   operations: unknown[];
 };
 
-const publicDocFiles = [
-  "README.md",
-  "docs/README.md",
-  "docs/sdk-cli.md",
-  "docs/cdk.md",
-  "docs/networking.md",
-  "docs/storage.md",
-  "docs/performance.md",
-  "docs/migration-from-localstack.md",
-  "docs/https.md",
-  "docs/local-dev.md",
-  "docs/testcontainers.md",
-];
-
 // Some service ids in the upstream operation-coverage data don't match their doc's
 // filename 1:1 (e.g. the coverage data calls it `elbv2`, but the doc lives at
 // docs/services/elb.md). Surface the actual doc slug alongside the service id so
@@ -47,33 +39,6 @@ const serviceDocAliases: Record<string, string> = {
 
 function isString(value: string | undefined): value is string {
   return typeof value === "string" && value.length > 0;
-}
-
-function normalizePath(value: string): string {
-  return value.replaceAll("\\", "/");
-}
-
-async function exists(filePath: string): Promise<boolean> {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function walk(dir: string, root = dir): Promise<string[]> {
-  const entries = await fs.readdir(dir, { withFileTypes: true });
-  const files = [];
-  for (const entry of entries) {
-    const absolute = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...(await walk(absolute, root)));
-    } else {
-      files.push(normalizePath(path.relative(root, absolute)));
-    }
-  }
-  return files;
 }
 
 async function resolveSourceRoot(): Promise<string> {
@@ -103,14 +68,6 @@ async function resolveBrandingRoot(): Promise<string | null> {
   }
 
   return null;
-}
-
-function shouldPublishDoc(relativePath: string): boolean {
-  const docPath = normalizePath(relativePath);
-  if (!docPath.endsWith(".md")) return false;
-  if (docPath.startsWith("docs/dev/") || docPath.startsWith("docs/plans/")) return false;
-  if (publicDocFiles.includes(docPath)) return true;
-  return docPath.startsWith("docs/cdk/") || docPath.startsWith("docs/services/");
 }
 
 async function writeJson(filePath: string, value: unknown): Promise<void> {
@@ -234,6 +191,7 @@ async function main() {
   await fs.mkdir(generatedDir, { recursive: true });
 
   await cleanupObsoleteGeneratedDocs();
+  await warnMissingAllowlistedDocs(sourceRoot);
   if (brandingRoot) await syncBranding(brandingRoot);
   const docsCount = await countDocs(sourceRoot);
   const services = await syncSupport(sourceRoot);

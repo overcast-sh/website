@@ -4,20 +4,7 @@ import matter from "gray-matter";
 import type { Loader } from "astro/loaders";
 import { exists, resolveOvercastSourceRoot } from "./overcast-source";
 import { overcastEditRef, overcastGitHubRepo, rewriteLegacyOrgReferences } from "../lib/github-links";
-
-const publicDocFiles = [
-  "README.md",
-  "docs/README.md",
-  "docs/sdk-cli.md",
-  "docs/cdk.md",
-  "docs/networking.md",
-  "docs/storage.md",
-  "docs/performance.md",
-  "docs/migration-from-localstack.md",
-  "docs/https.md",
-  "docs/local-dev.md",
-  "docs/testcontainers.md",
-];
+import { normalizePath, shouldPublishDoc, walk, warnMissingAllowlistedDocs } from "../lib/overcast-doc-allowlist";
 
 export type OvercastDocData = {
   sourcePath: string;
@@ -27,32 +14,6 @@ export type OvercastDocData = {
   section: string;
   searchText: string;
 };
-
-function normalizePath(value: string): string {
-  return value.replaceAll("\\", "/");
-}
-
-async function walk(dir: string, root = dir): Promise<string[]> {
-  const entries = await fs.readdir(dir, { withFileTypes: true });
-  const files: string[] = [];
-  for (const entry of entries) {
-    const absolute = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...(await walk(absolute, root)));
-    } else {
-      files.push(normalizePath(path.relative(root, absolute)));
-    }
-  }
-  return files;
-}
-
-function shouldPublishDoc(relativePath: string): boolean {
-  const docPath = normalizePath(relativePath);
-  if (!docPath.endsWith(".md")) return false;
-  if (docPath.startsWith("docs/dev/") || docPath.startsWith("docs/plans/")) return false;
-  if (publicDocFiles.includes(docPath)) return true;
-  return docPath.startsWith("docs/cdk/") || docPath.startsWith("docs/services/");
-}
 
 function titleFromPath(docPath: string): string {
   const name = docPath.split("/").pop()?.replace(/\.md$/, "") || "Documentation";
@@ -260,9 +221,10 @@ function normalizeMarkdownTables(markdown: string): string {
 export function overcastDocsLoader(): Loader {
   return {
     name: "overcast-docs",
-    async load({ store, parseData, renderMarkdown, generateDigest }) {
+    async load({ store, parseData, renderMarkdown, generateDigest, logger }) {
       const sourceRoot = await resolveOvercastSourceRoot();
       const docsRoot = path.join(sourceRoot, "docs");
+      await warnMissingAllowlistedDocs(sourceRoot, (message) => logger.warn(message));
       const docPaths = [
         "README.md",
         ...((await exists(docsRoot)) ? (await walk(docsRoot)).map((file) => `docs/${file}`) : []),

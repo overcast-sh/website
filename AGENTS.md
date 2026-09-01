@@ -43,10 +43,13 @@ Gotchas:
   what the docs say, it's the wrong repo. This repo only owns how docs are rendered
   (layout, navigation, search, styling) and the non-docs pages (home, downloads, support,
   compare, releases).
-- Only a subset of the source repo's docs are published: see `shouldPublishDoc()` in
-  `scripts/sync-overcast-content.ts` — `docs/dev/**` and `docs/plans/**` are excluded,
-  along with anything not in the explicit `publicDocFiles` list or under `docs/cdk/` /
-  `docs/services/`.
+- Only a subset of the source repo's docs are published: see `shouldPublishDoc()` and
+  `publicDocFiles` in `src/lib/overcast-doc-allowlist.ts` (shared by the sync script and
+  `overcast-docs.ts` so the two can't drift again) — `docs/dev/**` and `docs/plans/**` are
+  excluded, along with anything not in the explicit `publicDocFiles` list or under
+  `docs/cdk/` / `docs/services/`. A path can be added to `publicDocFiles` ahead of the
+  upstream release that ships it — `warnMissingAllowlistedDocs()` logs a warning and skips
+  it rather than failing the build; it only fails if a file that IS present is malformed.
 - `OVERCAST_BRANDING_PATH` is optional; when unset, branding assets are simply not
   refreshed (existing `public/brand`/`public/fonts` output is left alone).
 - Edit-link behavior (`EDIT_LINK_MODE`, `OVERCAST_EDIT_REF`, `WEBSITE_EDIT_REF`, etc.) is
