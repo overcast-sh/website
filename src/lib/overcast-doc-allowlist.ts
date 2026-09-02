@@ -33,6 +33,7 @@ export const publicDocFiles = [
   "docs/storage.md",
   "docs/performance.md",
   "docs/migration-from-localstack.md",
+  "docs/localstack-compatibility.md",
   "docs/https.md",
   "docs/local-dev.md",
   "docs/testcontainers.md",
