@@ -1,0 +1,139 @@
+---
+// The body of one parsed changelog entry — summary line, detail lines, migration note.
+//
+// This is the single place those three parts are laid out, so the /releases/ list and the
+// downloads page's "Latest changelog" card can't drift: the card renders the same summary,
+// with the same inline code and the same disclosure rules, and simply shows fewer entries.
+//
+// Upstream (see `.changelog/README.md` in overcast-sh/overcast) an entry's first line is a
+// standalone summary capped at 160 chars and every further line is one indented detail. That
+// structure is what makes release notes scannable, so it is preserved here rather than merged:
+// the summary reads on its own, up to `inlineDetailLimit` details sit under it as their own
+// muted lines, and a longer set folds into a "details" disclosure so one thorough entry can't
+// bury the twenty around it.
+import { ChevronRight } from "@lucide/astro";
+
+interface Props {
+  summaryHtml: string;
+  detailsHtml: string[];
+  migrationHtml: string | null;
+  /** Detail lines shown inline before the set collapses into a disclosure. */
+  inlineDetailLimit?: number;
+  class?: string;
+}
+
+const { summaryHtml, detailsHtml, migrationHtml, inlineDetailLimit = 2, class: className } = Astro.props;
+
+const collapseDetails = detailsHtml.length > inlineDetailLimit;
+---
+
+<div class:list={["changelog-entry-body", className]}>
+  <div class="changelog-prose" set:html={summaryHtml} />
+
+  {
+    detailsHtml.length > 0 &&
+      (collapseDetails ? (
+        <details class="changelog-disclosure mt-1.5">
+          <summary class="cursor-pointer font-mono text-xs text-muted">
+            <ChevronRight class="icon disclosure-caret" />
+            {detailsHtml.length} details
+          </summary>
+          <ul class="changelog-details mt-1.5">
+            {detailsHtml.map((detail) => (
+              <li class="changelog-prose" set:html={detail} />
+            ))}
+          </ul>
+        </details>
+      ) : (
+        <ul class="changelog-details mt-1.5">
+          {detailsHtml.map((detail) => (
+            <li class="changelog-prose" set:html={detail} />
+          ))}
+        </ul>
+      ))
+  }
+
+  {
+    migrationHtml && (
+      <div class="changelog-migration mt-2">
+        <p class="changelog-migration-label">Migration</p>
+        <div class="changelog-prose" set:html={migrationHtml} />
+      </div>
+    )
+  }
+</div>
+
+<style>
+  /* Every fragment here is rendered from a single markdown line, so it is always one <p>:
+   * drop the block margin the site's markdown pipeline gives paragraphs. */
+  .changelog-entry-body :global(p) {
+    margin: 0;
+  }
+
+  /* Release notes name images and env vars inline, and an unbroken
+   * `ghcr.io/overcast-sh/overcast-slim:0.0.1-alpha.39` is 445px of one word. This prose is not
+   * `.prose`, so it never picked up that stylesheet's wrapping rule, and on a phone every such
+   * entry pushed the page into a horizontal scroll. */
+  .changelog-entry-body {
+    overflow-wrap: anywhere;
+  }
+
+  /* Detail lines: one per source line, quieter and a step smaller than the summary they sit
+   * under, so the summary stays the thing a scan lands on. `--oc-text-xs` is the site's
+   * readable-type floor (13px), not a smaller ad-hoc size. */
+  .changelog-details {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+  .changelog-details > li {
+    color: var(--oc-muted);
+    font-size: var(--oc-text-xs);
+    line-height: 1.6;
+    padding-left: 0.75rem;
+    border-left: 1px solid var(--oc-line);
+  }
+
+  .changelog-migration {
+    border-left: 2px solid var(--oc-warning);
+    padding-left: 0.75rem;
+    font-size: var(--oc-text-xs);
+    line-height: 1.6;
+  }
+  .changelog-migration-label {
+    font-family: var(--oc-font-mono);
+    font-size: var(--oc-text-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--oc-warning);
+    margin: 0 0 0.25rem;
+  }
+
+  /* The disclosure summary is one line of 12px text, which would otherwise be a full-width,
+   * 16px-tall target. inline-flex trims it to the width it looks, and the min-height brings it
+   * up to the 24px WCAG 2.5.8 asks for. */
+  .changelog-disclosure > summary {
+    cursor: pointer;
+    list-style: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-height: 24px;
+  }
+  .changelog-disclosure > summary::-webkit-details-marker {
+    display: none;
+  }
+  .changelog-disclosure > summary::marker {
+    content: "";
+  }
+  .changelog-disclosure > summary :global(.disclosure-caret) {
+    transition: transform 150ms;
+  }
+  .changelog-disclosure[open] > summary :global(.disclosure-caret) {
+    transform: rotate(90deg);
+  }
+</style>
