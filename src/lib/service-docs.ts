@@ -26,10 +26,16 @@ const SERVICES_PREFIX = "docs/services/";
  * landing page — so this is a fixed list of names rather than anything parsed from the
  * path. A guide with no sub-pages in a given release (the common case for most of these
  * today) still works fine: nothing below requires a sub-page to exist. */
-const NESTED_GUIDES: Record<string, string> = {
+// Exported (not just used internally) so the site-search grouping in SiteLayout.astro can
+// label a guide sub-page's search hits from the same source instead of keeping its own
+// hand-maintained list — see the sectionFor() usage there.
+export const NESTED_GUIDES: Record<string, string> = {
   networking: "Networking",
   cli: "CLI",
   configuration: "Configuration",
+  cdk: "CDK",
+  https: "HTTPS",
+  performance: "Performance",
 };
 
 /** Sub-page order in the sub-nav and the sidebar. Anything upstream adds that isn't

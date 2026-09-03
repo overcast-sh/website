@@ -5,6 +5,7 @@ import GitHubIcon from "./GitHubIcon.astro";
 import { repositoryUrl, starsUrl, websiteEditUrlFromRoute } from "../lib/github-links";
 import { getSourceManifest } from "../lib/generated-content";
 import { formatDate, formatDateTimeTitle, toIsoDate } from "../lib/format-date";
+import { NESTED_GUIDES } from "../lib/service-docs";
 
 interface Props {
   title?: string;
@@ -41,6 +42,10 @@ const builtIso = toIsoDate(sourceManifest.generatedAt);
 const builtTitle = formatDateTimeTitle(sourceManifest.generatedAt);
 const sourceRef = sourceManifest.sourceRef;
 const sourceReleaseUrl = sourceRef ? `${repositoryUrl(sourceManifest.repo)}/releases/tag/${sourceRef}` : "";
+// Fed to the search-grouping script below via define:vars — see sectionFor() there.
+const guideSearchSectionLabels = Object.fromEntries(
+  Object.entries(NESTED_GUIDES).map(([guide, label]) => [guide, `${label} guides`]),
+);
 
 // One list behind the header nav, the mobile drawer and the footer's Product column —
 // they were three hand-kept copies, and only one of them can carry `aria-current`
@@ -349,7 +354,7 @@ const navCurrent = (href: string): "page" | "true" | undefined => {
         </div>
       </div>
     </footer>
-    <script is:inline>
+    <script is:inline define:vars={{ guideSearchSectionLabels }}>
       const toggle = document.getElementById("theme-toggle");
       // The toggle reports the theme actually in force, which is the stored choice when
       // there is one and the OS preference otherwise — `dataset.theme` alone is empty
@@ -472,7 +477,9 @@ const navCurrent = (href: string): "page" | "true" | undefined => {
       // also the group heading, and groups are shown best-scoring-group first.
       const sectionFor = (url) => {
         if (url.startsWith("/docs/services/")) return "Service reference";
-        if (url.startsWith("/docs/cdk/")) return "CDK guides";
+        const guideMatch = /^\/docs\/([^/]+)\//.exec(url);
+        const guideLabel = guideMatch && guideSearchSectionLabels[guideMatch[1]];
+        if (guideLabel) return guideLabel;
         if (url.startsWith("/docs/")) return "Guides & reference";
         return "Site";
       };
