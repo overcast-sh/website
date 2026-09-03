@@ -19,6 +19,13 @@
   --text-2xs--line-height: 1.4;
   --text-xs: var(--oc-text-xs);
   --text-xs--line-height: 1.45;
+
+  /* Where the header swaps its drawer for the full nav — `nav:flex` / `nav:hidden` in
+   * SiteLayout. It is its own breakpoint rather than Tailwind's `xl` because the switch
+   * is decided by one row's width budget (see the comment on that <nav>), not by the page
+   * grid: at `xl` the row was 74px over its container and wrapped to two rows at every
+   * desktop width, and dropping to `lg` would collide with the docs sidebar appearing. */
+  --breakpoint-nav: 1200px;
 }
 
 /* Vertical rhythm ------------------------------------------------------
@@ -76,16 +83,16 @@ body {
  * anchor, a Related link carrying a `#`, a search result, a heading link — used to park
  * its heading underneath the header, out of sight. `scroll-padding-top` on the scrolling
  * element fixes all of them at once, but only if the number matches the height actually
- * being covered, and that height moves: the header's controls wrap onto a second row on a
- * viewport too narrow to hold them in one (and sooner at a large browser font), so it is
- * ~61px on a phone and ~113px between roughly 1280px and 1500px.
+ * being covered, and that height still moves: the header is ~69px at every width it fits
+ * in one row, and wraps to a second row for a reader whose browser font is large enough to
+ * push it past the row's width budget (see the <nav> in SiteLayout).
  *
  * So the real number is measured at runtime — SiteLayout's sticky-offset script watches
  * every `[data-sticky-offset]` element with a ResizeObserver and writes
  * --oc-sticky-offset — and the value here is the fallback in play before that script runs
- * and when JS is off. It is sized for the wrapped two-row header, which errs towards
- * leaving a heading slightly low rather than hiding it: too much offset is a visible gap,
- * too little is a heading you can't read.
+ * and when JS is off. It is a step above the one-row header rather than exactly it, which
+ * errs towards leaving a heading slightly low rather than hiding it: too much offset is a
+ * visible gap, too little is a heading you can't read.
  *
  * One rule does the whole job, because scroll-padding is what every fragment jump and
  * every `scrollIntoView()` on the page already reads. The same inset written on the
@@ -93,7 +100,7 @@ body {
  * support scroll-padding, and it stays behind `@supports` because the two ADD: a browser
  * honouring both drops every anchor two offsets down the page instead of one. */
 :root {
-  --oc-sticky-offset: 7rem;
+  --oc-sticky-offset: 6rem;
 }
 
 html {
@@ -654,6 +661,25 @@ kbd {
 .surface .prose table td:first-child,
 .surface .prose table th:first-child {
   background: var(--oc-card);
+}
+
+/* A badge row — the linked shields at the top of a README, written one per line, which
+ * markdown collects into a single paragraph. Preflight sets `img { display: block }` and
+ * the typography plugin gives each image a 2em vertical margin, so the four badges on
+ * /docs/overview/ arrived stacked down the page, one per line, over 168px of it.
+ *
+ * The selector keys off the adjacency rather than the image, which is what keeps it off
+ * content images: a linked image is laid out inline only when the anchor beside it is also
+ * a linked image. A screenshot on its own — linked or not — matches neither half and keeps
+ * the block it wants. The pair covers a run of any length: every badge but the last matches
+ * the first selector, every badge but the first matches the second. */
+.prose p > a:has(+ a > img) > img,
+.prose p > a:has(> img) + a > img {
+  display: inline-block;
+  vertical-align: middle;
+  /* The newline between two badges already renders as a space; this is the rest of the gap,
+   * and the bottom margin is what separates the rows when a narrow column wraps them. */
+  margin: 0 0.25rem 0.25rem 0;
 }
 
 /* Callout / admonition. One definition for both producers: <Callout> on hand-authored
