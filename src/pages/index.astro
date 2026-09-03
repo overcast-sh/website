@@ -60,7 +60,7 @@ const dashboardShot = shot("console-dashboard");
 const runCommand = `docker run --rm \\
   -p 4566:4566 \\
   -p 4567:4567 \\
-  ghcr.io/overcast-sh/overcast:alpha`;
+  ghcr.io/overcast-sh/overcast:latest`;
 const firstCall = `aws --endpoint-url http://localhost:4566 \\
   s3 mb s3://hello-overcast`;
 ---

@@ -35,7 +35,7 @@ const moreGuides = moreGuideSlugs.map(bySlug).filter((doc): doc is DocEntry => B
 const quickStart = `docker run --rm \\
   -p 4566:4566 \\
   -p 4567:4567 \\
-  ghcr.io/overcast-sh/overcast:alpha`;
+  ghcr.io/overcast-sh/overcast:latest`;
 
 const referenceDoc = bySlug("docs/reference");
 ---
@@ -122,8 +122,8 @@ const referenceDoc = bySlug("docs/reference");
         <p class="m-0">Any release may change behavior, config, or APIs — nothing is stable yet.</p>
         <ul class="m-0 mt-2 list-none space-y-1 p-0">
           <li>
-            Pin an exact tag for anything you depend on: <code>ghcr.io/overcast-sh/overcast:0.0.1-alpha.NN</code>, not
-            the moving <code>:alpha</code>.
+            Pin an exact tag for anything you depend on: <code>ghcr.io/overcast-sh/overcast:0.0.1-alpha.NN</code>.
+            Both <code>:latest</code> and <code>:alpha</code> move to whatever released last.
           </li>
           <li>Check the <a href="/releases/">release changelog</a> before upgrading.</li>
           <li>Hit something unexpected? <a href={`${repositoryUrl()}/issues`}>Report it on GitHub</a>.</li>
