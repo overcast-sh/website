@@ -1,4 +1,5 @@
 import { z } from "astro/zod";
+import { changelogCategories } from "./changelog-parse";
 
 // The single source of truth for the shape of a `releases` collection entry: the
 // `releases` collection in src/content.config.ts validates with these schemas, and
@@ -14,28 +15,33 @@ import { z } from "astro/zod";
 // Objects are `.strict()` so that a field the loader emits but never declares here fails
 // the build instead of being quietly dropped from the collection.
 
-/** Changelog categories, in the order `scripts/changelog.py assemble` emits them upstream. */
-export const changelogCategories = ["added", "changed", "deprecated", "removed", "fixed", "security"] as const;
+/** Changelog categories, in the order `scripts/changelog.py assemble` emits them upstream.
+ * Declared in changelog-parse.ts (which imports nothing, so it stays unit-testable) and
+ * re-exported here, where the rest of the site already looks for the release vocabulary. */
+export { changelogCategories };
 
 export const changelogCategorySchema = z.enum(changelogCategories);
 
 /** One bullet under a category heading: either parsed into its parts, or — when the bullet
  * doesn't match the fragment grammar — the markdown rendered as-is.
  *
- * `proseHtml` is always what's shown up front; `proseMoreHtml` is a collapsed remainder (null
- * for a short entry, which renders exactly as `proseHtml` with nothing hidden). Same idea for
- * "raw" entries via `moreHtml` — a long pre-fragment-format bullet (`**Service** — prose`) gets
- * the identical lead/remainder split, just rendered through the raw markdown path instead of
- * the parsed one. See splitLongEntryProse in the loader. */
+ * The parsed shape mirrors the upstream fragment grammar line for line (see
+ * src/lib/changelog-parse.ts): `summaryHtml` is the bullet's standalone first line,
+ * `detailsHtml` holds each indented continuation line as its **own** rendered fragment — never
+ * merged into one paragraph, which is what made a detailed entry a wall of text — and
+ * `migrationHtml` is the `migration:` line a breaking entry carries.
+ *
+ * "raw" entries are pre-fragment-format bullets (`**Service** — prose`) and other unrecognized
+ * content. A long one gets a lead/remainder split so it still has a scannable first line; see
+ * splitLongEntryProse. */
 export const changelogBulletEntrySchema = z.discriminatedUnion("kind", [
   z
     .object({
       kind: z.literal("entry"),
       breaking: z.boolean(),
       areas: z.array(z.string()),
-      proseHtml: z.string(),
-      proseMoreHtml: z.string().nullable(),
-      proseText: z.string(),
+      summaryHtml: z.string(),
+      detailsHtml: z.array(z.string()),
       migrationHtml: z.string().nullable(),
     })
     .strict(),

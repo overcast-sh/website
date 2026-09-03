@@ -2,6 +2,7 @@
 import SiteLayout from "../components/SiteLayout.astro";
 import CodeBlock from "../components/CodeBlock.astro";
 import AssetDownloadList from "../components/AssetDownloadList.astro";
+import ChangelogEntryBody from "../components/ChangelogEntryBody.astro";
 import Chip from "../components/Chip.astro";
 import { ArrowRight, Binary, Container, Download, FileText, Monitor, PackageOpen, RotateCcwClock } from "@lucide/astro";
 import { getCollection, type CollectionEntry } from "astro:content";
@@ -139,7 +140,19 @@ const topRollup = latestRelease ? changelogRollup(latestRelease.data.changelogSe
                     <Chip tone="muted">{area}</Chip>
                   ))}
                 </div>
-                <p class="mt-2 text-sm leading-6 text-body">{entry.proseText}</p>
+                {/* The same component /releases/ renders each entry with, so the card's wording,
+                    its inline code and its disclosure rules match the full changelog exactly —
+                    the card just shows fewer entries, and folds every detail line away. Rendering
+                    the summary as HTML is also what keeps `LAMBDA_RUNTIME_API_HOST` intact: the
+                    old plain-text path stripped the underscores out of every env var and
+                    `/_overcast/...` path it printed. */}
+                <ChangelogEntryBody
+                  class="mt-2 text-sm leading-6 text-body"
+                  summaryHtml={entry.summaryHtml}
+                  detailsHtml={entry.detailsHtml}
+                  migrationHtml={entry.migrationHtml}
+                  inlineDetailLimit={0}
+                />
               </div>
             ))}
           </div>

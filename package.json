@@ -13,6 +13,7 @@
     "content:check": "node scripts/sync-overcast-content.ts --check",
     "check": "npm run copy-lint && node scripts/run-command.ts astro check",
     "copy-lint": "node scripts/copy-lint.mjs",
+    "test": "node --test \"src/**/*.test.ts\"",
     "a11y": "node scripts/a11y-audit.mjs",
     "type-audit": "node scripts/type-audit.mjs"
   },

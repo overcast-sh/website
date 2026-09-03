@@ -3,19 +3,22 @@
 // `ChangelogSection[]` (src/lib/release-schema.ts defines the shape; the parsing happens at
 // build time in src/loaders/overcast-releases.ts).
 //
-// Round 2 (progressive disclosure): breaking changes are pulled out into their own always-open
-// section pinned above the categories; each category is a native <details> disclosure — open by
-// default only when `defaultOpen` is set (the latest release), collapsed otherwise — labeled
-// with its entry count so triage doesn't require opening anything; entries carry a thin
-// category-colored left rail instead of a per-row chip (the section header already says the
-// category once for everyone inside it) and right-aligned muted area tags; a long entry's
-// remainder and any migration note sit behind the same inline "→" disclosure pattern. Area chips
-// in the rollup line double as an area filter across the whole release (progressive enhancement
-// — with no JS the chips are inert and everything just shows).
+// Progressive disclosure: breaking changes are pulled out into their own always-open section
+// pinned above the categories; each category is a native <details> disclosure — open by default
+// only when `defaultOpen` is set (the latest release), collapsed otherwise — labeled with its
+// entry count so triage doesn't require opening anything; entries carry a thin category-colored
+// left rail instead of a per-row chip (the section header already says the category once for
+// everyone inside it) and right-aligned muted area tags. Area chips in the rollup line double as
+// an area filter across the whole release (progressive enhancement — with no JS the chips are
+// inert and everything just shows).
+//
+// Each entry's own summary / detail lines / migration note layout lives in ChangelogEntryBody,
+// shared with the downloads page's card so the two can never disagree about how an entry reads.
 //
 // A "raw" section/entry is content the parser didn't recognize, rendered through the exact same
 // markdown pipeline as the rest of the site — never mangled, just undecorated, and never part of
 // the rollup, the breaking pin, or the filter (there's no area/breaking metadata to work with).
+import ChangelogEntryBody from "./ChangelogEntryBody.astro";
 import Chip from "./Chip.astro";
 import { ChevronDown, TriangleAlert } from "@lucide/astro";
 import type { ChangelogSection } from "../lib/release-schema";
@@ -91,9 +94,20 @@ const renderableSections = sectionsWithoutBreaking.filter((section) => section.k
           {breakingEntries.map((entry) => (
             <li class="pl-3 text-sm leading-6 text-body" style={`border-left:3px solid var(${changelogCategoryCssVar[entry.category]})`} data-areas={entry.areas.join(",")}>
               <div class="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
-                <div class="min-w-0 flex-1">
+                {/* min-w-[min(100%,16rem)] rather than min-w-0: the area tags share this
+                    flex row, and with a floor under the text they wrap onto their own line on a
+                    narrow screen instead of squeezing the entry into a two-word column. */}
+                <div class="min-w-[min(100%,16rem)] flex-1">
                   <Chip tone={changelogCategoryTone[entry.category]}>{entry.label}</Chip>
-                  <div class="changelog-prose mt-1" set:html={entry.proseHtml} />
+                  {/* A breaking change is the one entry nobody should have to open: its
+                      migration note renders inline here (ChangelogEntryBody), where the old
+                      "migration →" disclosure hid it a click away. */}
+                  <ChangelogEntryBody
+                    class="mt-1"
+                    summaryHtml={entry.summaryHtml}
+                    detailsHtml={entry.detailsHtml}
+                    migrationHtml={entry.migrationHtml}
+                  />
                 </div>
                 {entry.areas.length > 0 && (
                   <span class="flex min-w-0 flex-wrap items-center justify-end gap-1">
@@ -103,18 +117,6 @@ const renderableSections = sectionsWithoutBreaking.filter((section) => section.k
                   </span>
                 )}
               </div>
-              {entry.proseMoreHtml && (
-                <details class="changelog-disclosure mt-1.5">
-                  <summary class="cursor-pointer font-mono text-xs text-muted">more →</summary>
-                  <div class="changelog-prose mt-1.5" set:html={entry.proseMoreHtml} />
-                </details>
-              )}
-              {entry.migrationHtml && (
-                <details class="changelog-disclosure mt-1.5">
-                  <summary class="cursor-pointer font-mono text-xs text-(--oc-warning)">migration →</summary>
-                  <div class="changelog-prose mt-1.5 border-l-2 border-(--oc-warning) pl-3" set:html={entry.migrationHtml} />
-                </details>
-              )}
             </li>
           ))}
         </ul>
@@ -148,7 +150,12 @@ const renderableSections = sectionsWithoutBreaking.filter((section) => section.k
               ) : (
                 <li class="pl-3 text-sm leading-6 text-body" style={`border-left:3px solid var(${changelogCategoryCssVar[section.category]})`} data-areas={entry.areas.join(",")}>
                   <div class="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
-                    <div class="changelog-prose min-w-0 flex-1" set:html={entry.proseHtml} />
+                    <ChangelogEntryBody
+                      class="min-w-[min(100%,16rem)] flex-1"
+                      summaryHtml={entry.summaryHtml}
+                      detailsHtml={entry.detailsHtml}
+                      migrationHtml={entry.migrationHtml}
+                    />
                     {entry.areas.length > 0 && (
                       <span class="flex min-w-0 flex-wrap items-center justify-end gap-1">
                         {entry.areas.map((area) => (
@@ -157,12 +164,6 @@ const renderableSections = sectionsWithoutBreaking.filter((section) => section.k
                       </span>
                     )}
                   </div>
-                  {entry.proseMoreHtml && (
-                    <details class="changelog-disclosure mt-1">
-                      <summary class="cursor-pointer font-mono text-xs text-muted">more →</summary>
-                      <div class="changelog-prose mt-1" set:html={entry.proseMoreHtml} />
-                    </details>
-                  )}
                 </li>
               ),
             )}

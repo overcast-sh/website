@@ -24,6 +24,30 @@ env:
   BRANDING_REPO: overcast-sh/branding
 
 jobs:
+  # Node's own test runner over src/**/*.test.ts — no browser, no Overcast checkout, no
+  # network, so it is the one job that can say a parser is wrong in seconds. Kept separate
+  # from `build` for the same reason as brand-drift: a failing unit test should be visible
+  # on its own, not buried in a build log.
+  unit-tests:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout website
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm test
+
   # public/brand, public/fonts and src/styles/brand-tokens.css are vendored copies of
   # overcast-sh/branding. They stay tracked because this workflow never checks out the
   # branding repo to build the site — but a tracked copy of someone else's file rots
