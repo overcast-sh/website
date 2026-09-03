@@ -72,8 +72,8 @@ const totalGap = services.reduce((sum, service) => sum + service.gap, 0);
         read as a fourth tile that had lost its box. */}
     <div class="mt-4">
       <Callout kind="note" title="Alpha">
-        This matrix tracks listed API operations, not full AWS compatibility — alpha behavior still needs broad
-        real-world use.
+        This matrix counts listed API operations. It is not a claim of full AWS compatibility: alpha behaviour
+        still needs broad real-world use.
       </Callout>
     </div>
 
@@ -175,12 +175,12 @@ const totalGap = services.reduce((sum, service) => sum + service.gap, 0);
 
     <div class="mt-6 grid gap-4 text-sm text-muted sm:mt-8 lg:grid-cols-[1.4fr_1fr] lg:items-start">
       <p class="m-0 leading-6">
-        <strong class="font-mono text-(--oc-text)">Coverage</strong> is implemented operations over listed ones — the
-        operations Overcast tracks for that service, not every operation the AWS API has.
-        <strong class="font-mono text-(--oc-text)">Gap</strong> is the rest: calls that answer <code>501</code> today.
-        Open a service for the per-operation table and its notes.
+        <strong class="font-mono text-(--oc-text)">Coverage</strong> is implemented operations over listed ones: the
+        operations Overcast tracks for that service, rather than every operation in the AWS API.
+        <strong class="font-mono text-(--oc-text)">Gap</strong> is the rest, the calls that answer <code>501</code>
+        today. Open a service for the per-operation table and its notes.
       </p>
-      <SearchPromo label="Looking for one operation? Search the docs" />
+      <SearchPromo label="Search the docs for one operation" />
     </div>
   </section>
 </SiteLayout>

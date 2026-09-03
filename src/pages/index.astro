@@ -200,9 +200,9 @@ const firstCall = `aws --endpoint-url http://localhost:4566 \\
         <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted">
           <Monitor class="icon" />web console
         </p>
-        <h2 class="mt-2 font-mono text-2xl font-bold">Port 4567 is a console, not a status page.</h2>
+        <h2 class="mt-2 font-mono text-2xl font-bold">Port 4567 serves a management console.</h2>
         <p class="mt-4 leading-7 text-body">
-          The full image serves a management UI alongside the API. Three things in it are easy to miss:
+          It ships in the full image and updates as your app runs. Three parts get the most use:
         </p>
         <ul class="m-0 mt-6 flex list-none flex-col gap-4 p-0">
           <li class="flex gap-3">
@@ -303,8 +303,8 @@ const firstCall = `aws --endpoint-url http://localhost:4566 \\
           <span class="icon-tile"><GitCompare class="icon" /></span>Coming from LocalStack
         </h3>
         <p class="mt-3 text-sm leading-6 text-body">
-          One image line to change: the variables Overcast reads directly, the endpoint mapping, every known
-          behavioural difference, and no auth token or plan to carry over.
+          The image line to change, the environment variables Overcast reads, and the behavioural differences to
+          expect. No auth token to carry over.
         </p>
       </a>
       <a class="surface rounded-lg p-5 no-underline" href="/contributing/">

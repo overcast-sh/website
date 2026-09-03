@@ -11,7 +11,8 @@
     "preview": "node scripts/run-command.ts astro preview",
     "content:sync": "node scripts/sync-overcast-content.ts",
     "content:check": "node scripts/sync-overcast-content.ts --check",
-    "check": "node scripts/run-command.ts astro check",
+    "check": "npm run copy-lint && node scripts/run-command.ts astro check",
+    "copy-lint": "node scripts/copy-lint.mjs",
     "a11y": "node scripts/a11y-audit.mjs",
     "type-audit": "node scripts/type-audit.mjs"
   },
