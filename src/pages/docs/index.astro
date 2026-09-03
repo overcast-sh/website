@@ -95,7 +95,6 @@ const compatibilityDoc = bySlug("docs/localstack-compatibility");
     <h1 class="mt-2 font-mono text-3xl font-bold">Start here, go deeper if you need to.</h1>
     <p class="mt-4 max-w-2xl leading-7 text-body">
       Run the container, point your tooling at <code>localhost:4566</code>, and check the support matrix for gaps.
-      Everything below routes somewhere more specific.
     </p>
 
     <!-- 340px is the width the quickstart command needs before it starts
@@ -144,16 +143,14 @@ const compatibilityDoc = bySlug("docs/localstack-compatibility");
 
     <section class="mt-10 sm:mt-14">
       <h2 class="font-mono text-lg font-bold">Reference</h2>
-      <p class="mt-3 max-w-2xl text-sm leading-6 text-body">
-        Exhaustive and table-first, meant for looking one thing up — not reading start to finish.
-      </p>
+      <p class="mt-3 max-w-2xl text-sm leading-6 text-body">Tables, for looking one thing up.</p>
       <div class="mt-4 grid gap-4 sm:grid-cols-2">
         <a class="surface rounded-lg p-5 no-underline" href="/support/">
           <div class="flex items-center gap-2">
             <ShieldCheck class="icon text-accent" />
             <strong class="font-mono text-sm text-(--oc-text)">Support matrix</strong>
           </div>
-          <p class="mt-3 text-xs leading-5 text-muted">Every service, every operation, implemented or not — one table.</p>
+          <p class="mt-3 text-xs leading-5 text-muted">Every service and operation, with the gaps marked.</p>
         </a>
         {compatibilityDoc && (
           <a class="surface rounded-lg p-5 no-underline" href={`/${compatibilityDoc.data.slug}/`}>
@@ -162,7 +159,7 @@ const compatibilityDoc = bySlug("docs/localstack-compatibility");
               <strong class="font-mono text-sm text-(--oc-text)">{compatibilityDoc.data.title}</strong>
             </div>
             <p class="mt-3 text-xs leading-5 text-muted">
-              Every LocalStack port, hostname, container convention and client tool, with its status here.
+              LocalStack ports, hostnames, container conventions and client tools, each with its status.
             </p>
           </a>
         )}
@@ -173,7 +170,7 @@ const compatibilityDoc = bySlug("docs/localstack-compatibility");
               <strong class="font-mono text-sm text-(--oc-text)">{referenceDoc.data.title}</strong>
             </div>
             <p class="mt-3 text-xs leading-5 text-muted">
-              Emulation tiers, the whole service index, event pipelines, and what the console shows.
+              Emulation tiers, the service index, event pipelines, and the console.
             </p>
           </a>
         )}
@@ -184,7 +181,7 @@ const compatibilityDoc = bySlug("docs/localstack-compatibility");
               <strong class="font-mono text-sm text-(--oc-text)">{manifestDoc.data.title}</strong>
             </div>
             <p class="mt-3 text-xs leading-5 text-muted">
-              Which services dispatch by target header and which by path — an internals inventory.
+              Which services dispatch by target header, and which by path.
             </p>
           </a>
         )}
@@ -193,20 +190,20 @@ const compatibilityDoc = bySlug("docs/localstack-compatibility");
 
     <section id="alpha-stability" class="mt-10 scroll-mt-24 sm:mt-14">
       <Callout kind="warning" title="Alpha stability">
-        <p class="m-0">Any release may change behavior, config, or APIs — nothing is stable yet.</p>
+        <p class="m-0">Any release may change behaviour, config, or APIs.</p>
         <ul class="m-0 mt-2 list-none space-y-1 p-0">
           <li>
-            Pin an exact tag for anything you depend on: <code>ghcr.io/overcast-sh/overcast:0.0.1-alpha.NN</code>.
-            Both <code>:latest</code> and <code>:alpha</code> move to whatever released last.
+            Pin an exact tag: <code>ghcr.io/overcast-sh/overcast:0.0.1-alpha.NN</code>. Both <code>:latest</code>
+            and <code>:alpha</code> move with every release.
           </li>
           <li>Check the <a href="/releases/">release changelog</a> before upgrading.</li>
-          <li>Hit something unexpected? <a href={`${repositoryUrl()}/issues`}>Report it on GitHub</a>.</li>
+          <li>Report anything unexpected <a href={`${repositoryUrl()}/issues`}>on GitHub</a>.</li>
         </ul>
       </Callout>
     </section>
 
     <div class="mt-10 sm:mt-14">
-      <SearchPromo label="Looking for a specific operation? Search the docs" />
+      <SearchPromo label="Search the docs for one operation" />
     </div>
   </div>
 </SiteLayout>
