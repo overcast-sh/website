@@ -1,0 +1,29 @@
+---
+/**
+ * docs/operation-manifest.md is being deleted upstream (overcast-sh/overcast#1615 — stale
+ * generator output, nothing consumed it) and removed from this site's allowlist in the same
+ * change (see src/lib/overcast-doc-allowlist.ts). /docs/operation-manifest/ was a real,
+ * indexed page before that, so this keeps the URL resolving instead of 404ing — same
+ * treatment as /compare/localstack/ (see that page for why this is a hand-rolled redirect
+ * rather than an `astro.config.mjs` `redirects` entry: Astro's static redirect stub has no
+ * `<html>` element, and pagefind, run over `dist/` in `npm run build`, warns on every such
+ * file it finds). /docs/reference/ is the closest surviving page — the service/operation
+ * dispatch material this page described lives in the generated service index there.
+ */
+const target = "/docs/reference/";
+const canonical = new URL(target, Astro.site ?? "https://overcast.sh").toString();
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Redirecting to: {target}</title>
+    <meta http-equiv="refresh" content={`0;url=${target}`} />
+    <meta name="robots" content="noindex" />
+    <link rel="canonical" href={canonical} />
+  </head>
+  <body>
+    <a href={target}>Redirecting from <code>/docs/operation-manifest/</code> to <code>{target}</code></a>
+  </body>
+</html>
