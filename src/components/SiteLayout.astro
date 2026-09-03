@@ -113,7 +113,10 @@ const navCurrent = (href: string): "page" | "true" | undefined => {
         Pin your version and <a href="/docs/#alpha-stability">read the changelog</a> before upgrading.
       </p>
     </div>
-    <header class="sticky top-0 z-30 border-b border-oc bg-card/95 backdrop-blur">
+    {/* data-sticky-offset: this is the chrome that covers the top of the viewport, so its
+        height is what an anchor jump has to clear. The script at the end of <body> measures
+        every element carrying the attribute and publishes the total as --oc-sticky-offset. */}
+    <header data-sticky-offset class="sticky top-0 z-30 border-b border-oc bg-card/95 backdrop-blur">
       {/* `flex-wrap` is the escape hatch for a reader whose browser default font is
           larger than 16px: every label in this row grows with it, and without somewhere
           to go the row pushes the whole page into a horizontal scroll. At the default
@@ -400,7 +403,10 @@ const navCurrent = (href: string): "page" | "true" | undefined => {
         menuTrigger?.setAttribute("aria-label", "Open menu");
         menuOpenIcon?.classList.remove("hidden");
         menuCloseIcon?.classList.add("hidden");
-        if (returnFocus) menuTrigger?.focus();
+        // preventScroll: the trigger lives in the sticky header, and html carries a
+        // scroll-padding-top for the anchor offset — a plain focus() would scroll the
+        // document to satisfy that padding and dump the reader back at the top.
+        if (returnFocus) menuTrigger?.focus({ preventScroll: true });
       };
       menuTrigger?.addEventListener("click", () => {
         if (menuPanel?.classList.contains("hidden")) {
@@ -652,7 +658,9 @@ const navCurrent = (href: string): "page" | "true" | undefined => {
         trigger?.setAttribute("aria-expanded", "true");
         loadPagefind().catch(() => {});
         if (!input?.value.trim()) renderIdleState();
-        input?.focus();
+        // preventScroll for the same reason as the menu trigger above: the input sits in
+        // a `fixed` overlay, so focusing it must not move the page behind it.
+        input?.focus({ preventScroll: true });
         input?.select();
       };
       const closeSearch = ({ returnFocus = false } = {}) => {
@@ -663,7 +671,7 @@ const navCurrent = (href: string): "page" | "true" | undefined => {
         setListboxMode(false);
         requestId++;
         setLoading(false);
-        if (returnFocus) trigger?.focus();
+        if (returnFocus) trigger?.focus({ preventScroll: true });
       };
       const searchIsOpen = () => !overlay?.classList.contains("hidden");
 
@@ -702,10 +710,10 @@ const navCurrent = (href: string): "page" | "true" | undefined => {
           const last = focusable[focusable.length - 1];
           if (event.shiftKey && document.activeElement === first) {
             event.preventDefault();
-            last.focus();
+            last.focus({ preventScroll: true });
           } else if (!event.shiftKey && document.activeElement === last) {
             event.preventDefault();
-            first.focus();
+            first.focus({ preventScroll: true });
           }
         }
       });
@@ -714,7 +722,7 @@ const navCurrent = (href: string): "page" | "true" | undefined => {
         const suggestion = event.target.closest("[data-suggestion]");
         if (!suggestion || !input) return;
         input.value = suggestion.getAttribute("data-suggestion") || "";
-        input.focus();
+        input.focus({ preventScroll: true });
         runSearch(input.value);
       });
 
@@ -858,6 +866,71 @@ const navCurrent = (href: string): "page" | "true" | undefined => {
           }, 1500);
         });
       });
+    </script>
+    <script is:inline>
+      // Measures what the sticky chrome actually covers and publishes it as
+      // --oc-sticky-offset, which global.css spends as `scroll-padding-top` on <html>.
+      // Without it a fragment jump — an in-page anchor, a Related link with a `#`, a search
+      // result — leaves the heading it landed on hidden behind the header.
+      //
+      // Measured rather than hard-coded because the covered height is not one number: the
+      // header's controls wrap onto a second row on a viewport too narrow to hold them in
+      // one, so it is ~61px on a phone and ~113px on a desktop. global.css carries a static
+      // fallback for the wrapped case, for a reader with JS off.
+      const stickyRoot = document.documentElement;
+      // Opt-in rather than a scan for `position: sticky`: the docs sidebar drawer is also
+      // sticky, but its containing block is the one-row <aside> it sits in, so it scrolls
+      // away with the page instead of pinning anything down — counting it would push every
+      // anchor 46px too low on a phone. An element joins the sum by asking to.
+      const stickyChrome = [...document.querySelectorAll("[data-sticky-offset]")];
+      // A heading flush against the chrome reads as if it belongs to it. One `group` step
+      // of the spacing scale (16px) is the smallest gap that separates them.
+      const STICKY_GAP = 16;
+
+      const applyStickyOffset = () => {
+        const covered = stickyChrome.reduce((total, element) => {
+          const position = getComputedStyle(element).position;
+          if (position !== "sticky" && position !== "fixed") return total;
+          return total + element.getBoundingClientRect().height;
+        }, 0);
+        stickyRoot.style.setProperty("--oc-sticky-offset", `${Math.round(covered + STICKY_GAP)}px`);
+      };
+
+      applyStickyOffset();
+
+      if (typeof ResizeObserver === "function") {
+        const observer = new ResizeObserver(applyStickyOffset);
+        for (const element of stickyChrome) observer.observe(element);
+      } else {
+        window.addEventListener("resize", applyStickyOffset);
+      }
+
+      // A page opened *at* a fragment is scrolled by the browser before the webfonts land,
+      // and every heading above the target shifts when they do — so the position the
+      // browser picked is stale by the time the page is readable. Re-run the jump once
+      // things have settled, and never against a reader who has already taken over the
+      // scroll.
+      let readerHasScrolled = false;
+      const markReaderScrolled = () => {
+        readerHasScrolled = true;
+      };
+      for (const event of ["wheel", "touchmove", "keydown"]) {
+        window.addEventListener(event, markReaderScrolled, { once: true, passive: true });
+      }
+
+      const restoreHashPosition = () => {
+        if (readerHasScrolled || !location.hash || location.hash === "#") return;
+        let target = null;
+        try {
+          target = document.querySelector(location.hash);
+        } catch {
+          return; // A hash that isn't a valid selector is not ours to resolve.
+        }
+        if (target) target.scrollIntoView();
+      };
+
+      window.addEventListener("load", restoreHashPosition);
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(restoreHashPosition);
     </script>
   </body>
 </html>

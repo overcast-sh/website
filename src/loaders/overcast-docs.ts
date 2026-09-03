@@ -3,7 +3,12 @@ import path from "node:path";
 import matter from "gray-matter";
 import type { Loader } from "astro/loaders";
 import { exists, resolveOvercastSourceRoot } from "./overcast-source";
-import { overcastEditRef, overcastGitHubRepo, rewriteLegacyOrgReferences } from "../lib/github-links";
+import {
+  overcastEditRef,
+  overcastGitHubRepo,
+  rewriteContainerImageBadge,
+  rewriteLegacyOrgReferences,
+} from "../lib/github-links";
 import { normalizePath, shouldPublishDoc, walk, warnMissingAllowlistedDocs } from "../lib/overcast-doc-allowlist";
 
 export type OvercastDocData = {
@@ -261,7 +266,10 @@ export function overcastDocsLoader(): Loader {
             ? "Runtime emulation tiers, the full service index with per-service coverage, supported event pipelines, and what the web management console shows."
             : String(parsed.data.description || "");
         const slug = slugFor(sourcePath).replace(/\/$/, "");
-        const body = normalizeMarkdownTables(rewriteMarkdownLinks(rewriteLegacyOrgReferences(parsed.content), sourcePath));
+        // The badge repair runs after the legacy-org rewrite, which is what turns an
+        // old `ghcr.io-neaox%2F...` badge into the `overcast-sh` spelling that needs it.
+        const rewritten = rewriteContainerImageBadge(rewriteLegacyOrgReferences(parsed.content));
+        const body = normalizeMarkdownTables(rewriteMarkdownLinks(rewritten, sourcePath));
         const data = await parseData({
           id: slug,
           data: {
