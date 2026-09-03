@@ -1,9 +1,10 @@
 ---
-// The per-service page switcher: Overview · Operations · Limitations · Troubleshooting ·
-// Examples, listing only the pages that actually exist for this service.
+// The page switcher for a doc that has sub-pages — a service (Overview · Operations ·
+// Limitations · Troubleshooting · Examples) or a guide (Overview · Hostnames · VPCs · ...) —
+// listing only the pages that actually exist.
 //
-// Renders nothing when a service has no sub-pages (the shape every release ships today) —
-// a strip whose only entry is the page you're already reading is chrome with nothing in it.
+// Renders nothing when the group has no sub-pages (the shape most groups ship today) — a
+// strip whose only entry is the page you're already reading is chrome with nothing in it.
 import type { ServiceSubPage } from "../lib/service-docs";
 
 interface Props {
@@ -15,7 +16,7 @@ const { items, currentSlug } = Astro.props;
 ---
 
 {items.length > 0 && (
-  <nav class="mt-6 flex flex-wrap gap-1" aria-label="Service pages">
+  <nav class="mt-6 flex flex-wrap gap-1" aria-label="Section pages">
     {items.map((item) => (
       <a
         class={`rounded-md px-2.5 py-1.5 font-mono text-xs no-underline ${

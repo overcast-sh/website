@@ -15,8 +15,19 @@
 // tier, and each optionally holding sub-pages (operations, limitations, ...). Sub-pages
 // are only listed under the service you're currently reading, which is what keeps a
 // 50-service list from turning into a 250-link list.
+//
+// A handful of guides (docs/networking, docs/cli, docs/configuration) hold sub-pages the
+// same way, but live in ordinary flat sections ("Networking", "Reference") rather than
+// their own tiered one — same nesting-only-when-active treatment, just in the plain <ul>
+// branch below instead of the tiered one.
 import { coverageTierLabel, getServiceSupport, type ServiceSupportManifest } from "../lib/generated-content";
-import { groupServiceDocs, parseServiceDocSlug, type ServiceDocLike } from "../lib/service-docs";
+import {
+  groupGuideDocs,
+  groupServiceDocs,
+  parseGuideDocSlug,
+  parseServiceDocSlug,
+  type ServiceDocLike,
+} from "../lib/service-docs";
 
 type NavEntry = ServiceDocLike & { section: string };
 
@@ -41,10 +52,15 @@ const labelId = (value: string) => `${idPrefix}-${value.toLowerCase().replace(/[
 
 const serviceGroups = groupServiceDocs(docs);
 const activeService = parseServiceDocSlug(currentSlug)?.service ?? null;
+const guideGroups = groupGuideDocs(docs);
+const activeGuide = parseGuideDocSlug(currentSlug)?.guide ?? null;
 
-// A service's sub-pages are entries in the docs collection like any other; keep them out
-// of the flat per-tier list so they only ever appear nested under their own service.
-const visible: NavEntry[] = docs.filter((doc) => parseServiceDocSlug(doc.slug)?.page == null);
+// A service's or guide's sub-pages are entries in the docs collection like any other; keep
+// them out of the flat per-tier/per-section list so they only ever appear nested under
+// their own service or guide.
+const visible: NavEntry[] = docs.filter(
+  (doc) => parseServiceDocSlug(doc.slug)?.page == null && parseGuideDocSlug(doc.slug)?.page == null,
+);
 
 const grouped = Object.entries(
   visible.reduce<Record<string, NavEntry[]>>((groups, entry) => {
@@ -84,8 +100,10 @@ const servicesByTier = (entries: NavEntry[]): Array<[string, NavEntry[]]> => {
 
 const subPagesFor = (entry: NavEntry) => {
   const service = parseServiceDocSlug(entry.slug)?.service;
-  if (!service || service !== activeService) return [];
-  return serviceGroups.get(service)?.subPages ?? [];
+  if (service) return service === activeService ? serviceGroups.get(service)?.subPages ?? [] : [];
+  const guide = parseGuideDocSlug(entry.slug)?.guide;
+  if (guide) return guide === activeGuide ? guideGroups.get(guide)?.subPages ?? [] : [];
+  return [];
 };
 ---
 
@@ -130,6 +148,17 @@ const subPagesFor = (entry: NavEntry) => {
             <a class={`${linkClass} ${stateClass(entry.slug)}`} href={`/${entry.slug}/`} aria-current={currentAttr(entry.slug)}>
               {entry.title}
             </a>
+            {subPagesFor(entry).length > 0 && (
+              <ul class="m-0 ml-3 mt-1 list-none space-y-1 border-l border-oc p-0 pl-2">
+                {subPagesFor(entry).map((page) => (
+                  <li>
+                    <a class={`${linkClass} ${stateClass(page.slug)}`} href={`/${page.slug}/`} aria-current={currentAttr(page.slug)}>
+                      {page.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
           </li>
         ))}
       </ul>

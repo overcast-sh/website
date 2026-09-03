@@ -7,7 +7,14 @@ import { ChevronDown } from "@lucide/astro";
 import { getCollection, type CollectionEntry } from "astro:content";
 import { overcastEditUrl } from "../../lib/github-links";
 import { getServiceSupport } from "../../lib/generated-content";
-import { groupServiceDocs, parseServiceDocSlug, serviceNavItems } from "../../lib/service-docs";
+import {
+  groupGuideDocs,
+  groupServiceDocs,
+  guideLabel,
+  parseGuideDocSlug,
+  parseServiceDocSlug,
+  serviceNavItems,
+} from "../../lib/service-docs";
 
 type DocEntry = CollectionEntry<"docs">;
 
@@ -74,17 +81,22 @@ const support = await getServiceSupport();
 const navDocs = docs.map((entry) => ({ slug: entry.data.slug, title: entry.data.title, section: entry.data.section }));
 
 // Service pages get their own header: the service's icon and identity colour, a breadcrumb
-// back up the tree, and — once a service has sub-pages — a page switcher. Everything else
+// back up the tree, and — once a service has sub-pages — a page switcher. Guide pages
+// (docs/networking, docs/cli, docs/configuration) get the same breadcrumb-plus-switcher
+// treatment minus the icon — there's no per-guide identity colour to show. Everything else
 // keeps the plain section eyebrow.
 const serviceDoc = parseServiceDocSlug(doc.data.slug);
 const serviceGroup = serviceDoc ? groupServiceDocs(navDocs).get(serviceDoc.service) : undefined;
-const subNavItems = serviceNavItems(serviceGroup);
+const guideDoc = !serviceDoc ? parseGuideDocSlug(doc.data.slug) : null;
+const guideGroup = guideDoc ? groupGuideDocs(navDocs).get(guideDoc.guide) : undefined;
+const subNavItems = serviceNavItems(serviceGroup ?? guideGroup);
 // The support data's service id and the doc's filename differ for a couple of services
 // (`elbv2` vs docs/services/elb.md), and the icon table is keyed by the former.
 const serviceMeta = serviceDoc ? support.services.find((s) => s.docSlug === serviceDoc.service) : undefined;
 const serviceId = serviceMeta?.service ?? serviceDoc?.service ?? "";
 const serviceName = serviceMeta?.displayName ?? serviceGroup?.landing?.title.split(/\s+[—–-]\s+/)[0] ?? serviceDoc?.service.toUpperCase() ?? "";
 const serviceLandingSlug = serviceGroup?.landing?.slug;
+const guideLandingSlug = guideGroup?.landing?.slug;
 ---
 
 <SiteLayout title={doc.data.title} description={doc.data.description} editUrl={editUrl}>
@@ -219,6 +231,16 @@ const serviceLandingSlug = serviceGroup?.landing?.slug;
               <a class="no-underline text-muted hover:text-(--oc-text)" href={`/${serviceLandingSlug}/`}>{serviceName}</a>
             ) : (
               <span class="text-(--oc-text)">{serviceName}</span>
+            )}
+          </nav>
+        ) : guideDoc ? (
+          <nav class="flex flex-wrap items-center gap-1.5 font-mono text-xs uppercase tracking-[0.16em] text-muted" aria-label="Breadcrumb">
+            <a class="no-underline text-muted hover:text-(--oc-text)" href="/docs/">Docs</a>
+            <span aria-hidden="true">›</span>
+            {guideDoc.page && guideLandingSlug ? (
+              <a class="no-underline text-muted hover:text-(--oc-text)" href={`/${guideLandingSlug}/`}>{guideGroup?.label ?? guideLabel(guideDoc.guide)}</a>
+            ) : (
+              <span class="text-(--oc-text)">{guideGroup?.label ?? guideLabel(guideDoc.guide)}</span>
             )}
           </nav>
         ) : (
