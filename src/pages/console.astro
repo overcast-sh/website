@@ -57,7 +57,7 @@ const tour = [
     icon: Inbox,
     title: "Inbox",
     lead: "Your Lambda sent a confirmation email. Read it instead of guessing whether it went out.",
-    body: "Overcast runs a mock SMTP server by default, so mail from SES, SNS email subscriptions, and Cognito lands at /inbox rather than anywhere real. SNS SMS and webhook deliveries land there too — locally those usually have nowhere to go at all.",
+    body: "Overcast runs a mock SMTP server by default, so mail from SES, SNS email subscriptions, and Cognito lands at /inbox rather than anywhere real. SNS SMS and webhook deliveries land there too.",
     points: [
       "Plain text, rendered HTML, and the verbatim raw message, per message",
       "One SNS publish that fans out to five subscribers is grouped as one thread",
@@ -84,9 +84,9 @@ const tour = [
     icon: Route,
     title: "Request traces",
     lead: "One PutObject became a notification, a queue message, and a Lambda invocation.",
-    body: "Request tracing records that as a single trace and draws it three ways — sequence diagram, waterfall, or flow map — with the request and response bodies at every hop. Every row has a copy-as-curl button, so you can replay the exact call from a terminal.",
+    body: "Request tracing records that as one trace and draws it as a sequence diagram, waterfall, or flow map, with the request and response bodies at every hop. Every row has a copy-as-curl button.",
     points: [
-      "Search over request and response bodies, not just paths",
+      "Search request and response bodies as well as paths",
       "Failed requests are kept past the normal retention window",
       "Needs OVERCAST_DEBUG=true; without it the page says so rather than showing nothing",
     ],
@@ -112,9 +112,9 @@ const tour = [
     icon: ListTree,
     title: "Resource browsers",
     lead: "Check what your code wrote without an aws s3 cp round trip.",
-    body: "Each service gets a browser built for that service. In S3 that means prefix navigation, drag-and-drop upload with a storage class, multi-object zip download, and a preview that renders images and pretty-prints and highlights JSON, YAML, CSV, and logs. Versioned objects get a revision tab.",
+    body: "Each service gets its own browser. In S3: prefix navigation, drag-and-drop upload with a storage class, multi-object zip download, a revision tab on versioned objects, and a preview that renders images and highlights JSON, YAML, CSV, and logs.",
     points: [
-      "Bucket notifications and lifecycle rules are forms, not hand-written config JSON",
+      "Bucket notifications and lifecycle rules are edited as forms",
       "Copy any key as an s3:// URI or a path-style URL, version pinned if you picked one",
     ],
     shot: shot("console-resources"),
@@ -139,12 +139,12 @@ const alsoInside: { icon: typeof ScanSearch; service?: string; title: string; bo
   {
     icon: ScanSearch,
     title: "Global search",
-    body: "Cmd-K from anywhere. Paste an ARN, a bucket name, a queue URL, or a phrase you half-remember from an email your app sent, and land on it.",
+    body: "Cmd-K from anywhere. Paste an ARN, a bucket name, a queue URL, or a phrase from an email your app sent.",
   },
   {
     icon: BookOpen,
     title: "Docs, in the console",
-    body: "The same per-service reference published on this site, one click from the page you are on and matched to the binary you are running.",
+    body: "The same per-service reference as this site, matched to the binary you are running.",
   },
   {
     icon: ShieldCheck,
@@ -220,8 +220,7 @@ const alsoInside: { icon: typeof ScanSearch; service?: string; title: string; bo
       </h1>
       <p class="mt-4 max-w-2xl text-lg leading-8 text-body">
         The full Overcast image serves a management console on port <code>4567</code>, next to the AWS API on
-        <code>4566</code>. It reads the same state your code does and updates as your app runs, so you never
-        have to poll it with a CLI command to find out what happened.
+        <code>4566</code>. It reads the same state your code does and updates as your app runs.
       </p>
       <div class="mt-8 grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
         {/* `min-w-0`: a grid item sizes itself to its content unless told otherwise, so
@@ -263,8 +262,7 @@ const alsoInside: { icon: typeof ScanSearch; service?: string; title: string; bo
               />
             )}
             <figcaption class="border-t border-oc px-5 py-3 text-xs text-muted">
-              The dashboard sorts every service by how completely Overcast emulates it, so you can see what is worth
-              building against before you start.
+              The dashboard sorts every service by how completely Overcast emulates it.
             </figcaption>
           </figure>
         )}
@@ -358,11 +356,11 @@ const alsoInside: { icon: typeof ScanSearch; service?: string; title: string; bo
 
   <section id="running" class="mx-auto max-w-7xl scroll-mt-24 px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
     <p class="font-mono text-xs uppercase tracking-[0.16em] text-muted">running it</p>
-    <h2 class="mt-2 font-mono text-2xl font-bold">One port, one process, optional.</h2>
+    <h2 class="mt-2 font-mono text-2xl font-bold">One process, no second server.</h2>
     <p class="mt-4 max-w-3xl leading-7 text-body">
-      The console is served in-process by the same binary as the API — there is no second server to start or
-      supervise, and port <code>4566</code> does not depend on it. Set <code>--ui-port</code> or
-      <code>OVERCAST_UI_PORT</code> to move it, or <code>0</code> to switch it off.
+      The same binary serves the console and the API, and port <code>4566</code> does not depend on it. Set
+      <code>--ui-port</code> or <code>OVERCAST_UI_PORT</code> to move the console, or <code>0</code> to switch it
+      off.
     </p>
 
     <div class="mt-6 grid gap-4 sm:mt-8 md:grid-cols-2">
@@ -397,8 +395,8 @@ const alsoInside: { icon: typeof ScanSearch; service?: string; title: string; bo
       <Callout kind="tip" title="If the console feels sluggish">
         <p class="m-0">
           Many concurrent Lambdas or transfers can exhaust the browser's six-connection HTTP/1.1 limit, because the
-          live feed and progress streams hold sockets open. Serving the console over HTTPS unlocks HTTP/2 and fixes
-          it — see <a href="/docs/https/">HTTPS and HTTP/2</a>.
+          live feed and progress streams hold sockets open. Serving the console over HTTPS switches it to HTTP/2,
+          which lifts that limit: see <a href="/docs/https/">HTTPS and HTTP/2</a>.
         </p>
       </Callout>
     </div>

@@ -17,7 +17,12 @@ to GitHub Pages.
 - `npm run dev` — runs `content:sync` then starts the Astro dev server.
 - `npm run build` — runs `content:sync`, `astro build`, then `pagefind --site dist` to
   build the search index.
-- `npm run check` — `astro check` (type/diagnostics check).
+- `npm run check` — `copy-lint` then `astro check` (type/diagnostics check).
+- `npm run copy-lint` — greps site-authored page copy (`src/pages`, `src/components`) for
+  contrastive "X, not Y" framing, marketing vocabulary, rhetorical questions, stacked
+  adjectives and US spelling. CI runs it as the `copy-lint` job on every PR. Deliberate
+  uses go in `ALLOW` in `scripts/copy-lint.mjs`, or behind a `copy-lint-ignore <rule>`
+  comment on the line above.
 - `npm run content:sync` — **the one command that regenerates every script-owned file.**
   Runs `scripts/sync-overcast-content.ts` directly, without starting a dev/build;
   `predev`/`prebuild` already call it, so `npm run dev`/`build` need nothing extra.
@@ -115,7 +120,7 @@ the docs repo (source of truth: `overcast-sh/overcast`'s `AGENTS.md` / `CONTRIBU
 
 ## Before finishing a change
 
-- Run `npm run check` (Astro diagnostics/type check).
+- Run `npm run check` (site copy lint, then Astro diagnostics/type check).
 - Run `npm run build` to confirm the site builds end-to-end, including the content sync
   and pagefind indexing step. This requires `OVERCAST_LOCAL_PATH` to be set to a valid
   local `overcast-sh/overcast` checkout.

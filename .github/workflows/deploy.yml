@@ -53,6 +53,26 @@ jobs:
           OVERCAST_BRANDING_PATH: .cache/source/branding
         run: npm run content:check
 
+  # The non-docs pages are hand-written, and the shapes this checks for (contrastive
+  # "X, not Y" framing, marketing vocabulary, rhetorical questions, US spelling) keep
+  # creeping back in. Needs no Overcast checkout: it reads src/pages and src/components
+  # only.
+  copy-lint:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout website
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Lint site copy
+        run: npm run copy-lint
+
   build:
     if: github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip deploy]')
     runs-on: ubuntu-latest

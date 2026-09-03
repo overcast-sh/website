@@ -41,6 +41,11 @@ npm run check
 npm run build
 ```
 
+`npm run check` starts with `npm run copy-lint` (`scripts/copy-lint.mjs`, also the
+`copy-lint` CI job), which greps the hand-written page copy for contrastive "X, not Y"
+framing, marketing vocabulary, rhetorical questions and US spelling — record a deliberate
+use in that script's `ALLOW` list or with a `copy-lint-ignore <rule>` comment.
+
 `npm run build` runs the content sync and pagefind search indexing, so it needs
 `OVERCAST_LOCAL_PATH` set to a valid local checkout.
 
