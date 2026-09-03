@@ -248,6 +248,9 @@ export function overcastDocsLoader(): Loader {
         // this file was the ~650-line reference manual and the override said "Full
         // reference"; upstream has since split config, debug endpoints, storage, networking
         // and troubleshooting into their own pages, which the docs hub now links directly.)
+        //
+        // overcast-sh/overcast#1615 fixes this file's own frontmatter title/description
+        // upstream; these overrides can go once a release synced here includes that fix.
         const title =
           sourcePath === "docs/README.md" ? "Reference index" : String(parsed.data.title || titleFromPath(sourcePath));
         const description =

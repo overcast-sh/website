@@ -27,7 +27,6 @@ export const publicDocFiles = [
   "docs/troubleshooting.md",
   "docs/sdk-cli.md",
   "docs/cli.md",
-  "docs/operation-manifest.md",
   "docs/cdk.md",
   "docs/networking.md",
   "docs/storage.md",
