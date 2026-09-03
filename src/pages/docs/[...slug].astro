@@ -89,22 +89,123 @@ const serviceLandingSlug = serviceGroup?.landing?.slug;
 
 <SiteLayout title={doc.data.title} description={doc.data.description} editUrl={editUrl}>
   <div class="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 sm:py-14 lg:grid-cols-[260px_1fr] lg:px-8">
-    <aside class="lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+    <aside id="docs-sidebar-aside" class="lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
       <a class="mb-4 hidden font-mono text-sm font-bold lg:block" href="/docs/">Documentation</a>
 
-      <details class="group sticky top-[4.75rem] z-10 mb-4 lg:hidden">
+      <details id="docs-sidebar-drawer" class="group sticky top-[4.75rem] z-10 mb-4 lg:hidden">
         <summary class="flex cursor-pointer list-none items-center justify-between gap-2 rounded-md border border-oc bg-card px-3 py-3 font-mono text-sm font-semibold text-(--oc-text) shadow-sm [&::-webkit-details-marker]:hidden">
           Docs navigation
           <ChevronDown class="icon shrink-0 text-muted transition-transform duration-150 group-open:rotate-180" />
         </summary>
-        <nav class="mt-2 max-h-[60vh] overflow-auto rounded-md border border-oc bg-card p-3" aria-label="Documentation">
+        <nav id="docs-sidebar-drawer-nav" class="mt-2 max-h-[60vh] overflow-auto rounded-md border border-oc bg-card p-3" aria-label="Documentation">
           <DocsNav docs={navDocs} currentSlug={doc.data.slug} support={support} idPrefix="docsnav-drawer" compact />
         </nav>
       </details>
 
-      <nav class="hidden lg:block" aria-label="Documentation">
+      <nav id="docs-sidebar-desktop-nav" class="hidden lg:block" aria-label="Documentation">
         <DocsNav docs={navDocs} currentSlug={doc.data.slug} support={support} idPrefix="docsnav-side" />
       </nav>
+
+      <script is:inline>
+        // Auto-scroll the docs sidebar so the active page is in view, without ever
+        // moving the document's own scroll position. Runs synchronously here (as the
+        // parser reaches it, before the rest of the page paints) so there's no flash of
+        // the sidebar jumping after load. Also re-runs when the mobile drawer opens and
+        // on Astro view-transition navigations, if the site ever adopts those — neither
+        // exists yet, so that listener is a harmless no-op today.
+        (function () {
+          function isDisplayed(el) {
+            if (!el) return false;
+            var style = window.getComputedStyle(el);
+            return style.display !== "none" && style.visibility !== "hidden";
+          }
+
+          function scrollActiveIntoView(container, searchRoot, instant) {
+            if (!container || !isDisplayed(container)) return;
+            var root = searchRoot || container;
+            if (!isDisplayed(root)) return;
+            var active = root.querySelector('[aria-current="page"]');
+            if (!active) return;
+            // Not actually scrollable (e.g. a short docs section) — leave it alone.
+            if (container.scrollHeight <= container.clientHeight + 1) return;
+
+            var containerRect = container.getBoundingClientRect();
+            var activeRect = active.getBoundingClientRect();
+            var margin = 24;
+            var alreadyVisible =
+              activeRect.top >= containerRect.top + margin && activeRect.bottom <= containerRect.bottom - margin;
+            // Already comfortably in view: don't yank the reader's scroll position.
+            if (alreadyVisible) return;
+
+            var offsetWithinContainer = activeRect.top - containerRect.top + container.scrollTop;
+            var target = offsetWithinContainer - container.clientHeight / 2 + activeRect.height / 2;
+            var maxScroll = container.scrollHeight - container.clientHeight;
+            var clamped = Math.max(0, Math.min(target, maxScroll));
+            var reducedMotion =
+              window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            container.scrollTo({ top: clamped, behavior: instant || reducedMotion ? "auto" : "smooth" });
+          }
+
+          function alignDocsSidebar(instant) {
+            // Belt-and-suspenders: whatever happens above, the page itself never moves.
+            var docScrollY = window.scrollY;
+
+            var aside = document.getElementById("docs-sidebar-aside");
+            var desktopNav = document.getElementById("docs-sidebar-desktop-nav");
+            scrollActiveIntoView(aside, desktopNav, instant);
+
+            var drawerDetails = document.getElementById("docs-sidebar-drawer");
+            var drawerNav = document.getElementById("docs-sidebar-drawer-nav");
+            if (drawerDetails && drawerDetails.open) {
+              scrollActiveIntoView(drawerNav, drawerNav, instant);
+            }
+
+            if (window.scrollY !== docScrollY) window.scrollTo(0, docScrollY);
+          }
+
+          // Initial load: instant, no animation, before the rest of the page paints.
+          alignDocsSidebar(true);
+
+          var drawerDetails = document.getElementById("docs-sidebar-drawer");
+          if (drawerDetails) {
+            drawerDetails.addEventListener("toggle", function () {
+              // The drawer's contents lay out asynchronously right as it opens — a
+              // same-tick measurement can still see the pre-open (zero) geometry, so
+              // give layout a frame to settle before measuring.
+              if (drawerDetails.open) {
+                requestAnimationFrame(function () {
+                  alignDocsSidebar(false);
+                });
+              }
+            });
+          }
+
+          // Belt-and-suspenders re-check once the page has fully loaded: the
+          // `alreadyVisible` guard above makes this a no-op in the normal case, but it
+          // catches the container's size not yet being final at parse time (e.g. styles
+          // that finish applying asynchronously).
+          window.addEventListener("load", function () {
+            alignDocsSidebar(true);
+          });
+
+          // The mobile drawer and desktop column swap which element is the scroll
+          // container at the `lg` breakpoint, and bfcache restores (back/forward) don't
+          // re-run the inline script at all — re-check (instantly, never yanking a
+          // position that's already fine) on both.
+          window.addEventListener("resize", function () {
+            alignDocsSidebar(true);
+          });
+          window.addEventListener("pageshow", function () {
+            alignDocsSidebar(true);
+          });
+
+          // Client-side navigation (Astro View Transitions) — not enabled on this site
+          // today, but hook it so this keeps working if that ever changes.
+          document.addEventListener("astro:page-load", function () {
+            alignDocsSidebar(true);
+          });
+        })();
+      </script>
     </aside>
     <article class="min-w-0">
       <div class="mb-8 border-b border-oc pb-8">
