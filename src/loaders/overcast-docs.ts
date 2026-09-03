@@ -37,7 +37,10 @@ function sectionFor(docPath: string, frontmatter: Record<string, unknown>): stri
   // fires for docs/services/README.md, which doesn't. Match the same label so the
   // sidebar shows one "Service Reference" group instead of two near-duplicate headings.
   if (docPath.startsWith("docs/services/")) return "Service Reference";
-  if (docPath.startsWith("docs/cdk")) return "CDK";
+  // Every docs/cdk/**, docs/https/** and docs/performance/** page — like the other nested
+  // guides (docs/networking/**, docs/cli/**, docs/configuration/**) — sets its own
+  // frontmatter `section`, caught by the check above; there is no page left that depends on
+  // a path-based fallback here.
   return "Guides";
 }
 
