@@ -117,11 +117,11 @@ const navCurrent = (href: string): "page" | "true" | undefined => {
         height is what an anchor jump has to clear. The script at the end of <body> measures
         every element carrying the attribute and publishes the total as --oc-sticky-offset. */}
     <header data-sticky-offset class="sticky top-0 z-30 border-b border-oc bg-card/95 backdrop-blur">
-      {/* `flex-wrap` is the escape hatch for a reader whose browser default font is
-          larger than 16px: every label in this row grows with it, and without somewhere
-          to go the row pushes the whole page into a horizontal scroll. At the default
-          size nothing wraps. */}
-      <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 sm:px-6 lg:px-8">
+      {/* One row, at every width the full nav is shown at — see the budget on the <nav>
+          below. `flex-wrap` stays as the escape hatch for a reader whose browser default
+          font is larger than 16px: every label in this row grows with it, and without
+          somewhere to go the row pushes the whole page into a horizontal scroll. */}
+      <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-6 lg:px-8">
         <a href="/" class="flex shrink-0 items-center gap-2 no-underline" aria-label="Overcast home">
           <span class="relative h-8 w-8 shrink-0">
             <img src="/brand/mark-light.svg" alt="" class="theme-light-only h-8 w-8" />
@@ -136,14 +136,23 @@ const navCurrent = (href: string): "page" | "true" | undefined => {
             <span class="hidden font-mono text-2xs uppercase tracking-[0.16em] text-muted sm:block">local AWS emulator</span>
           </span>
         </a>
-        <nav class="hidden items-center gap-3.5 font-mono text-xs whitespace-nowrap text-muted xl:flex" aria-label="Main">
-          {primaryNav.map(({ href, label, Icon }) => (
+        {/* Labels only, no icons. The row has 1216px to spend at every desktop width (the
+            container caps at max-w-7xl, so 1600px is no roomier than 1280px), and six
+            labelled entries plus the brand and the controls do not fit inside it with a
+            glyph in front of each one — the row wrapped to two at 1300, 1440 and 1600px
+            alike. The glyphs are worth their width in the drawer and the footer, where
+            they mark entries in a vertical list; across one horizontal line of 13px mono
+            the labels already carry it. Budget at the `nav` breakpoint, where the row is
+            tightest (1200px viewport, ~1120px of content once a scrollbar is out): brand
+            204 + nav 564 + controls 255 + two 16px gaps = 1055. */}
+        <nav class="hidden items-center gap-4 font-mono text-xs whitespace-nowrap text-muted nav:flex" aria-label="Main">
+          {primaryNav.map(({ href, label }) => (
             <a
               href={href}
-              class={`flex items-center gap-1.5 hover:text-(--oc-text) ${navCurrent(href) === "page" ? "text-(--oc-text)" : "text-muted"}`}
+              class={`hover:text-(--oc-text) ${navCurrent(href) === "page" ? "text-(--oc-text)" : "text-muted"}`}
               aria-current={navCurrent(href)}
             >
-              <Icon class="icon" />{label}
+              {label}
             </a>
           ))}
         </nav>
@@ -160,24 +169,23 @@ const navCurrent = (href: string): "page" | "true" | undefined => {
             <span class="hidden sm:inline">search</span>
             <kbd class="ml-2 hidden text-2xs sm:inline">/</kbd>
           </button>
-          <a
-            href={repositoryUrl()}
-            class="copy-button hidden h-9 items-center gap-1.5 rounded-md px-3 font-mono text-xs no-underline xl:flex"
-          >
-            <GitHubIcon />GitHub
-          </a>
+          {/* One control, not the two this used to carry. starsUrl() *is* repositoryUrl()
+              — GitHub 404s /stargazers on a repo with no stars, so the star button is the
+              one on the repo page — so "GitHub" and "Star" were two pills, 182px of the
+              row, pointing at the same page. The mark says where it goes and the label
+              says what to do there. The drawer and the footer still list both. */}
           <a
             href={starsUrl()}
-            class="copy-button hidden h-9 items-center gap-1.5 rounded-md px-3 font-mono text-xs no-underline xl:flex"
+            class="copy-button hidden h-9 items-center gap-1.5 rounded-md px-3 font-mono text-xs no-underline nav:flex"
           >
-            <Star class="icon" />Star
+            <GitHubIcon />Star
           </a>
           {/* aria-pressed, not a bare label: the button is a two-state switch, and
               "Toggle theme" alone never says which state it is in. The inline script
               below sets the initial value from the resolved theme. */}
           <button
             id="theme-toggle"
-            class="copy-button h-11 w-11 rounded-md font-mono text-xs xl:h-9 xl:w-9"
+            class="copy-button h-11 w-11 rounded-md font-mono text-xs nav:h-9 nav:w-9"
             type="button"
             aria-label="Dark theme"
             aria-pressed="false"
@@ -186,7 +194,7 @@ const navCurrent = (href: string): "page" | "true" | undefined => {
           </button>
           <button
             id="menu-toggle"
-            class="copy-button flex h-11 w-11 items-center justify-center rounded-md font-mono text-xs xl:hidden"
+            class="copy-button flex h-11 w-11 items-center justify-center rounded-md font-mono text-xs nav:hidden"
             type="button"
             aria-expanded="false"
             aria-controls="mobile-menu"
@@ -199,7 +207,7 @@ const navCurrent = (href: string): "page" | "true" | undefined => {
       </div>
       <div
         id="mobile-menu"
-        class="fixed inset-x-4 top-[4.75rem] z-40 hidden rounded-lg border border-oc bg-card p-2 shadow-2xl xl:hidden"
+        class="fixed inset-x-4 top-[4.75rem] z-40 hidden rounded-lg border border-oc bg-card p-2 shadow-2xl nav:hidden"
       >
         <nav class="font-mono text-sm" aria-label="Mobile">
           <ul class="m-0 flex list-none flex-col gap-1 p-0">

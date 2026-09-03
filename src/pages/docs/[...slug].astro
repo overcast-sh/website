@@ -78,7 +78,15 @@ const withNamedLinks = html.replace(
 );
 const editUrl = await overcastEditUrl(doc.data.sourcePath);
 const support = await getServiceSupport();
-const navDocs = docs.map((entry) => ({ slug: entry.data.slug, title: entry.data.title, section: entry.data.section }));
+// `body` rides along because a nested group's sub-pages are ordered by the order its
+// landing page's routing table links them — see subPageOrderFrom in lib/service-docs.ts.
+// Only landing bodies are ever read, but which entries are landings is that module's call.
+const navDocs = docs.map((entry) => ({
+  slug: entry.data.slug,
+  title: entry.data.title,
+  section: entry.data.section,
+  body: entry.body,
+}));
 
 // Service pages get their own header: the service's icon and identity colour, a breadcrumb
 // back up the tree, and — once a service has sub-pages — a page switcher. Guide pages

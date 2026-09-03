@@ -49,8 +49,9 @@ const GUIDE_LANDING_SLUGS: Record<string, string> = {
   migration: "migration-from-localstack",
 };
 
-/** Sub-page order in the sub-nav and the sidebar. Anything upstream adds that isn't
- * listed falls in after these, alphabetically, labelled from its own frontmatter title. */
+/** The four concern pages every service page splits into, in the order a service is read.
+ * They are a fixed vocabulary upstream, so they lead a service's sub-nav whatever else it
+ * grows; anything beyond them is ordered by the landing page (see subPageOrderFrom). */
 const SUBPAGE_ORDER = ["operations", "limitations", "troubleshooting", "examples"];
 
 /** A doc entry, reduced to what this module needs — keeps it usable from anywhere
@@ -58,6 +59,10 @@ const SUBPAGE_ORDER = ["operations", "limitations", "troubleshooting", "examples
 export interface ServiceDocLike {
   slug: string;
   title: string;
+  /** The page's own markdown body. Only ever read off a *landing* page, and only to
+   * recover the order its routing table lists the group's sub-pages in — see
+   * subPageOrderFrom. Optional: a caller that doesn't have it gets title order. */
+  body?: string;
 }
 
 export interface ServiceSubPage {
@@ -123,12 +128,121 @@ function labelFor(page: ServiceSubPage["key"], title: string): string {
   return page[0].toUpperCase() + page.slice(1);
 }
 
-function sortSubPages(pages: ServiceSubPage[]): ServiceSubPage[] {
+/** Consecutive `| ... |` lines, i.e. the markdown tables in a body, each as its rows. */
+function markdownTables(body: string): string[][] {
+  const tables: string[][] = [];
+  let rows: string[] = [];
+  for (const line of body.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("|") && trimmed.endsWith("|")) {
+      rows.push(trimmed);
+      continue;
+    }
+    if (rows.length > 0) tables.push(rows);
+    rows = [];
+  }
+  if (rows.length > 0) tables.push(rows);
+  return tables;
+}
+
+/**
+ * The order a landing page's routing table lists its sub-pages in.
+ *
+ * Every split landing opens with a table that routes the reader — one row per sub-page,
+ * "here is the question this page answers" — and that order is the author's, running from
+ * the first thing you need to the last. Sorting the sub-nav and sidebar by slug instead
+ * threw it away and left eleven networking entries looking shuffled, because the nav shows
+ * titles and the sort was reading filenames.
+ *
+ * The routing table is found rather than declared: it is the first table in the body that
+ * links two or more of the group's own sub-pages. Two is what separates it from an
+ * incidental table that happens to link one (`https.md`'s per-platform table links
+ * `manual-trust` from its Linux row, well above the real routing table). A row is credited
+ * with whichever sub-pages it links, so it works whether the link is the row's first cell
+ * (networking, cli, configuration) or its second (migration-from-localstack, which asks
+ * the question first). Returns an empty list when there is no such table — a landing that
+ * routes in prose, or a group with a single sub-page — and callers fall back to title order.
+ *
+ * @param body    the landing page's markdown, links already rewritten to site routes
+ * @param subPages the group's sub-pages, whose `slug` is what is looked for in the table
+ */
+export function subPageOrderFrom(body: string, subPages: readonly ServiceSubPage[]): string[] {
+  for (const rows of markdownTables(body)) {
+    const found: string[] = [];
+    for (const row of rows) {
+      // Where in this row each sub-page is linked, so a row that links two of them credits
+      // them left to right rather than in whatever order the group happens to hold them.
+      const inRow = subPages
+        .filter((page) => !found.includes(page.key))
+        // The slug is matched with a trailing boundary so a group holding both `egress`
+        // and `routed-egress` can't credit a row linking one to the other. `[./]` in front
+        // anchors it to a path segment, matching both the rewritten `/docs/x/y/` route and
+        // a raw `./x/y.md` target.
+        .map((page) => ({ key: page.key, at: row.search(new RegExp(`[./]${escapeForRegExp(page.slug)}(?![\\w-])`)) }))
+        .filter((match) => match.at !== -1)
+        .sort((a, b) => a.at - b.at);
+      found.push(...inRow.map((match) => match.key));
+    }
+    if (found.length >= 2) return found;
+  }
+  return [];
+}
+
+function escapeForRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// A landing page's routing order is read once per body, not once per page that renders a
+// nav: every docs page groups the whole collection, and there are ~185 of them. The body
+// is checked, not just the slug, so a second body for the same slug (which only happens in
+// tests — a build has one) recomputes instead of serving the first one's answer.
+const orderCache = new Map<string, { body: string; order: readonly string[] }>();
+
+function cachedSubPageOrder(landing: ServiceDocLike | undefined, subPages: readonly ServiceSubPage[]): readonly string[] {
+  if (!landing?.body) return [];
+  const cached = orderCache.get(landing.slug);
+  if (cached && cached.body === landing.body) return cached.order;
+  const order = subPageOrderFrom(landing.body, subPages);
+  orderCache.set(landing.slug, { body: landing.body, order });
+  return order;
+}
+
+/**
+ * Sub-pages in reading order: for a service the four concern pages first, in their fixed
+ * order, then everything else in the landing page's routing-table order, then whatever the
+ * landing does not link, by title. A guide has no fixed vocabulary, so `concernsFirst` is
+ * off there and its landing decides the lot.
+ */
+function sortSubPages(
+  pages: ServiceSubPage[],
+  { landing, concernsFirst }: { landing?: ServiceDocLike; concernsFirst: boolean },
+): ServiceSubPage[] {
+  const concernRank = (page: ServiceSubPage) => {
+    if (!concernsFirst) return -1;
+    const rank = SUBPAGE_ORDER.indexOf(page.key);
+    return rank === -1 ? -1 : rank;
+  };
+  // Deriving the order means reading the landing's whole body, so skip it when there is
+  // nothing left for it to order — the common service, whose sub-pages are all concerns.
+  const needsLandingOrder = pages.some((page) => concernRank(page) === -1);
+  const routed = needsLandingOrder ? cachedSubPageOrder(landing, pages) : [];
+  const routedRank = (page: ServiceSubPage) => {
+    const index = routed.indexOf(page.key);
+    return index === -1 ? routed.length : index;
+  };
+
   return [...pages].sort((a, b) => {
-    const rankA = SUBPAGE_ORDER.indexOf(a.key);
-    const rankB = SUBPAGE_ORDER.indexOf(b.key);
-    if (rankA !== rankB) return (rankA === -1 ? SUBPAGE_ORDER.length : rankA) - (rankB === -1 ? SUBPAGE_ORDER.length : rankB);
-    return a.key.localeCompare(b.key);
+    const concernA = concernRank(a);
+    const concernB = concernRank(b);
+    if (concernA !== concernB) {
+      // A concern page outranks anything the landing routes; two concerns keep SUBPAGE_ORDER.
+      if (concernA === -1 || concernB === -1) return concernA === -1 ? 1 : -1;
+      return concernA - concernB;
+    }
+    const routedA = routedRank(a);
+    const routedB = routedRank(b);
+    if (routedA !== routedB) return routedA - routedB;
+    return a.label.localeCompare(b.label);
   });
 }
 
@@ -149,7 +263,7 @@ export function groupServiceDocs(docs: readonly ServiceDocLike[]): Map<string, S
   }
 
   for (const group of groups.values()) {
-    group.subPages = sortSubPages(group.subPages);
+    group.subPages = sortSubPages(group.subPages, { landing: group.landing, concernsFirst: true });
   }
 
   return groups;
@@ -174,7 +288,7 @@ export function groupGuideDocs(docs: readonly ServiceDocLike[]): Map<string, Gui
   }
 
   for (const group of groups.values()) {
-    group.subPages = sortSubPages(group.subPages);
+    group.subPages = sortSubPages(group.subPages, { landing: group.landing, concernsFirst: false });
   }
 
   return groups;

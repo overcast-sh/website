@@ -285,6 +285,12 @@ export function overcastDocsLoader(): Loader {
         store.set({
           id: slug,
           data,
+          // Kept alongside the rendered HTML because the docs nav orders a group's
+          // sub-pages by the order its *landing* page's routing table lists them
+          // (subPageOrderFrom in lib/service-docs.ts), and a markdown table row is far
+          // easier to recognise than the <table> it renders to. Links are already
+          // rewritten to site routes here, which is the form those slugs are matched in.
+          body,
           rendered: await renderMarkdown(body),
           digest: generateDigest(`${sourcePath}\n${raw}`),
         });
