@@ -78,38 +78,6 @@ const ALLOW = [
   },
 ];
 
-/**
- * Known hits in a file somebody else is mid-change on. Printed every run so they are not
- * forgotten, but they do not fail the build. Delete the entry along with the fix.
- * @type {{file: string, rule: string, phrase: string, why: string}[]}
- */
-const PENDING = [
-  {
-    file: "src/pages/docs/index.astro",
-    rule: "spelling",
-    phrase: "Any release may change behavior",
-    why: "docs hub copy is being rewritten in a parallel PR; fix it there",
-  },
-  {
-    file: "src/pages/docs/index.astro",
-    rule: "rhetorical",
-    phrase: "Hit something unexpected?",
-    why: "docs hub copy is being rewritten in a parallel PR; fix it there",
-  },
-  {
-    file: "src/pages/docs/index.astro",
-    rule: "contrastive",
-    phrase: "not reading start to finish",
-    why: "docs hub copy is being rewritten in a parallel PR; fix it there",
-  },
-  {
-    file: "src/pages/docs/index.astro",
-    rule: "rhetorical",
-    phrase: "Looking for a specific operation?",
-    why: "docs hub copy is being rewritten in a parallel PR; fix it there",
-  },
-];
-
 const listOnly = process.argv.includes("--list");
 
 /** Replace a match with its own newlines, so line numbers survive stripping. */
@@ -184,7 +152,6 @@ function collectFiles(dir) {
 }
 
 const hits = [];
-const known = [];
 for (const dir of roots) {
   for (const file of collectFiles(path.join(root, dir))) {
     const relative = path.relative(root, file).replace(/\\/g, "/");
@@ -202,23 +169,14 @@ for (const dir of roots) {
         if (!match) continue;
         if (previous.includes(`copy-lint-ignore ${rule.id}`)) continue;
         if (ALLOW.some((entry) => entry.rule === rule.id && trimmed.includes(entry.phrase))) continue;
-        const pending = PENDING.some(
-          (entry) => entry.file === relative && entry.rule === rule.id && trimmed.includes(entry.phrase),
-        );
-        const hit = { file: relative, line: index + 1, rule: rule.id, hint: rule.hint, text: trimmed.slice(0, 140) };
-        (pending ? known : hits).push(hit);
+        hits.push({ file: relative, line: index + 1, rule: rule.id, hint: rule.hint, text: trimmed.slice(0, 140) });
       }
     });
   }
 }
 
-for (const hit of known) {
-  console.log(`known ${hit.file}:${hit.line}  [${hit.rule}] ${hit.text}`);
-}
-
 if (hits.length === 0) {
-  const suffix = known.length ? `, ${known.length} known and owned elsewhere` : "";
-  console.log(`copy-lint: no new hits in ${roots.join(", ")}${suffix}.`);
+  console.log(`copy-lint: no hits in ${roots.join(", ")}.`);
   process.exit(0);
 }
 
