@@ -1,5 +1,7 @@
 import path from "node:path";
-import { resolveOvercastSourceRoot } from "../loaders/overcast-source";
+// Explicit extension so Node's test runner can resolve this module without a bundler —
+// github-links.test.ts imports this file directly. Astro/Vite resolve it either way.
+import { resolveOvercastSourceRoot } from "../loaders/overcast-source.ts";
 
 export const overcastGitHubRepo = process.env.OVERCAST_REPO || "overcast-sh/overcast";
 export const overcastEditRef = process.env.OVERCAST_EDIT_REF || "main";
@@ -83,4 +85,23 @@ export function rewriteLegacyOrgReferences(text: string): string {
     .replace(legacyGhcrPattern, "ghcr.io/overcast-sh/")
     .replace(legacyGithubOvercastPattern, "github.com/overcast-sh/overcast")
     .replace(legacyNeaoxTokenPattern, "overcast-sh");
+}
+
+/**
+ * TEMPORARY — delete this, its test, and the call in src/loaders/overcast-docs.ts once the
+ * synced release contains overcast-sh/overcast#1641.
+ *
+ * The repo README's container-image badge asks shields.io for
+ * `badge/ghcr.io-overcast-sh%2Fovercast-blue`. Shields splits a `/badge/` path on `-` into
+ * label, message and colour, so the dash inside `overcast-sh` makes four fields where three
+ * are allowed and shields answers with its own "404 badge not found" image — which is what
+ * the docs Overview page renders, since it is that README. Shields' escape for a literal
+ * dash is a doubled one. #1641 fixes the README upstream; the site only picks that up at the
+ * next release, so repair the URL on the way through until then.
+ */
+const unescapedGhcrBadgePattern = /badge\/ghcr\.io-overcast-sh%2Fovercast-blue/g;
+
+export function rewriteContainerImageBadge(text: string): string {
+  if (!text) return text;
+  return text.replace(unescapedGhcrBadgePattern, "badge/ghcr.io-overcast--sh%2Fovercast-blue");
 }
