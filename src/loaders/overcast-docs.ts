@@ -26,10 +26,9 @@ function titleFromPath(docPath: string): string {
 }
 
 function sectionFor(docPath: string, frontmatter: Record<string, unknown>): string {
-  // docs/README.md is the full config/debug/storage/networking/troubleshooting reference — it's
-  // relocated off the L1 landing page (see slugFor) to its own L3 reference page, and
-  // grouped in the sidebar accordingly rather than under its own frontmatter section
-  // ("Getting Started", inherited from when it doubled as the index).
+  // docs/README.md is relocated off the L1 landing page (see slugFor) to its own reference
+  // page, and grouped in the sidebar accordingly rather than under its own frontmatter
+  // section ("Getting Started", which describes it as a repo-root landing page).
   if (docPath === "docs/README.md") return "Reference";
   if (frontmatter.section) return String(frontmatter.section);
   if (docPath === "README.md") return "Overview";
@@ -42,14 +41,13 @@ function sectionFor(docPath: string, frontmatter: Record<string, unknown>): stri
   return "Guides";
 }
 
-// docs/README.md is the full ~650-line reference manual (config vars, debug endpoints,
-// storage & persistence, networking, troubleshooting) — historically it also
-// rendered at `/docs/`, making the docs landing page the reference manual instead of an
-// orientation page. It now lives at its own stable URL, `/docs/reference/`, so `/docs/`
-// is free for a hand-authored L1 index (src/pages/docs/index.astro) and every existing
-// internal anchor (`#configuration-reference`, `#persistence`, etc.) and cross-file link
-// into this document keeps resolving, unmodified, at the new location — rewriteMarkdownLinks
-// below re-targets every such link automatically since it also calls slugFor().
+// docs/README.md used to render at `/docs/`, which made the docs landing page a document
+// upstream owns instead of an orientation page this repo can shape. It lives at
+// `/docs/reference/` instead, leaving `/docs/` free for a hand-authored L1 index
+// (src/pages/docs/index.astro). Every cross-file link into it keeps resolving, unmodified,
+// at the new location — rewriteMarkdownLinks below re-targets them all because it calls
+// slugFor() too. Keep the slug stable: it has been the page's public URL since the days
+// when the file was the ~650-line reference manual, and anchors into it are in the wild.
 function slugFor(docPath: string): string {
   if (docPath === "README.md") return "docs/overview";
   if (docPath === "docs/README.md") return "docs/reference";
@@ -238,16 +236,23 @@ export function overcastDocsLoader(): Loader {
         const absolute = path.join(sourceRoot, sourcePath);
         const raw = await fs.readFile(absolute, "utf8");
         const parsed = matter(raw);
-        // docs/README.md's own frontmatter title/description ("Documentation" / "This
-        // directory contains the full Overcast documentation...") were written for when
-        // this file doubled as the site's docs index. Now that it's the L3 reference page
-        // (see slugFor/sectionFor above), override both so the page chrome describes what's
-        // actually on the page instead of pointing back at itself.
+        // docs/README.md's own frontmatter title/description ("Documentation" / "Every
+        // Overcast guide and reference, routed by what you are trying to do...") describe a
+        // repo-root landing page. On the site that job belongs to the hand-authored
+        // src/pages/docs/index.astro, so shipping this one under the same name would put two
+        // pages called "Documentation" in the sidebar and in search.
+        //
+        // What is left once the routing tables are discounted is the material that lives
+        // nowhere else: runtime emulation tiers, the generated service index, event
+        // pipelines, and the console feature table. Name it for that. (Until v0.0.1-alpha.39
+        // this file was the ~650-line reference manual and the override said "Full
+        // reference"; upstream has since split config, debug endpoints, storage, networking
+        // and troubleshooting into their own pages, which the docs hub now links directly.)
         const title =
-          sourcePath === "docs/README.md" ? "Full reference" : String(parsed.data.title || titleFromPath(sourcePath));
+          sourcePath === "docs/README.md" ? "Reference index" : String(parsed.data.title || titleFromPath(sourcePath));
         const description =
           sourcePath === "docs/README.md"
-            ? "Configuration variables, debug endpoints, storage & persistence, networking, and startup troubleshooting — everything in one scannable page."
+            ? "Runtime emulation tiers, the full service index with per-service coverage, supported event pipelines, and what the web management console shows."
             : String(parsed.data.description || "");
         const slug = slugFor(sourcePath).replace(/\/$/, "");
         const body = normalizeMarkdownTables(rewriteMarkdownLinks(rewriteLegacyOrgReferences(parsed.content), sourcePath));
