@@ -1,15 +1,16 @@
 ---
 // The docs L1 landing page. Deliberately hand-authored here rather than rendering synced
-// markdown: docs/README.md used to double as this page (and, before that, was the full
-// ~650-line reference manual — see overcast-docs.ts, which now relocates it to
-// /docs/reference/). This page's only job is orientation — get to a working command fast,
-// then route to the guide or reference page that actually answers the reader's question.
+// markdown: docs/README.md used to double as this page (see overcast-docs.ts, which now
+// relocates it to /docs/reference/). This page's only job is orientation — get to a working
+// command fast, then route to the guide or reference page that actually answers the
+// reader's question. Every link below is a title from the docs collection plus one line
+// written here, so a page missing from a release drops out instead of dead-ending.
 import SiteLayout from "../../components/SiteLayout.astro";
 import CodeBlock from "../../components/CodeBlock.astro";
 import LayerMapDiagram from "../../components/diagrams/LayerMapDiagram.astro";
 import SearchPromo from "../../components/SearchPromo.astro";
 import Callout from "../../components/Callout.astro";
-import { BookOpen, Compass, FileStack, Network, ShieldCheck, Terminal } from "@lucide/astro";
+import { BookOpen, Compass, FileStack, ListTree, Network, ServerCog, ShieldCheck, Terminal, Waypoints } from "@lucide/astro";
 import { getCollection, type CollectionEntry } from "astro:content";
 import { repositoryUrl } from "../../lib/github-links";
 
@@ -29,8 +30,51 @@ const primaryGuides = [
   })
   .filter((entry): entry is { doc: DocEntry; icon: typeof Terminal } => Boolean(entry));
 
-const moreGuideSlugs = ["docs/networking", "docs/local-dev", "docs/https", "docs/testcontainers", "docs/performance", "docs/storage"];
-const moreGuides = moreGuideSlugs.map(bySlug).filter((doc): doc is DocEntry => Boolean(doc));
+// Two groups past the first hour, in the order a reader meets them: writing the app, then
+// running the thing the app talks to. Titles come from each doc's own frontmatter so an
+// upstream rename carries; the one-liners are written here because the frontmatter
+// `description` is a 2–3 clause summary — five of those stacked is the wall of prose this
+// page exists to avoid. A slug with no doc in the release is dropped, not rendered empty.
+type Journey = { title: string; lead: string; icon: typeof Terminal; items: { doc: DocEntry; line: string }[] };
+
+const journeySpecs: { title: string; lead: string; icon: typeof Terminal; items: [string, string][] }[] = [
+  {
+    title: "Build against it",
+    lead: "You have it running and you are writing the app.",
+    icon: Waypoints,
+    items: [
+      ["docs/networking", "Reach it from sibling containers, Compose, and host-routed URLs."],
+      ["docs/local-dev", "Edit a file and see it take effect — no rebuild, no redeploy."],
+      ["docs/testcontainers", "Start and stop the emulator from an integration test."],
+      ["docs/https", "Browser-trusted TLS in two commands."],
+      ["docs/storage", "Pick a backend, and know what survives a restart."],
+    ],
+  },
+  {
+    title: "Run and operate it",
+    lead: "You are the one who has to keep it up.",
+    icon: ServerCog,
+    items: [
+      ["docs/configuration", "Every environment variable, its default, and the LocalStack aliases."],
+      ["docs/cli", "Every overcast subcommand, with flags and defaults."],
+      ["docs/troubleshooting", "Start from the symptom. Every startup warning has an entry."],
+      ["docs/debug-endpoints", "Health, metrics, state dumps, request traces, pprof."],
+      ["docs/performance", "Startup and memory targets, and the knobs that move them."],
+    ],
+  },
+];
+
+const journeys: Journey[] = journeySpecs
+  .map(({ items, ...rest }) => ({
+    ...rest,
+    items: items
+      .map(([slug, line]) => {
+        const doc = bySlug(slug);
+        return doc && { doc, line };
+      })
+      .filter((item): item is { doc: DocEntry; line: string } => Boolean(item)),
+  }))
+  .filter((journey) => journey.items.length > 0);
 
 const quickStart = `docker run --rm \\
   -p 4566:4566 \\
@@ -38,11 +82,13 @@ const quickStart = `docker run --rm \\
   ghcr.io/overcast-sh/overcast:latest`;
 
 const referenceDoc = bySlug("docs/reference");
+const manifestDoc = bySlug("docs/operation-manifest");
+const compatibilityDoc = bySlug("docs/localstack-compatibility");
 ---
 
 <SiteLayout
   title="Documentation"
-  description="Start with the quickstart, then route to task guides, the service reference, or the full config/debug reference."
+  description="Start with the quickstart, then route to the guides for building against Overcast, running it, or looking one thing up."
 >
   <div class="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
     <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><Compass class="icon" />documentation</p>
@@ -76,19 +122,25 @@ const referenceDoc = bySlug("docs/reference");
       </div>
     </section>
 
-    {moreGuides.length > 0 && (
+    {journeys.map(({ title, lead, icon: Icon, items }) => (
       <section class="mt-10 sm:mt-14">
-        <h2 class="font-mono text-lg font-bold">More guides</h2>
-        <div class="mt-4 grid gap-x-6 gap-y-2 sm:grid-cols-2">
-          {moreGuides.map((doc) => (
-            <a class="flex items-center gap-2 rounded-md px-2 py-2 text-sm no-underline hover:bg-(--oc-accent-soft)" href={`/${doc.data.slug}/`}>
-              <BookOpen class="icon shrink-0 text-muted" />
-              <span class="text-(--oc-text)">{doc.data.title}</span>
-            </a>
+        <h2 class="flex items-center gap-2 font-mono text-lg font-bold"><Icon class="icon text-accent" />{title}</h2>
+        <p class="mt-2 max-w-2xl text-sm leading-6 text-body">{lead}</p>
+        <ul class="mt-4 grid list-none gap-x-6 gap-y-1 p-0 sm:grid-cols-2">
+          {items.map(({ doc, line }) => (
+            <li class="m-0">
+              <a class="flex gap-2.5 rounded-md px-2 py-2 no-underline hover:bg-(--oc-accent-soft)" href={`/${doc.data.slug}/`}>
+                <BookOpen class="icon mt-0.5 shrink-0 text-muted" />
+                <span class="min-w-0">
+                  <span class="block text-sm text-(--oc-text)">{doc.data.title}</span>
+                  <span class="block text-xs leading-5 text-muted">{line}</span>
+                </span>
+              </a>
+            </li>
           ))}
-        </div>
+        </ul>
       </section>
-    )}
+    ))}
 
     <section class="mt-10 sm:mt-14">
       <h2 class="font-mono text-lg font-bold">Reference</h2>
@@ -96,17 +148,6 @@ const referenceDoc = bySlug("docs/reference");
         Exhaustive and table-first, meant for looking one thing up — not reading start to finish.
       </p>
       <div class="mt-4 grid gap-4 sm:grid-cols-2">
-        {referenceDoc && (
-          <a class="surface rounded-lg p-5 no-underline" href={`/${referenceDoc.data.slug}/`}>
-            <div class="flex items-center gap-2">
-              <FileStack class="icon text-accent" />
-              <strong class="font-mono text-sm text-(--oc-text)">Full reference</strong>
-            </div>
-            <p class="mt-3 text-xs leading-5 text-muted">
-              Config variables, debug endpoints, storage & persistence, networking, troubleshooting.
-            </p>
-          </a>
-        )}
         <a class="surface rounded-lg p-5 no-underline" href="/support/">
           <div class="flex items-center gap-2">
             <ShieldCheck class="icon text-accent" />
@@ -114,6 +155,39 @@ const referenceDoc = bySlug("docs/reference");
           </div>
           <p class="mt-3 text-xs leading-5 text-muted">Every service, every operation, implemented or not — one table.</p>
         </a>
+        {compatibilityDoc && (
+          <a class="surface rounded-lg p-5 no-underline" href={`/${compatibilityDoc.data.slug}/`}>
+            <div class="flex items-center gap-2">
+              <Network class="icon text-accent" />
+              <strong class="font-mono text-sm text-(--oc-text)">{compatibilityDoc.data.title}</strong>
+            </div>
+            <p class="mt-3 text-xs leading-5 text-muted">
+              Every LocalStack port, hostname, container convention and client tool, with its status here.
+            </p>
+          </a>
+        )}
+        {referenceDoc && (
+          <a class="surface rounded-lg p-5 no-underline" href={`/${referenceDoc.data.slug}/`}>
+            <div class="flex items-center gap-2">
+              <FileStack class="icon text-accent" />
+              <strong class="font-mono text-sm text-(--oc-text)">{referenceDoc.data.title}</strong>
+            </div>
+            <p class="mt-3 text-xs leading-5 text-muted">
+              Emulation tiers, the whole service index, event pipelines, and what the console shows.
+            </p>
+          </a>
+        )}
+        {manifestDoc && (
+          <a class="surface rounded-lg p-5 no-underline" href={`/${manifestDoc.data.slug}/`}>
+            <div class="flex items-center gap-2">
+              <ListTree class="icon text-accent" />
+              <strong class="font-mono text-sm text-(--oc-text)">{manifestDoc.data.title}</strong>
+            </div>
+            <p class="mt-3 text-xs leading-5 text-muted">
+              Which services dispatch by target header and which by path — an internals inventory.
+            </p>
+          </a>
+        )}
       </div>
     </section>
 
