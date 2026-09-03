@@ -9,10 +9,10 @@ import path from "node:path";
 // existed upstream but were only ever added to one of the two lists).
 
 // Every doc outside docs/cdk/**, docs/https/**, docs/performance/**, docs/services/**,
-// docs/networking/**, docs/cli/** and docs/configuration/** must be explicitly listed here
-// to be published. A path can be listed before the file exists upstream — see
-// warnMissingAllowlistedDocs below — so adding a page here ahead of the release that ships
-// it is expected, not an error.
+// docs/networking/**, docs/cli/**, docs/configuration/** and docs/migration/** must be
+// explicitly listed here to be published. A path can be listed before the file exists
+// upstream — see warnMissingAllowlistedDocs below — so adding a page here ahead of the
+// release that ships it is expected, not an error.
 export const publicDocFiles = [
   "README.md",
   "docs/README.md",
@@ -78,7 +78,8 @@ export function shouldPublishDoc(relativePath: string): boolean {
     docPath.startsWith("docs/services/") ||
     docPath.startsWith("docs/networking/") ||
     docPath.startsWith("docs/cli/") ||
-    docPath.startsWith("docs/configuration/")
+    docPath.startsWith("docs/configuration/") ||
+    docPath.startsWith("docs/migration/")
   );
 }
 

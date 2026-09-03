@@ -36,6 +36,17 @@ export const NESTED_GUIDES: Record<string, string> = {
   cdk: "CDK",
   https: "HTTPS",
   performance: "Performance",
+  migration: "Migration",
+};
+
+/** Guide keys whose landing page kept a filename other than docs/<guide>.md. Every guide
+ * here follows docs/<guide>.md except `migration`: docs/migration-from-localstack.md
+ * predates the nested-guide split (Overcast PR #1627) and its slug/URL stayed put for
+ * backwards compatibility, while its new sub-pages moved in under docs/migration/ — the
+ * same convention every other guide's sub-pages use. Only the landing lookup needs the
+ * override; the sub-page prefix below is still built from the guide key itself. */
+const GUIDE_LANDING_SLUGS: Record<string, string> = {
+  migration: "migration-from-localstack",
 };
 
 /** Sub-page order in the sub-nav and the sidebar. Anything upstream adds that isn't
@@ -94,9 +105,10 @@ export function parseServiceDocSlug(slug: string): { service: string; page: stri
  */
 export function parseGuideDocSlug(slug: string): { guide: string; page: string | null } | null {
   for (const guide of Object.keys(NESTED_GUIDES)) {
-    const landingSlug = `docs/${guide}`;
+    const landingSlug = `docs/${GUIDE_LANDING_SLUGS[guide] ?? guide}`;
     if (slug === landingSlug) return { guide, page: null };
-    if (slug.startsWith(`${landingSlug}/`)) return { guide, page: slug.slice(landingSlug.length + 1) };
+    const subPagePrefix = `docs/${guide}/`;
+    if (slug.startsWith(subPagePrefix)) return { guide, page: slug.slice(subPagePrefix.length) };
   }
   return null;
 }
