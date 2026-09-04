@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=24",
+    "npm": ">=12.0.0"
+  },
   "scripts": {
     "predev": "npm run content:sync",
     "dev": "node scripts/run-command.ts astro dev",
@@ -34,5 +38,9 @@
     "@axe-core/playwright": "^4.13.0",
     "@types/node": "^26.1.1",
     "playwright": "^1.62.1"
+  },
+  "allowScripts": {
+    "esbuild": true,
+    "sharp": true
   }
 }
