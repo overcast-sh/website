@@ -6,8 +6,17 @@
 // Options (env or CLI):
 //   OVERCAST_CONSOLE_URL   / --url=      console origin (default http://localhost:4567)
 //   OVERCAST_S3_BUCKET     / --bucket=   bucket for the object-browser screenshot
+//   OVERCAST_S3_PREFIX     / --prefix=   folder inside that bucket to open before capturing
+//                                        (default "samples/"; pass --prefix= for the bucket root)
 //   OVERCAST_CAPTURE_DEBUG_DIR           traces + failure shots (default .tmp/capture-debug)
 //                          / --only=     comma-separated scenario names, for local debugging
+//   OVERCAST_CAPTURE_DRY_RUN / --dry-run print the resolved URL per scenario/theme and exit,
+//                                        without touching a browser or the emulator
+//
+// The resources scenario needs a folder with objects in it, not just other folders: the bucket
+// root of the example stack's archive bucket holds a single empty samples/ folder and nothing
+// else, which produces a screenshot of an empty listing (see overcast-sh/website#34). The
+// default --prefix therefore opens samples/ rather than the bucket root.
 //
 // Some scenarios need the emulator set up a particular way and are marked `optional`: they warn
 // and produce no file rather than failing the run. /console renders a feature without its image
@@ -34,10 +43,32 @@ function flag(name) {
   return match ? match.slice(prefix.length) : undefined;
 }
 
+// Bare boolean flags (no `=value`), as opposed to `flag()` above.
+function boolFlag(name) {
+  return process.argv.slice(2).includes(`--${name}`);
+}
+
 const consoleUrl = (flag("url") || process.env.OVERCAST_CONSOLE_URL || "http://localhost:4567").replace(/\/+$/, "");
 const bucket = flag("bucket") || process.env.OVERCAST_S3_BUCKET || "";
+// `--prefix=` (explicitly empty) opts back into the bucket root; unset falls back to samples/.
+const rawPrefix = flag("prefix") ?? process.env.OVERCAST_S3_PREFIX ?? "samples/";
 const debugDir = path.resolve(cwd, process.env.OVERCAST_CAPTURE_DEBUG_DIR || ".tmp/capture-debug");
 const only = (flag("only") || "").split(",").map((value) => value.trim()).filter(Boolean);
+const dryRun = boolFlag("dry-run") || process.env.OVERCAST_CAPTURE_DRY_RUN === "true";
+
+// Each segment percent-encoded on its own, so a literal "/" in the input keeps separating path
+// segments (encodeURIComponent would otherwise turn it into %2F and the router would read the
+// whole prefix as one path component).
+function encodePrefixPath(prefixPath) {
+  return prefixPath
+    .split("/")
+    .filter(Boolean)
+    .map(encodeURIComponent)
+    .join("/");
+}
+
+const resourcesPrefix = encodePrefixPath(rawPrefix);
+const resourcesRoute = `/s3/${encodeURIComponent(bucket)}/objects/${resourcesPrefix ? `${resourcesPrefix}/` : ""}`;
 
 const viewport = { width: 1600, height: 1000 };
 const navigationTimeout = 90_000; // the console is lazy-loaded, so the first route is the slow one
@@ -105,15 +136,21 @@ const scenarios = [
   },
   {
     // The object listing, not the inspector: the inspector is a modal dialog that covers the
-    // very browser this screenshot is meant to show.
+    // very browser this screenshot is meant to show. Opens resourcesPrefix (samples/ by
+    // default), not the bucket root — the archive bucket's root holds nothing but that one
+    // folder, and a screenshot of it is two-thirds blank (overcast-sh/website#34).
     name: "console-resources",
-    route: `/s3/${encodeURIComponent(bucket)}/objects/`,
+    route: resourcesRoute,
     async readyWhen(page) {
       // An unknown bucket bounces to /s3 with a toast, so pin the <h1> to the bucket name rather
-      // than screenshotting whatever we landed on.
+      // than screenshotting whatever we landed on. PageHeader always titles this the bucket
+      // name, not the current folder, so this holds regardless of resourcesPrefix.
       await page.getByRole("heading", { level: 1, name: bucket, exact: true }).waitFor({ state: "visible" });
-      // The listing is virtualized: real rows carry data-index, the spacer rows do not.
-      await page.locator("tbody tr[data-index]").first().waitFor({ state: "visible" });
+      // The listing is virtualized and folders sort before objects, so "a row exists" (any
+      // data-index row) is also true of an empty folder holding one sub-folder — which is
+      // exactly the screenshot this scenario exists to avoid. Only an object row renders a
+      // working download link, so wait for one of those instead.
+      await page.locator("tbody tr[data-index] a[download]").first().waitFor({ state: "visible" });
     },
   },
   {
@@ -316,6 +353,17 @@ async function main() {
 
   if (!bucket && selected.some((scenario) => scenario.name === "console-resources")) {
     throw new Error("Set OVERCAST_S3_BUCKET (or pass --bucket=) to capture the S3 object browser.");
+  }
+
+  // No browser, no emulator: prints what a real run would open, so the route-building logic
+  // above (in particular resourcesRoute's prefix handling) can be sanity-checked on its own.
+  if (dryRun) {
+    for (const scenario of selected) {
+      for (const theme of themes) {
+        console.log(`[dry-run] ${scenario.name}-${theme} -> ${consoleUrl}${scenario.route}`);
+      }
+    }
+    return;
   }
 
   await fs.mkdir(outputDir, { recursive: true });
