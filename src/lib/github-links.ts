@@ -79,12 +79,32 @@ const legacyGhcrPattern = /ghcr\.io\/neaox\//gi;
 const legacyGithubOvercastPattern = /github\.com\/neaox\/overcast/gi;
 const legacyNeaoxTokenPattern = /\bneaox\b/gi;
 
+// Non-global counterparts used only to test whether a line contains a reference, never to
+// replace: a global regex's `.test()` keeps advancing `lastIndex` across calls, so reusing
+// the replace patterns above for this would silently flip results between lines.
+const legacyReferenceDetector = /ghcr\.io\/neaox\/|github\.com\/neaox\/overcast|\bneaox\b/i;
+const newOrgReferenceDetector = /overcast-sh/i;
+
 export function rewriteLegacyOrgReferences(text: string): string {
   if (!text) return text;
   return text
-    .replace(legacyGhcrPattern, "ghcr.io/overcast-sh/")
-    .replace(legacyGithubOvercastPattern, "github.com/overcast-sh/overcast")
-    .replace(legacyNeaoxTokenPattern, "overcast-sh");
+    .split("\n")
+    .map((line) => {
+      // A line that already mentions overcast-sh alongside a legacy reference is a
+      // from -> to migration note (release notes for the org rename itself document the
+      // change this way) rather than stale content to fix. Rewriting it would turn
+      // "github.com/Neaox/overcast -> github.com/overcast-sh/overcast" into
+      // "github.com/overcast-sh/overcast -> github.com/overcast-sh/overcast" and read as
+      // a no-op, so leave the whole line verbatim.
+      if (newOrgReferenceDetector.test(line) && legacyReferenceDetector.test(line)) {
+        return line;
+      }
+      return line
+        .replace(legacyGhcrPattern, "ghcr.io/overcast-sh/")
+        .replace(legacyGithubOvercastPattern, "github.com/overcast-sh/overcast")
+        .replace(legacyNeaoxTokenPattern, "overcast-sh");
+    })
+    .join("\n");
 }
 
 /**
