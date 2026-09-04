@@ -30,7 +30,10 @@ npm install
 npm run dev
 ```
 
-Node 24 and npm are required.
+Node 24 and npm are required. CI runs npm ≥12, which skips install scripts for any
+dependency not listed in `package.json`'s `allowScripts` (see below) — npm 11 ignores
+that field and runs scripts as before, so it's safe to stay on an older npm locally, but
+`npm install -g npm@12` will match CI if you want the same behavior.
 
 ## Before submitting a PR
 
@@ -48,6 +51,11 @@ use in that script's `ALLOW` list or with a `copy-lint-ignore <rule>` comment.
 
 `npm run build` runs the content sync and pagefind search indexing, so it needs
 `OVERCAST_LOCAL_PATH` set to a valid local checkout.
+
+`allowScripts` in `package.json` is npm's install-script allowlist (npm ≥12 silently skips
+a dependency's `preinstall`/`install`/`postinstall` unless it's listed there) — if a new or
+updated dependency needs scripts to run, review it and add it deliberately with
+`npm approve-scripts <pkg>` (npm ≥12) rather than widening the list by hand.
 
 Keep PRs focused — avoid mixing unrelated layout/styling changes with build pipeline
 changes. Describe what changed and why in the PR description.
