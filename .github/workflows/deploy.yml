@@ -31,12 +31,12 @@ jobs:
   unit-tests:
     if: github.event_name == 'pull_request' || github.event_name == 'push'
     runs-on: ubuntu-latest
-    # `npm ci` alone takes ~5 minutes when the actions/setup-node npm cache is cold (a
-    # fresh lockfile hash, or the first run on a branch that cannot see another branch's
-    # cache), and the tests take well under a second. A 5-minute job cap was therefore
-    # cancelling this job before `npm test` ever ran (PR #46 needed three attempts). The
-    # install gets its own step budget so a stalled install fails that step by name
-    # rather than surfacing as a cancelled job.
+    # The tests take well under a second; the job's time goes to `npm ci`, and `npm ci` is
+    # bounded by the registry, not by the tarballs (the setup-node cache is warm on every
+    # run). Its audit request can stall for npm's full 5-minute fetch timeout, which is what
+    # cancelled this job at the old 5-minute cap on 2026-09-03 (PR #46 needed three
+    # attempts). The install gets its own step budget so a stalled install fails that step
+    # by name rather than surfacing as a cancelled job.
     timeout-minutes: 15
     steps:
       - name: Checkout website
