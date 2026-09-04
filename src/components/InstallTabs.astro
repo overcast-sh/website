@@ -1,0 +1,118 @@
+---
+import CodeBlock from "./CodeBlock.astro";
+import type { BundledLanguage } from "shiki";
+
+// The one-line installers, one tab per platform, with the Docker image as a third tab
+// where the page wants it. The first tab is selected in the markup, so the block reads
+// correctly without JavaScript; the script below moves the selection to Windows when the
+// visitor is on Windows and wires the roving tab pattern (arrow keys, Home, End).
+//
+// The scripts themselves are served by src/pages/install.sh.ts and install.ps1.ts; the
+// commands here have to match the URLs those emit.
+
+interface Props {
+  /** Unique per page: prefixes the tab and panel ids the ARIA wiring needs. */
+  id: string;
+  /** Add a Docker tab with the full-image `docker run`. */
+  docker?: boolean;
+}
+
+const { id, docker = false } = Astro.props;
+
+interface Tab {
+  key: "unix" | "windows" | "docker";
+  title: string;
+  code: string;
+  label: string;
+  language: BundledLanguage;
+}
+
+const tabs: Tab[] = [
+  { key: "unix", title: "macOS / Linux", code: "curl -fsSL https://overcast.sh/install.sh | sh", label: "install", language: "bash" },
+  { key: "windows", title: "Windows", code: "irm https://overcast.sh/install.ps1 | iex", label: "install (PowerShell)", language: "powershell" },
+];
+if (docker) {
+  tabs.push({
+    key: "docker",
+    title: "Docker",
+    code: `docker run --rm \\\n  -p 4566:4566 \\\n  -p 4567:4567 \\\n  ghcr.io/overcast-sh/overcast:latest`,
+    label: "start the full image",
+    language: "bash",
+  });
+}
+---
+
+<div data-install-tabs>
+  <div role="tablist" aria-label="Install method" class="flex flex-wrap gap-1.5">
+    {
+      tabs.map((tab, index) => (
+        <button
+          type="button"
+          role="tab"
+          id={`${id}-tab-${tab.key}`}
+          aria-controls={`${id}-panel-${tab.key}`}
+          aria-selected={index === 0 ? "true" : "false"}
+          tabindex={index === 0 ? 0 : -1}
+          data-install-tab={tab.key}
+          class="rounded-md border border-oc px-3 py-1.5 font-mono text-xs text-muted aria-selected:border-(--oc-accent) aria-selected:bg-(--oc-accent-soft) aria-selected:text-(--oc-text)"
+        >
+          {tab.title}
+        </button>
+      ))
+    }
+  </div>
+  {
+    tabs.map((tab, index) => (
+      <div
+        role="tabpanel"
+        id={`${id}-panel-${tab.key}`}
+        aria-labelledby={`${id}-tab-${tab.key}`}
+        tabindex="0"
+        hidden={index !== 0}
+        data-install-panel={tab.key}
+        class="mt-3 min-w-0"
+      >
+        <CodeBlock code={tab.code} label={tab.label} language={tab.language} />
+      </div>
+    ))
+  }
+</div>
+
+<script>
+  const select = (root: HTMLElement, key: string, focus = false) => {
+    root.querySelectorAll<HTMLButtonElement>("[data-install-tab]").forEach((tab) => {
+      const selected = tab.dataset.installTab === key;
+      tab.setAttribute("aria-selected", String(selected));
+      tab.tabIndex = selected ? 0 : -1;
+      if (selected && focus) tab.focus();
+    });
+    root.querySelectorAll<HTMLElement>("[data-install-panel]").forEach((panel) => {
+      panel.hidden = panel.dataset.installPanel !== key;
+    });
+  };
+
+  const roots = Array.from(document.querySelectorAll<HTMLElement>("[data-install-tabs]"));
+
+  for (const root of roots) {
+    const tabs = Array.from(root.querySelectorAll<HTMLButtonElement>("[data-install-tab]"));
+    tabs.forEach((tab, index) => {
+      tab.addEventListener("click", () => select(root, tab.dataset.installTab || ""));
+      tab.addEventListener("keydown", (event) => {
+        const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+        let next: number | null = null;
+        if (step) next = (index + step + tabs.length) % tabs.length;
+        else if (event.key === "Home") next = 0;
+        else if (event.key === "End") next = tabs.length - 1;
+        if (next === null) return;
+        event.preventDefault();
+        select(root, tabs[next].dataset.installTab || "", true);
+      });
+    });
+  }
+
+  // Same detection idea as AssetDownloadList: only the OS matters here, and only Windows
+  // changes anything — macOS and Linux share the first tab, and an unknown platform keeps it.
+  const uaData = (navigator as Navigator & { userAgentData?: { platform: string } }).userAgentData;
+  const onWindows = uaData ? /win/i.test(uaData.platform || "") : /windows/i.test(navigator.userAgent || "");
+  if (onWindows) roots.forEach((root) => select(root, "windows"));
+</script>

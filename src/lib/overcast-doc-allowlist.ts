@@ -37,6 +37,8 @@ export const publicDocFiles = [
   "docs/https.md",
   "docs/local-dev.md",
   "docs/testcontainers.md",
+  // The install page ships with the first release that carries install/ (Overcast #1673).
+  "docs/install.md",
 ];
 
 export function normalizePath(value: string): string {
