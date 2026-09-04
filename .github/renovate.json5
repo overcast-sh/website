@@ -1,0 +1,113 @@
+// Dependency automation, run by the hosted Renovate GitHub App that already
+// serves overcast-sh/overcast (its .github/renovate.json5 is the template for
+// this file, minus the Go and Docker rules that have no counterpart here).
+//
+// The App runs in Silent mode for this org: it scans every repository but only
+// acts on one that carries its own config, and it never opens an onboarding
+// PR. This repository was created on 2026-09-01 and had been "onboarded" but
+// never "activated" in the Mend portal for that reason — the App had been
+// looking at it every day and, by design, doing nothing. This file is the
+// activation.
+//
+// The policy, kept in step with overcast where the surface is the same:
+//   - Majors are never grouped: a breaking change (Astro, Tailwind, Playwright)
+//     is a decision and arrives as its own PR with the major visible.
+//   - Non-major updates are grouped per ecosystem — one PR for the npm tree,
+//     one for the workflow actions — to keep review cheap and CI runs few.
+//   - Nothing is automerged. The main-branch ruleset requires `build` and
+//     nothing else, and a green build is not a sufficient reviewer for a site:
+//     a visual regression builds fine. Every PR waits for a human glance, the
+//     same call overcast makes for its web dependencies and action bumps.
+//   - Nothing younger than seven days is taken (`minimumReleaseAge`): a
+//     yanked tag or a compromised npm release is usually caught within days
+//     of publish, and this site is content to be a week behind.
+//   - Open PRs are kept rebased on `main` rather than only when they
+//     conflict, so a regenerated package-lock.json is always true of the base
+//     it will merge into.
+//   - The dependency dashboard issue (on by way of config:recommended) lists
+//     everything pending or deliberately not taken, so "no PR" is visible
+//     rather than silent.
+//
+// Commit messages here are plain imperative sentences, not conventional
+// commits, so `semanticCommits` is off: Renovate's default subjects ("Update
+// dependency astro to v6") read the way the rest of the log does.
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: [
+    'config:recommended',
+    // Most actions in the two workflows are pinned by tag today
+    // (`actions/checkout@v4`); two are pinned by digest. This preset is the
+    // org's policy from overcast: the first Renovate PR here converts the
+    // tag pins to digest pins (with the tag kept as a comment), and any
+    // action added by tag later gets the same treatment.
+    'helpers:pinGitHubActionDigests',
+  ],
+
+  // The two surfaces this repository has: the npm tree that builds the site,
+  // and the workflows that build and deploy it. Nothing else here declares a
+  // dependency Renovate should touch.
+  enabledManagers: ['npm', 'github-actions'],
+
+  semanticCommits: 'disabled',
+
+  minimumReleaseAge: '7 days',
+
+  // Every dependency here is declared as a caret range, and Renovate's
+  // default for npm ranges is to leave a range alone while the newest
+  // version still satisfies it — which for `^5.13.0` is every 5.x, so
+  // nothing short of a major would ever produce a PR and the lockfile would
+  // advance only through the monthly lockFileMaintenance (overcast's merged
+  // "web dependencies (non-major)" PRs bump only its exact pins, for exactly
+  // this reason). `bump` moves the range's floor to the version actually
+  // installed, so each non-major update is a visible, reviewable PR and
+  // package.json says what is really in use.
+  rangeStrategy: 'bump',
+
+  // Vulnerability fixes bypass the schedule, the grouping and the age floor:
+  // a fix is wanted on day zero. OSV needs no GitHub feature to be enabled.
+  osvVulnerabilityAlerts: true,
+
+  // Weekly, early Monday UTC, matching overcast. The dashboard still updates
+  // between runs, and a security advisory bypasses the schedule.
+  schedule: ['* 0-8 * * 1'],
+
+  // Rebase every open Renovate PR whenever `main` moves, not only on a
+  // textual conflict. package-lock.json is a generated file whose entries
+  // cross-reference each other; two copies regenerated independently do not
+  // combine by merging their text even when git reports no conflict.
+  rebaseWhen: 'behind-base-branch',
+
+  // A monthly full regeneration of package-lock.json. A direct-dependency
+  // bump only re-resolves the part of the tree it touches, so a transitive
+  // pin that no direct bump ever reaches sits frozen indefinitely; this is
+  // the only thing here that advances it. `osvVulnerabilityAlerts` above
+  // already covers the transitive versions known to matter.
+  lockFileMaintenance: {
+    enabled: true,
+    schedule: ['* 0-8 1 * *'],
+  },
+
+  packageRules: [
+    {
+      matchManagers: ['npm'],
+      matchUpdateTypes: ['minor', 'patch'],
+      groupName: 'npm dependencies (non-major)',
+    },
+    {
+      // @axe-core/playwright declares a peer range on playwright-core, which
+      // playwright pins to its own version, and scripts/a11y-audit.mjs drives
+      // both. Move them together across every update type, majors included,
+      // so a bump never lands half a peer set.
+      matchManagers: ['npm'],
+      matchPackageNames: ['playwright', '@axe-core/playwright'],
+      groupName: 'playwright',
+    },
+    {
+      // Tag-to-tag minor and patch bumps and digest advances of the pinned
+      // actions, in one PR. Reviewed rather than automerged: see the header.
+      matchManagers: ['github-actions'],
+      matchUpdateTypes: ['minor', 'patch', 'digest', 'pin', 'pinDigest'],
+      groupName: 'github actions (non-major)',
+    },
+  ],
+}
