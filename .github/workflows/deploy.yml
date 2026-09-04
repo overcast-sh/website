@@ -111,6 +111,14 @@ jobs:
       - name: Checkout website
         uses: actions/checkout@v4
 
+      # The lock file (.github/overcast-release.lock) always holds the
+      # `tag|target_commitish|published_at|id` form written below, because that is the only
+      # form a scheduled run can compare against (schedule has no DISPATCH_TAG/MANUAL_REF to
+      # key off). Every trigger must therefore write that same form: a dispatch-triggered run
+      # that recorded a tag-only fingerprint would make the next scheduled run see a
+      # mismatch against its full fingerprint and redeploy once for no actual change. So look
+      # the release up by tag here too, even though dispatch/repository_dispatch runs always
+      # deploy regardless of should_deploy.
       - name: Resolve Overcast source
         id: release
         env:
@@ -122,12 +130,26 @@ jobs:
 
           should_deploy="true"
 
-          if [[ -n "${MANUAL_REF:-}" ]]; then
-            source_ref="$MANUAL_REF"
-            fingerprint="$source_ref"
-          elif [[ -n "${DISPATCH_TAG:-}" ]]; then
-            source_ref="$DISPATCH_TAG"
-            fingerprint="$source_ref"
+          # Looks up a release by tag and prints the full lock fingerprint on stdout.
+          # Returns non-zero (nothing printed) if no release matches the tag.
+          lookup_fingerprint() {
+            local tag="$1"
+            local release_json
+            release_json="$(gh api "repos/$OVERCAST_REPO/releases/tags/$tag" 2>/dev/null || true)"
+            if [[ -z "$release_json" || "$release_json" == "null" ]]; then
+              return 1
+            fi
+            jq -r '[.tag_name, .target_commitish, .published_at, (.id|tostring)] | join("|")' <<<"$release_json"
+          }
+
+          if [[ -n "${MANUAL_REF:-}" || -n "${DISPATCH_TAG:-}" ]]; then
+            source_ref="${MANUAL_REF:-$DISPATCH_TAG}"
+            if ! fingerprint="$(lookup_fingerprint "$source_ref")"; then
+              # workflow_dispatch accepts any ref, not just release tags (e.g. a branch or
+              # commit for a one-off build), so fall back instead of failing the run.
+              echo "::warning::No release found for tag '$source_ref'; recording a tag-only fingerprint. A later scheduled run may redeploy once if '$source_ref' turns out to match a release." >&2
+              fingerprint="$source_ref"
+            fi
           else
             release_json="$(gh api "repos/$OVERCAST_REPO/releases" --jq '.[0]' 2>/dev/null || true)"
             if [[ -z "$release_json" || "$release_json" == "null" ]]; then
@@ -221,6 +243,11 @@ jobs:
           git commit -m "Record deployed Overcast release [skip deploy]"
           git push
 
+  # Re-running failed jobs on a deploy run (rather than starting a fresh run) leaves two
+  # `github-pages` artifacts attached to the run, and actions/deploy-pages then refuses with
+  # "Multiple artifacts named 'github-pages'". Recovery is a fresh workflow_dispatch with
+  # source_ref set to the release tag, not a re-run of the failed run — that's what
+  # recovered the alpha.39 deploy (run 33712972882).
   deploy:
     needs: build
     if: github.event_name != 'pull_request' && (github.event_name != 'schedule' || needs.build.outputs.should_deploy == 'true')
