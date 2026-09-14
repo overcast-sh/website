@@ -4,6 +4,7 @@ import CodeBlock from "../components/CodeBlock.astro";
 import AssetDownloadList from "../components/AssetDownloadList.astro";
 import ChangelogEntryBody from "../components/ChangelogEntryBody.astro";
 import Chip from "../components/Chip.astro";
+import InstallTabs from "../components/InstallTabs.astro";
 import { ArrowRight, Binary, Container, Download, FileText, Monitor, PackageOpen, RotateCcwClock } from "@lucide/astro";
 import { getCollection, type CollectionEntry } from "astro:content";
 import { repositoryUrl } from "../lib/github-links";
@@ -31,13 +32,23 @@ const topChangelogEntries = latestRelease ? firstChangelogEntries(latestRelease.
 const topRollup = latestRelease ? changelogRollup(latestRelease.data.changelogSections) : null;
 ---
 
-<SiteLayout title="Downloads" description="Download Overcast Docker images and native binaries." searchTitle="Downloads">
+<SiteLayout title="Downloads" description="Install Overcast with one line, or pull the Docker images and native binaries." searchTitle="Downloads">
   <section class="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
     <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted"><Download class="icon" />downloads</p>
-    <h1 class="mt-2 font-mono text-3xl font-bold">Start with Docker. Use native binaries when you need them.</h1>
+    <h1 class="mt-2 font-mono text-3xl font-bold">One line installs it. Docker images and binaries are below.</h1>
     <p class="mt-4 max-w-3xl leading-7 text-body">
-      The full image includes the AWS-compatible API on port <code>4566</code> and the web management console on
-      port <code>4567</code>. The slim image is intended for headless CI and local service tests.
+      The installer picks the binary for your OS and CPU, checks it against the release's <code>SHA256SUMS</code>,
+      and puts it in a directory of your own. It never asks a question and never uses <code>sudo</code>.
+    </p>
+    <div class="mt-6 max-w-3xl">
+      <InstallTabs id="downloads" />
+    </div>
+    <p class="mt-3 max-w-3xl text-sm leading-6 text-muted">
+      <code>--slim</code> installs the headless <code>overcastd</code>, <code>--version</code> pins a release, and
+      <code>irm | iex</code> takes the same choices as environment variables. Every flag is on the
+      <a href="/docs/install/">install page</a>; the scripts are readable at
+      <a href={`${repositoryUrl()}/blob/main/install/install.sh`}>install.sh</a> and
+      <a href={`${repositoryUrl()}/blob/main/install/install.ps1`}>install.ps1</a>.
     </p>
     <div class="mt-6 flex flex-wrap gap-3 sm:mt-8">
       <a class="copy-button inline-flex items-center gap-2 rounded-md px-3 py-2 font-mono text-sm no-underline" href="/releases/">
@@ -50,6 +61,14 @@ const topRollup = latestRelease ? changelogRollup(latestRelease.data.changelogSe
         <Monitor class="icon" />What's in the console
       </a>
     </div>
+  </section>
+
+  <section class="mx-auto max-w-7xl px-4 pb-4 sm:px-6 lg:px-8">
+    <h2 class="flex items-center gap-2 font-mono text-lg font-bold"><Container class="icon" />Docker images</h2>
+    <p class="mt-2 max-w-3xl text-sm leading-6 text-body">
+      The full image serves the AWS-compatible API on port <code>4566</code> and the web console on port
+      <code>4567</code>. The slim image is the emulator alone, for headless CI and local service tests.
+    </p>
   </section>
 
   <section class="mx-auto grid max-w-7xl gap-6 px-4 pb-10 sm:px-6 sm:pb-14 lg:grid-cols-2 lg:px-8">
