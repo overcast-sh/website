@@ -86,14 +86,23 @@ Gotchas:
 
 - `src/pages/` — route entry points (`index.astro`, `docs/[...slug].astro`,
   `downloads.astro`, `releases.astro`, `support.astro`, `compare/localstack.astro`, etc.).
-- `src/pages/llms.txt.ts` and `src/pages/[...slug].md.ts` — the non-browser view of the
-  site. Every doc is served as markdown at its page path plus `.md`
-  (`/docs/storage.md` beside `/docs/storage/`), and `/llms.txt` indexes them in the
-  [llmstxt.org](https://llmstxt.org) format. Both are generated from the docs collection
-  on every build, so an upstream page added, renamed or dropped carries with no list to
-  update. What is hand-written is the summary and the notes (in `llms.txt.ts`, so
-  `copy-lint` reads them — it lints `.ts` routes as well as `.astro` pages), the section
-  order (`src/lib/llms-txt.ts`) and the site's own pages (`src/lib/site-pages.ts`, which
+- `src/pages/[...slug].md.ts` and the three `llms.txt.ts` routes — the non-browser view of
+  the site, following [llmstxt.org](https://llmstxt.org) **v2**. Every doc is served as
+  markdown at its page path plus `.md` (`/docs/storage.md` beside `/docs/storage/`), and
+  three indexes cover it: `/llms.txt` (the site and where to go next), `/docs/llms.txt`
+  (guides and references) and `/docs/services/llms.txt` (per-service). An llms.txt covers
+  the pages under its own path and the most specific one wins, which is what keeps the root
+  file ~5KB and fixed in size while the leaf grows with each new service. Every HTML page
+  points at both with `rel="alternate" type="text/markdown"` and `rel="describedby"` (see
+  `llmsIndexPathFor` and `SiteLayout`'s `markdownPath` prop).
+
+  All of it is generated from the docs collection on every build, so an upstream page
+  added, renamed or dropped carries with no list to update. **Do not add an `## Optional`
+  section** — v1 gave it a mechanical meaning for context-expansion tooling, v2 retired
+  that tooling, and nesting does the job properly. What is hand-written is each index's
+  summary and notes (in its route under `src/pages`, so `copy-lint` reads them — it lints
+  `.ts` routes as well as `.astro` pages), the scopes and section order and description
+  budget (`src/lib/llms-txt.ts`), and the site's own pages (`src/lib/site-pages.ts`, which
   `sitemap.xml.ts` also routes from so the two can't drift).
 - `src/components/` — shared Astro components (`SiteLayout.astro`, `CodeBlock.astro`, …).
 - `src/loaders/` — Astro content loaders that read from the external Overcast source

@@ -1,15 +1,17 @@
 /**
- * /llms.txt — the llmstxt.org index of this site, for a reader that arrived without a
- * browser. Generated from the docs collection on every build, so a page added, renamed or
- * dropped upstream shows up here with no list to maintain. The wording, the section order
- * and the site-page list are the only hand-written parts; they live in
- * src/lib/llms-txt.ts and src/lib/site-pages.ts.
+ * /llms.txt — the site's root index, in the llmstxt.org v2 format.
  *
- * The companion raw-markdown routes every link here points at are in [...slug].md.ts.
+ * The orientation layer, and deliberately the smallest of the three: the site's own pages,
+ * the docs landing pages, and a pointer down to /docs/llms.txt and /docs/services/llms.txt.
+ * Service pages are not listed here at all — there are ~140 of them, they are what grows
+ * when Overcast covers another service, and an agent that wants one follows a link rather
+ * than reading past them. Scope selection lives in LLMS_SCOPES (src/lib/llms-txt.ts).
+ *
+ * The companion raw-markdown routes every doc link points at are in [...slug].md.ts.
  */
 import type { APIRoute } from "astro";
-import { getCollection, type CollectionEntry } from "astro:content";
-import { buildLlmsTxt } from "../lib/llms-txt";
+import { llmsTxtResponse } from "../lib/llms-response";
+import { SITE_PAGES } from "../lib/site-pages";
 
 const summary =
   "Overcast is a free, MIT-licensed local emulator for AWS APIs. Run it with Docker, point supported AWS CLI, CDK, or SDK workflows at http://localhost:4566, and inspect what your app creates in the bundled web console.";
@@ -19,27 +21,26 @@ const notes = [
   "Coverage varies by service and by operation, and these pages describe the current release. The support matrix has the implementation status of every service and operation.",
 ];
 
-export const GET: APIRoute = async ({ site }) => {
-  const origin = site?.origin || "https://overcast.sh";
-  const docs: CollectionEntry<"docs">[] = await getCollection("docs");
+const indexes = [
+  {
+    path: "/docs/llms.txt",
+    title: "Documentation index",
+    description: "Every guide and reference page under /docs/, including the sub-pages this file leaves out.",
+  },
+  {
+    path: "/docs/services/llms.txt",
+    title: "Service reference index",
+    description: "Every emulated service, with its operations, limitations and examples.",
+  },
+];
 
-  const body = buildLlmsTxt({
-    origin,
+export const GET: APIRoute = ({ site }) =>
+  llmsTxtResponse({
+    site,
+    scope: "root",
+    title: "Overcast",
     summary,
     notes,
-    docs: docs.map((doc) => ({
-      slug: doc.data.slug,
-      title: doc.data.title,
-      description: doc.data.description,
-      section: doc.data.section,
-    })),
+    sitePages: SITE_PAGES,
+    indexes,
   });
-
-  return new Response(body, {
-    headers: {
-      // Markdown, but served as plain text so following the link in a browser shows the
-      // file rather than downloading it. This is what llmstxt.org's own site does.
-      "Content-Type": "text/plain; charset=utf-8",
-    },
-  });
-};
