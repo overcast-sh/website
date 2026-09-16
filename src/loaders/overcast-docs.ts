@@ -30,6 +30,47 @@ function titleFromPath(docPath: string): string {
     .join(" ");
 }
 
+/**
+ * Frontmatter the site writes for a synced doc instead of taking what upstream carries,
+ * keyed by source path. A field left out falls through to the file's own frontmatter, and
+ * from there to titleFromPath — so an entry only has to name what it is actually changing.
+ *
+ * Doc content belongs in overcast-sh/overcast, so this table stays short and every entry
+ * says why its fix can't live there.
+ */
+const FRONTMATTER_OVERRIDES: Record<string, { title?: string; description?: string }> = {
+  // README.md carries no frontmatter at all, so it synced with an empty description: a bare
+  // entry in /llms.txt, no subtitle on /docs/overview/, and nothing but the title for search
+  // to match on. Frontmatter upstream is the one fix this file can't take — GitHub renders a
+  // markdown file's frontmatter as a table above its content, and this file is the repo's
+  // landing page, so the table would sit above the logo. Described here from its own
+  // headings instead: quick start, what Overcast is NOT, Docker, native binaries, services.
+  "README.md": {
+    description:
+      "What Overcast emulates and what it deliberately does not, the Docker and native-binary quick starts, and the services it covers.",
+  },
+
+  // docs/README.md's own title and description ("Documentation" / "Every Overcast guide and
+  // reference, routed by what you are trying to do...") describe a repo-root landing page.
+  // On the site that job belongs to the hand-authored src/pages/docs/index.astro, so
+  // shipping this one under the same name would put two pages called "Documentation" in the
+  // sidebar and in search. What is left once the routing tables are discounted is the
+  // material that lives nowhere else: runtime emulation tiers, the generated service index,
+  // event pipelines, and the console feature table. Name it for that.
+  //
+  // (Until v0.0.1-alpha.39 this file was the ~650-line reference manual and the override
+  // said "Full reference"; upstream has since split config, debug endpoints, storage,
+  // networking and troubleshooting into their own pages, which the docs hub links directly.)
+  //
+  // overcast-sh/overcast#1615 fixes this file's frontmatter upstream; this entry can go once
+  // a release synced here includes that fix.
+  "docs/README.md": {
+    title: "Reference index",
+    description:
+      "Runtime emulation tiers, the full service index with per-service coverage, supported event pipelines, and what the web management console shows.",
+  },
+};
+
 function sectionFor(docPath: string, frontmatter: Record<string, unknown>): string {
   // docs/README.md is relocated off the L1 landing page (see slugFor) to its own reference
   // page, and grouped in the sidebar accordingly rather than under its own frontmatter
@@ -244,38 +285,9 @@ export function overcastDocsLoader(): Loader {
         const absolute = path.join(sourceRoot, sourcePath);
         const raw = await fs.readFile(absolute, "utf8");
         const parsed = matter(raw);
-        // README.md carries no frontmatter at all, so it arrived with an empty description:
-        // a bare entry in /llms.txt, no subtitle on /docs/overview/, and nothing but the
-        // title for site search to match on. The obvious fix — frontmatter upstream, where
-        // doc content belongs — is the one fix that can't be made here: GitHub renders a
-        // markdown file's frontmatter as a table above its content, and this file is the
-        // repo's landing page, so the table would land above the logo. Describe it here
-        // instead, from its own headings (quick start, what Overcast is NOT, Docker, native
-        // binaries, supported services).
-        //
-        // docs/README.md's own frontmatter title/description ("Documentation" / "Every
-        // Overcast guide and reference, routed by what you are trying to do...") describe a
-        // repo-root landing page. On the site that job belongs to the hand-authored
-        // src/pages/docs/index.astro, so shipping this one under the same name would put two
-        // pages called "Documentation" in the sidebar and in search.
-        //
-        // What is left once the routing tables are discounted is the material that lives
-        // nowhere else: runtime emulation tiers, the generated service index, event
-        // pipelines, and the console feature table. Name it for that. (Until v0.0.1-alpha.39
-        // this file was the ~650-line reference manual and the override said "Full
-        // reference"; upstream has since split config, debug endpoints, storage, networking
-        // and troubleshooting into their own pages, which the docs hub now links directly.)
-        //
-        // overcast-sh/overcast#1615 fixes this file's own frontmatter title/description
-        // upstream; these overrides can go once a release synced here includes that fix.
-        const title =
-          sourcePath === "docs/README.md" ? "Reference index" : String(parsed.data.title || titleFromPath(sourcePath));
-        const description =
-          sourcePath === "docs/README.md"
-            ? "Runtime emulation tiers, the full service index with per-service coverage, supported event pipelines, and what the web management console shows."
-            : sourcePath === "README.md"
-              ? "What Overcast emulates and what it deliberately does not, the Docker and native-binary quick starts, and the services it covers."
-              : String(parsed.data.description || "");
+        const overrides = FRONTMATTER_OVERRIDES[sourcePath] ?? {};
+        const title = overrides.title ?? String(parsed.data.title || titleFromPath(sourcePath));
+        const description = overrides.description ?? String(parsed.data.description || "");
         const slug = slugFor(sourcePath).replace(/\/$/, "");
         // The badge repair runs after the legacy-org rewrite, which is what turns an
         // old `ghcr.io-neaox%2F...` badge into the `overcast-sh` spelling that needs it.
