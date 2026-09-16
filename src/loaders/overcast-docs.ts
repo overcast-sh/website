@@ -244,6 +244,15 @@ export function overcastDocsLoader(): Loader {
         const absolute = path.join(sourceRoot, sourcePath);
         const raw = await fs.readFile(absolute, "utf8");
         const parsed = matter(raw);
+        // README.md carries no frontmatter at all, so it arrived with an empty description:
+        // a bare entry in /llms.txt, no subtitle on /docs/overview/, and nothing but the
+        // title for site search to match on. The obvious fix — frontmatter upstream, where
+        // doc content belongs — is the one fix that can't be made here: GitHub renders a
+        // markdown file's frontmatter as a table above its content, and this file is the
+        // repo's landing page, so the table would land above the logo. Describe it here
+        // instead, from its own headings (quick start, what Overcast is NOT, Docker, native
+        // binaries, supported services).
+        //
         // docs/README.md's own frontmatter title/description ("Documentation" / "Every
         // Overcast guide and reference, routed by what you are trying to do...") describe a
         // repo-root landing page. On the site that job belongs to the hand-authored
@@ -264,7 +273,9 @@ export function overcastDocsLoader(): Loader {
         const description =
           sourcePath === "docs/README.md"
             ? "Runtime emulation tiers, the full service index with per-service coverage, supported event pipelines, and what the web management console shows."
-            : String(parsed.data.description || "");
+            : sourcePath === "README.md"
+              ? "What Overcast emulates and what it deliberately does not, the Docker and native-binary quick starts, and the services it covers."
+              : String(parsed.data.description || "");
         const slug = slugFor(sourcePath).replace(/\/$/, "");
         // The badge repair runs after the legacy-org rewrite, which is what turns an
         // old `ghcr.io-neaox%2F...` badge into the `overcast-sh` spelling that needs it.
