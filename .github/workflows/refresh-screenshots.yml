@@ -82,6 +82,10 @@ jobs:
   capture:
     needs: gate
     if: needs.gate.outputs.should_capture == 'true'
+    outputs:
+      verdict: ${{ steps.audit.outputs.verdict }}
+      table: ${{ steps.audit.outputs.table }}
+      reasons: ${{ steps.audit.outputs.reasons }}
     # Plain ubuntu-latest rather than the mcr.microsoft.com/playwright container: the capture
     # needs the emulator on the runner's own localhost (CDK asset publishing resolves
     # localhost.overcast.sh to 127.0.0.1) and needs to mount the runner's Docker socket for
@@ -177,6 +181,14 @@ jobs:
             echo "Emulator port $port is answering."
           done
 
+      # Taken before the capture overwrites public/console, because the audit needs the
+      # screenshots as they were committed to say how far each one moved.
+      - name: Snapshot the committed screenshots
+        run: |
+          set -euo pipefail
+          mkdir -p .tmp/screenshot-baseline
+          cp public/console/*.png .tmp/screenshot-baseline/ 2>/dev/null || echo "No committed screenshots yet; every image will read as new."
+
       - name: Checkout Overcast examples
         uses: actions/checkout@v4
         with:
@@ -258,6 +270,15 @@ jobs:
           OVERCAST_CAPTURE_DEBUG_DIR: ${{ env.CAPTURE_DEBUG_DIR }}
         run: node scripts/capture-console.mjs
 
+      # Two of the three gates already ran inside the capture and failed it if they tripped:
+      # a page that raised an uncaught exception, and a frame that came out blank. This is
+      # the third — how far each screenshot moved against the one already committed — and it
+      # decides whether the PR merges itself or waits for a human. It never fails the job: a
+      # red run here would leave the published screenshots stale, which is the whole problem.
+      - name: Audit the captured screenshots
+        id: audit
+        run: node scripts/audit-screenshots.mjs --baseline=.tmp/screenshot-baseline
+
       - name: Emulator logs
         if: failure()
         run: docker logs "$EMULATOR_CONTAINER" || true
@@ -265,6 +286,15 @@ jobs:
       - name: Stop Overcast emulator
         if: always()
         run: docker rm -f "$EMULATOR_CONTAINER" || true
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: console-screenshot-audit
+          path: .tmp/screenshot-audit.json
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Upload capture traces
         if: failure()
@@ -348,6 +378,7 @@ jobs:
           echo "::warning::No RELEASE_APP_CLIENT_ID / RELEASE_APP_PRIVATE_KEY on this repo, so the PR is authored by github-actions. Required checks will not run on it: add the App secrets, or merge it with a ruleset bypass."
 
       - name: Open screenshot refresh PR
+        id: pr
         if: steps.diff.outputs.changed == 'true'
         # Third-party action, pinned by SHA (v8.1.1). Also requires "Allow GitHub Actions to
         # create and approve pull requests" in the repository's Actions settings.
@@ -355,8 +386,15 @@ jobs:
         with:
           token: ${{ steps.app-token.outputs.token || github.token }}
           base: main
-          branch: screenshots/refresh-${{ needs.gate.outputs.source_ref }}
+          # One fixed branch, not one per release. create-pull-request force-updates an
+          # existing branch and reuses the PR already open on it, so a release arriving while
+          # the last screenshot PR is still open rewrites that PR to the newer capture rather
+          # than opening a rival beside it. There is only ever one screenshot PR, and it
+          # always holds the latest screenshots. A per-release branch name is what let them
+          # pile up, and a missed one used to leave the site's screenshots stale for weeks.
+          branch: screenshots/refresh
           delete-branch: true
+          labels: ${{ needs.capture.outputs.verdict == 'review' && 'needs-visual-review' || '' }}
           add-paths: |
             public/console
             .github/console-ui.lock
@@ -372,3 +410,49 @@ jobs:
 
             `.github/console-ui.lock` is bumped to `${{ needs.gate.outputs.fingerprint }}` so
             later scheduled runs skip this release.
+
+            ## Audit
+
+            Every scenario was captured with no uncaught page errors and no blank frames —
+            the capture fails rather than shipping either. Change against the screenshots
+            already on `main`:
+
+            ${{ needs.capture.outputs.table }}
+
+            ${{ needs.capture.outputs.verdict == 'review' && '**Held for review.** This does not merge itself:' || '**Merging once the required `build` check passes.** Nothing here needs a human.' }}
+
+            ${{ needs.capture.outputs.reasons }}
+
+            A release landing before this merges rewrites this same PR rather than opening
+            another one.
+
+      # Landing this used to need a human to notice the PR, and a missed one left the
+      # published screenshots stale until someone did. The review it replaces was a rubber
+      # stamp in the ordinary case, so scripts/audit-screenshots.mjs does the looking: page
+      # errors and blank frames already failed the capture, and anything that moved more than
+      # a quarter of its pixels, changed size, appeared from nowhere, or logged a
+      # console.error is held back for a human instead. A redesign is exactly the case that
+      # should stop here, and it does.
+      #
+      # Needs "Allow auto-merge" enabled on the repository. Without it this step fails the
+      # job and the PR waits for a human — which is where it started, so the failure is loud
+      # but not destructive.
+      - name: Merge once the build passes
+        if: steps.diff.outputs.changed == 'true' && steps.pr.outputs.pull-request-number != '' && needs.capture.outputs.verdict == 'auto'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+          PR: ${{ steps.pr.outputs.pull-request-number }}
+        run: |
+          set -euo pipefail
+
+          # --auto is refused outright when the PR is already mergeable, because there is
+          # nothing left for it to wait on — an updated PR whose `build` has already passed
+          # hits this. Merging there and then is precisely what auto-merge would have done.
+          gh pr merge "$PR" --auto --squash --repo "$GITHUB_REPOSITORY" \
+            || gh pr merge "$PR" --squash --repo "$GITHUB_REPOSITORY"
+
+      - name: Say why the refresh is waiting for a human
+        if: steps.diff.outputs.changed == 'true' && needs.capture.outputs.verdict == 'review'
+        run: |
+          echo "::warning::Screenshot refresh needs a visual review before it can merge."
+          echo "${{ needs.capture.outputs.reasons }}"
