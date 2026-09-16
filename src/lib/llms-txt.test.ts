@@ -9,6 +9,7 @@ import { describe, it } from "node:test";
 import {
   buildLlmsTxt,
   docMarkdownPath,
+  markdownIndexPath,
   isServiceDoc,
   isSubPage,
   llmsIndexPathFor,
@@ -40,6 +41,27 @@ const DOCS: LlmsDocEntry[] = [
   doc("docs/services/s3", "S3", "Service Reference"),
   doc("docs/services/s3/operations", "Operations", "Service Reference"),
 ];
+
+describe("markdownIndexPath", () => {
+  // The spec: "URLs without file names should append index.html.md or index.md instead".
+  // Every route on this site is directory-style, so this is the canonical form for all of
+  // them, and it is what the indexes and rel="alternate" point at.
+  it("appends index.md to a directory-style page path", () => {
+    assert.equal(markdownIndexPath("docs/storage"), "/docs/storage/index.md");
+  });
+
+  it("gives the same answer whichever way the path is punctuated", () => {
+    assert.equal(markdownIndexPath("/docs/storage/"), "/docs/storage/index.md");
+    assert.equal(markdownIndexPath("/support/"), "/support/index.md");
+  });
+
+  // The home page: no path at all, and the one case where the extension-replaced spelling
+  // has nothing to attach itself to.
+  it("maps the site root to /index.md", () => {
+    assert.equal(markdownIndexPath("/"), "/index.md");
+    assert.equal(markdownIndexPath(""), "/index.md");
+  });
+});
 
 describe("docMarkdownPath", () => {
   it("appends .md to a doc slug", () => {
@@ -149,19 +171,20 @@ describe("rewriteDocLinksToMarkdown", () => {
   const slugs = new Set(["docs/storage", "docs/services/s3"]);
 
   it("re-points a link to a published doc at its markdown route", () => {
-    assert.equal(rewriteDocLinksToMarkdown("See [storage](/docs/storage/).", slugs), "See [storage](/docs/storage.md).");
+    assert.equal(rewriteDocLinksToMarkdown("See [storage](/docs/storage/).", slugs), "See [storage](/docs/storage/index.md).");
   });
 
   it("keeps the fragment on a deep link", () => {
     assert.equal(
       rewriteDocLinksToMarkdown("See [buckets](/docs/services/s3/#buckets).", slugs),
-      "See [buckets](/docs/services/s3.md#buckets).",
+      "See [buckets](/docs/services/s3/index.md#buckets).",
     );
   });
 
   // The loader sends links it can't resolve to a doc off to GitHub, and the site's own
-  // pages (/support/, /downloads/) are not in the docs collection at all. Neither has a
-  // .md twin, so neither may be rewritten.
+  // pages (/support/, /downloads/) are not in the docs collection. They do have markdown
+  // twins now, but this rewrite only knows doc slugs — retargeting them is the index's job,
+  // not the body rewriter's, so a body link to one is left exactly as the loader wrote it.
   it("leaves a site page that isn't a doc alone", () => {
     assert.equal(rewriteDocLinksToMarkdown("See [support](/support/).", slugs), "See [support](/support/).");
   });
@@ -178,7 +201,7 @@ describe("rewriteDocLinksToMarkdown", () => {
   it("rewrites every link in a body, not just the first", () => {
     assert.equal(
       rewriteDocLinksToMarkdown("[a](/docs/storage/) and [b](/docs/services/s3/)", slugs),
-      "[a](/docs/storage.md) and [b](/docs/services/s3.md)",
+      "[a](/docs/storage/index.md) and [b](/docs/services/s3/index.md)",
     );
   });
 });
@@ -194,7 +217,7 @@ describe("buildLlmsTxt", () => {
   });
 
   it("links every doc at its absolute markdown URL", () => {
-    assert.match(output, /^- \[Storage\]\(https:\/\/overcast\.sh\/docs\/storage\.md\): About Storage\.$/m);
+    assert.match(output, /^- \[Storage\]\(https:\/\/overcast\.sh\/docs\/storage\/index\.md\): About Storage\.$/m);
   });
 
   it("orders sections by the reading order, not alphabetically", () => {
@@ -218,20 +241,20 @@ describe("buildLlmsTxt", () => {
 
   it("qualifies a service sub-page with the service's own title", () => {
     const services = build({ origin: ORIGIN, docs: DOCS.filter(LLMS_SCOPES.services) });
-    assert.match(services, /\[S3 — Operations\]\(https:\/\/overcast\.sh\/docs\/services\/s3\/operations\.md\)/);
+    assert.match(services, /\[S3 — Operations\]\(https:\/\/overcast\.sh\/docs\/services\/s3\/operations\/index\.md\)/);
   });
 
   it("has no Optional section — v2 retired what it meant", () => {
     assert.doesNotMatch(output, /^## Optional$/m);
   });
 
-  it("lists the site's own pages, which have no markdown twin, at their HTML paths", () => {
+  it("links the site's own pages at their markdown twins, not their HTML pages", () => {
     const root = build({
       origin: ORIGIN,
       docs: DOCS.filter(LLMS_SCOPES.root),
       sitePages: [{ path: "/support/", title: "Support matrix", description: "Implementation status." }],
     });
-    assert.match(root, /^- \[Support matrix\]\(https:\/\/overcast\.sh\/support\/\): Implementation status\.$/m);
+    assert.match(root, /^- \[Support matrix\]\(https:\/\/overcast\.sh\/support\/index\.md\): Implementation status\.$/m);
   });
 
   it("omits the Site section entirely when there are no site pages", () => {
@@ -260,7 +283,7 @@ describe("buildLlmsTxt", () => {
 
   it("omits the colon for a doc with no description", () => {
     const bare = build({ origin: ORIGIN, docs: [doc("docs/storage", "Storage", "Reference", "")] });
-    assert.match(bare, /^- \[Storage\]\(https:\/\/overcast\.sh\/docs\/storage\.md\)$/m);
+    assert.match(bare, /^- \[Storage\]\(https:\/\/overcast\.sh\/docs\/storage\/index\.md\)$/m);
   });
 
   it("ends with a single trailing newline", () => {
