@@ -3,6 +3,7 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import SiteLayout from "../components/SiteLayout.astro";
 import CodeBlock from "../components/CodeBlock.astro";
+import InstallTabs from "../components/InstallTabs.astro";
 import ArchitectureDiagram from "../components/diagrams/ArchitectureDiagram.astro";
 import ServiceIcon from "../components/ServiceIcon.astro";
 import {
@@ -57,10 +58,6 @@ const shot = (name: string): Shot | null => {
 
 const dashboardShot = shot("console-dashboard");
 
-const runCommand = `docker run --rm \\
-  -p 4566:4566 \\
-  -p 4567:4567 \\
-  ghcr.io/overcast-sh/overcast:latest`;
 const firstCall = `aws --endpoint-url http://localhost:4566 \\
   s3 mb s3://hello-overcast`;
 ---
@@ -74,9 +71,9 @@ const firstCall = `aws --endpoint-url http://localhost:4566 \\
           Develop against AWS-compatible services on your laptop and in CI.
         </h1>
         <p class="mt-4 max-w-2xl text-lg leading-8 text-body">
-          Overcast is a free, MIT-licensed local emulator for AWS APIs. Run it with Docker, point supported AWS CLI,
-          CDK, or SDK workflows at <code>localhost:4566</code>, and inspect what your app creates in the included web
-          UI.
+          Overcast is a free, MIT-licensed local emulator for AWS APIs. Install it with one line or run the Docker
+          image, point supported AWS CLI, CDK, or SDK workflows at <code>localhost:4566</code>, and inspect what your
+          app creates in the included web UI.
         </p>
         <div class="mt-8 flex flex-wrap gap-3">
           {/* --oc-bg, not white: the accent is a pale blue in the dark theme, where
@@ -115,8 +112,8 @@ const firstCall = `aws --endpoint-url http://localhost:4566 \\
       <div class="min-w-0 space-y-4">
         <ol class="m-0 list-none space-y-4 p-0">
           <li class="min-w-0">
-            <p class="m-0 mb-2 font-mono text-2xs uppercase tracking-[0.16em] text-muted">01 — start it</p>
-            <CodeBlock code={runCommand} label="start overcast" />
+            <p class="m-0 mb-2 font-mono text-2xs uppercase tracking-[0.16em] text-muted">01 — install it, or run the image</p>
+            <InstallTabs id="hero" docker />
           </li>
           <li class="min-w-0">
             <p class="m-0 mb-2 font-mono text-2xs uppercase tracking-[0.16em] text-muted">02 — point a client at it</p>
