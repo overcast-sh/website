@@ -2,3 +2,9 @@ User-agent: *
 Allow: /
 
 Sitemap: https://overcast.sh/sitemap.xml
+
+# Documentation index for agents and other non-browser readers. Every entry links to a
+# page's markdown, which is served at the page path with a .md extension — for example
+# https://overcast.sh/docs/storage.md alongside https://overcast.sh/docs/storage/.
+# See https://llmstxt.org for the format.
+Allow: /llms.txt

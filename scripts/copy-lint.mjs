@@ -110,6 +110,11 @@ function frontmatterProse(front) {
 }
 
 function proseOf(source, file) {
+  // A .ts route (llms.txt.ts, sitemap.xml.ts) is all JavaScript, so it is all frontmatter —
+  // the same treatment, applied to the whole file. Without this, published copy could dodge
+  // the lint by being written in a route that emits text instead of a page that emits HTML.
+  if (file.endsWith(".ts")) return frontmatterProse(source).split("\n");
+
   const isAstro = file.endsWith(".astro");
   let text = source;
 
@@ -147,6 +152,7 @@ function collectFiles(dir) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) out.push(...collectFiles(full));
     else if (entry.name.endsWith(".astro")) out.push(full);
+    else if (entry.name.endsWith(".ts") && !entry.name.endsWith(".test.ts")) out.push(full);
   }
   return out;
 }
