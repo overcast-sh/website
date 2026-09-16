@@ -21,7 +21,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const roots = ["src/pages", "src/components"];
+// Directories of pages and components, plus the one library file that holds published
+// prose rather than code: src/lib/site-markdown.ts builds the markdown twins of the site's
+// own pages (see src/pages/[...slug].md.ts), so its strings are copy the site publishes and
+// belong under the same lint as every other page.
+const roots = ["src/pages", "src/components", "src/lib/site-markdown.ts"];
 
 /** @type {{id: string, re: RegExp, hint: string}[]} */
 const RULES = [
@@ -147,6 +151,9 @@ function proseOf(source, file) {
 }
 
 function collectFiles(dir) {
+  // A root may name a single file rather than a directory.
+  if (fs.statSync(dir).isFile()) return [dir];
+
   const out = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);

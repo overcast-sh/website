@@ -21,12 +21,6 @@ interface Props {
    * /support/ and /releases/ are unreachable from the search box that offers them.
    */
   searchTitle?: string;
-  /**
-   * Path to this page's markdown twin, for pages that have one (the synced docs, served by
-   * src/pages/[...slug].md.ts). Emitted as rel="alternate" type="text/markdown", which is
-   * how llmstxt.org v2 says a client should find it instead of guessing at the URL.
-   */
-  markdownPath?: string;
 }
 
 const {
@@ -34,7 +28,6 @@ const {
   description = "Free and open-source local AWS emulator for development and CI.",
   editUrl,
   searchTitle,
-  markdownPath,
   noindex = false,
 } = Astro.props;
 const pageEditUrl = editUrl ?? websiteEditUrlFromRoute(Astro.routePattern);
@@ -43,6 +36,11 @@ const canonicalUrl = new URL(Astro.url.pathname, Astro.site || "https://overcast
 // Every page points at the llms.txt that covers it, so an agent holding a page can find the
 // index without guessing — see llmsIndexPathFor for which of the three that is.
 const describedByUrl = new URL(llmsIndexPathFor(Astro.url.pathname), Astro.site || "https://overcast.sh");
+// And at its own markdown. Every route here is directory-style, which is the case v2 names
+// explicitly: a URL with no file name takes index.md. src/pages/[...slug].md.ts serves one
+// for every page, so this needs no per-page plumbing — only the noindex pages, which are the
+// 404 and the redirect stubs, have nothing to point at.
+const markdownUrl = new URL(`${Astro.url.pathname.replace(/\/?$/, "/")}index.md`, Astro.site || "https://overcast.sh");
 // A raster card, not the SVG one this used to point at: X, Slack, LinkedIn and
 // Facebook all refuse to render an SVG og:image, so every link to the site
 // unfurled with no picture at all. Generated from brand/github-social-card.svg.
@@ -87,7 +85,7 @@ const navCurrent = (href: string): "page" | "true" | undefined => {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     <link rel="canonical" href={canonicalUrl} />
-    {markdownPath && <link rel="alternate" type="text/markdown" href={new URL(markdownPath, Astro.site || "https://overcast.sh")} />}
+    {!noindex && <link rel="alternate" type="text/markdown" href={markdownUrl} />}
     <link rel="describedby" href={describedByUrl} />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Overcast" />

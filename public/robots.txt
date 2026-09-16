@@ -10,7 +10,10 @@ Sitemap: https://overcast.sh/sitemap.xml
 #   /docs/llms.txt             the guides and references
 #   /docs/services/llms.txt    the per-service reference
 #
-# Every page they link is served as markdown at its own path with a .md extension — for
-# example https://overcast.sh/docs/storage.md alongside https://overcast.sh/docs/storage/.
-# Each HTML page also points at both with rel="alternate" and rel="describedby".
+# Every page on this site is also served as markdown, at its own path plus index.md — for
+# example https://overcast.sh/docs/storage/index.md alongside https://overcast.sh/docs/storage/,
+# and https://overcast.sh/index.md for this one. Synced docs answer to the extension-replaced
+# spelling too (https://overcast.sh/docs/storage.md), which is the other form the spec allows.
+# Each HTML page points at both its markdown and its index with rel="alternate" and
+# rel="describedby", so neither has to be guessed at.
 Allow: /llms.txt

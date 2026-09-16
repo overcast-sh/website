@@ -18,7 +18,8 @@ to GitHub Pages.
 - `npm run build` — runs `content:sync`, `astro build`, then `pagefind --site dist` to
   build the search index.
 - `npm run check` — `copy-lint` then `astro check` (type/diagnostics check).
-- `npm run copy-lint` — greps site-authored page copy (`src/pages`, `src/components`) for
+- `npm run copy-lint` — greps site-authored page copy (`src/pages`, `src/components`, and
+  `src/lib/site-markdown.ts`, which holds the markdown twins' prose) for
   contrastive "X, not Y" framing, marketing vocabulary, rhetorical questions, stacked
   adjectives and US spelling. CI runs it as the `copy-lint` job on every PR. Deliberate
   uses go in `ALLOW` in `scripts/copy-lint.mjs`, or behind a `copy-lint-ignore <rule>`
@@ -87,23 +88,38 @@ Gotchas:
 - `src/pages/` — route entry points (`index.astro`, `docs/[...slug].astro`,
   `downloads.astro`, `releases.astro`, `support.astro`, `compare/localstack.astro`, etc.).
 - `src/pages/[...slug].md.ts` and the three `llms.txt.ts` routes — the non-browser view of
-  the site, following [llmstxt.org](https://llmstxt.org) **v2**. Every doc is served as
-  markdown at its page path plus `.md` (`/docs/storage.md` beside `/docs/storage/`), and
-  three indexes cover it: `/llms.txt` (the site and where to go next), `/docs/llms.txt`
+  the site, following [llmstxt.org](https://llmstxt.org) **v2**.
+
+  **Every page** is served as markdown, and the canonical spelling is the page path plus
+  `index.md`: `/docs/storage/index.md`, `/support/index.md`, `/index.md`. That is the form
+  the spec names for a URL with no file name, which every route here is. Synced docs also
+  answer to `/docs/storage.md` — the other form v2 allows, and the URL published in #57 —
+  but nothing links to it. One route serves all of them.
+
+  Three indexes cover it: `/llms.txt` (the site and where to go next), `/docs/llms.txt`
   (guides and references) and `/docs/services/llms.txt` (per-service). An llms.txt covers
   the pages under its own path and the most specific one wins, which is what keeps the root
   file ~5KB and fixed in size while the leaf grows with each new service. Every HTML page
-  points at both with `rel="alternate" type="text/markdown"` and `rel="describedby"` (see
-  `llmsIndexPathFor` and `SiteLayout`'s `markdownPath` prop).
+  points at both its own markdown and its index, with `rel="alternate" type="text/markdown"`
+  and `rel="describedby"` — both derived from the pathname in `SiteLayout`, so a new page
+  needs no plumbing (see `markdownIndexPath` and `llmsIndexPathFor`).
 
-  All of it is generated from the docs collection on every build, so an upstream page
-  added, renamed or dropped carries with no list to update. **Do not add an `## Optional`
-  section** — v1 gave it a mechanical meaning for context-expansion tooling, v2 retired
-  that tooling, and nesting does the job properly. What is hand-written is each index's
-  summary and notes (in its route under `src/pages`, so `copy-lint` reads them — it lints
-  `.ts` routes as well as `.astro` pages), the scopes and section order and description
-  budget (`src/lib/llms-txt.ts`), and the site's own pages (`src/lib/site-pages.ts`, which
-  `sitemap.xml.ts` also routes from so the two can't drift).
+  The docs side is generated from the collection on every build, so an upstream page added,
+  renamed or dropped carries with no list to update. The site's own pages have no markdown
+  behind them, so theirs is built in `src/lib/site-markdown.ts` **from the same data the
+  `.astro` page renders from** — the support manifest, the releases collection — which is
+  what stops a twin drifting from its page. `/console/` and `/contributing/` have no such
+  data, so their twins are deliberately short and point at the canonical source instead of
+  restating the page.
+
+  **Do not add an `## Optional` section** — v1 gave it a mechanical meaning for
+  context-expansion tooling, v2 retired that tooling, and nesting does the job properly.
+  What is hand-written is each index's summary and notes (in its route under `src/pages`),
+  the site-page markdown (`src/lib/site-markdown.ts`), the scopes and section order and
+  description budget (`src/lib/llms-txt.ts`), and the site's own routes
+  (`src/lib/site-pages.ts`, which `sitemap.xml.ts` also routes from so the two can't
+  drift). `copy-lint` reads all the published prose among that, including `.ts` routes and
+  `site-markdown.ts` — it is listed as a root explicitly.
 - `src/components/` — shared Astro components (`SiteLayout.astro`, `CodeBlock.astro`, …).
 - `src/loaders/` — Astro content loaders that read from the external Overcast source
   checkout.

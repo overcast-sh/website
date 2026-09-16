@@ -4,9 +4,10 @@
  *
  * Three routes make the docs readable without a browser:
  *
- * - `/<slug>.md` (src/pages/[...slug].md.ts) serves a doc's markdown, the same body the
- *   HTML page renders from. v2 allows either `page.html.md` or the extension-replaced
- *   `page.md`; this site uses the latter.
+ * - `/<path>/index.md` (src/pages/[...slug].md.ts) serves any page as markdown — a doc's own
+ *   body, or, for the site's own pages, markdown built from the data they render from. Every
+ *   route here is directory-style, which is the case v2 names explicitly: a URL with no file
+ *   name takes index.md. Docs keep `/<slug>.md` as an alias, but nothing links to it.
  * - `/llms.txt`, `/docs/llms.txt` and `/docs/services/llms.txt` index those. An llms.txt
  *   covers the pages under its own path and the most specific one wins, so an agent after a
  *   service reads ~140 lines about services rather than the whole site.
@@ -74,7 +75,24 @@ export const LLMS_SECTION_ORDER: readonly string[] = [
 
 const SERVICES_PREFIX = "docs/services";
 
-/** The path a doc's markdown is served at: docs/storage -> /docs/storage.md. */
+/**
+ * The canonical markdown path for a page, which is what every link here and every
+ * rel="alternate" points at.
+ *
+ * v2 gives two spellings — `.md` appended to the full URL, or the extension replaced — and
+ * then names the case this site is entirely made of: "URLs without file names should append
+ * index.html.md or index.md instead". Every route here is directory-style, so `/docs/storage/`
+ * takes `/docs/storage/index.md`.
+ */
+export function markdownIndexPath(path: string): string {
+  return `/${path.replace(/^\/+|\/+$/g, "")}/index.md`.replace(/^\/\//, "/");
+}
+
+/**
+ * The extension-replaced spelling, `/docs/storage.md`. Also allowed by v2, widely guessed at
+ * by tooling, and the URL this site published for its docs in #57 — so [...slug].md.ts keeps
+ * serving it as an alias. Nothing links to it.
+ */
 export function docMarkdownPath(slug: string): string {
   return `/${slug.replace(/^\/+|\/+$/g, "")}.md`;
 }
@@ -132,7 +150,7 @@ export type LlmsScope = keyof typeof LLMS_SCOPES;
 export function rewriteDocLinksToMarkdown(body: string, docSlugs: ReadonlySet<string>): string {
   return body.replace(/\]\(\/([^)#\s]+)\/(#[^)\s]*)?\)/g, (whole, slug: string, fragment?: string) => {
     if (!docSlugs.has(slug)) return whole;
-    return `](${docMarkdownPath(slug)}${fragment ?? ""})`;
+    return `](${markdownIndexPath(slug)}${fragment ?? ""})`;
   });
 }
 
@@ -232,7 +250,9 @@ export function buildLlmsTxt({ origin, title, summary, notes, docs, sitePages = 
   }
 
   if (sitePages.length > 0) {
-    lines.push("", "## Site", "", ...sitePages.map((page) => link(origin, page.title, page.path, page.description)));
+    // These have markdown twins too (src/lib/site-markdown.ts), so link the markdown —
+    // an index that points an agent back at HTML has sent it the wrong way.
+    lines.push("", "## Site", "", ...sitePages.map((page) => link(origin, page.title, markdownIndexPath(page.path), page.description)));
   }
 
   for (const [section, entries] of bySection(docs)) {
@@ -240,7 +260,7 @@ export function buildLlmsTxt({ origin, title, summary, notes, docs, sitePages = 
     for (const entry of entries) {
       const parent = parentLabel(entry.slug, titleBySlug);
       const label = parent ? `${parent} — ${entry.title}` : entry.title;
-      lines.push(link(origin, label, docMarkdownPath(entry.slug), entry.description));
+      lines.push(link(origin, label, markdownIndexPath(entry.slug), entry.description));
     }
   }
 
