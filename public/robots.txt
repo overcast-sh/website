@@ -3,8 +3,14 @@ Allow: /
 
 Sitemap: https://overcast.sh/sitemap.xml
 
-# Documentation index for agents and other non-browser readers. Every entry links to a
-# page's markdown, which is served at the page path with a .md extension — for example
-# https://overcast.sh/docs/storage.md alongside https://overcast.sh/docs/storage/.
-# See https://llmstxt.org for the format.
+# Documentation indexes for agents and other non-browser readers, in the llmstxt.org v2
+# format. Each covers the pages under its own path, and the most specific one wins:
+#
+#   /llms.txt                  the site, and where to go next
+#   /docs/llms.txt             the guides and references
+#   /docs/services/llms.txt    the per-service reference
+#
+# Every page they link is served as markdown at its own path with a .md extension — for
+# example https://overcast.sh/docs/storage.md alongside https://overcast.sh/docs/storage/.
+# Each HTML page also points at both with rel="alternate" and rel="describedby".
 Allow: /llms.txt
