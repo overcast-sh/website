@@ -86,6 +86,15 @@ Gotchas:
 
 - `src/pages/` — route entry points (`index.astro`, `docs/[...slug].astro`,
   `downloads.astro`, `releases.astro`, `support.astro`, `compare/localstack.astro`, etc.).
+- `src/pages/llms.txt.ts` and `src/pages/[...slug].md.ts` — the non-browser view of the
+  site. Every doc is served as markdown at its page path plus `.md`
+  (`/docs/storage.md` beside `/docs/storage/`), and `/llms.txt` indexes them in the
+  [llmstxt.org](https://llmstxt.org) format. Both are generated from the docs collection
+  on every build, so an upstream page added, renamed or dropped carries with no list to
+  update. What is hand-written is the summary and the notes (in `llms.txt.ts`, so
+  `copy-lint` reads them — it lints `.ts` routes as well as `.astro` pages), the section
+  order (`src/lib/llms-txt.ts`) and the site's own pages (`src/lib/site-pages.ts`, which
+  `sitemap.xml.ts` also routes from so the two can't drift).
 - `src/components/` — shared Astro components (`SiteLayout.astro`, `CodeBlock.astro`, …).
 - `src/loaders/` — Astro content loaders that read from the external Overcast source
   checkout.
