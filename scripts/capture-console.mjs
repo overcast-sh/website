@@ -33,9 +33,13 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { chromium } from "playwright";
+import sharp from "sharp";
+import { isBlankFrame } from "../src/lib/screenshot-audit.ts";
 
 const cwd = process.cwd();
 const outputDir = path.join(cwd, "public", "console");
+// Where the page-log warnings go for scripts/audit-screenshots.mjs to fold into its verdict.
+const auditFile = process.env.OVERCAST_CAPTURE_AUDIT_FILE || path.join(cwd, ".tmp", "capture-audit.json");
 
 function flag(name) {
   const prefix = `--${name}=`;
@@ -323,9 +327,24 @@ async function runScenario(browser, scenario, theme, attempt) {
     await page.waitForTimeout(pausedRenderSettleMs);
 
     const capture = scenario.capture || captureViewport;
-    await capture(page, path.join(outputDir, `${scenario.name}-${theme}.png`));
+    const file = path.join(outputDir, `${scenario.name}-${theme}.png`);
+    await capture(page, file);
+
+    // An uncaught exception is never acceptable in a screenshot we are about to publish, and
+    // the retry above is a real chance of getting a clean one. console.error and
+    // requestfailed are not fatal — an aborted fetch or a missing optional asset would wedge
+    // the refresh and leave the published screenshots stale, which is the failure this whole
+    // audit exists to avoid — so they ride out as warnings that hold the PR for a human.
+    const fatal = pageLog.filter((entry) => entry.startsWith("pageerror:"));
+    if (fatal.length > 0) throw new Error(`Page raised ${fatal.length} uncaught error(s): ${fatal.join("; ")}`);
+
+    // Every DOM assertion can pass and the frame still come out flat — a white flash caught
+    // mid-render, a solid error background. Nothing above looks at what was actually painted.
+    const { data } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    if (isBlankFrame(data)) throw new Error(`Captured frame is blank or near-blank: ${path.basename(file)}`);
 
     await context.tracing.stop();
+    return pageLog.map((message) => ({ scenario: `${scenario.name}-${theme}`, message }));
   } catch (error) {
     const prefix = path.join(debugDir, `${scenario.name}-${theme}-attempt-${attempt}`);
     await fs.mkdir(debugDir, { recursive: true });
@@ -370,6 +389,7 @@ async function main() {
   const browser = await chromium.launch();
   const failed = [];
   const skipped = [];
+  const warnings = [];
 
   try {
     for (const scenario of selected) {
@@ -377,7 +397,7 @@ async function main() {
         const label = `${scenario.name}-${theme}`;
         for (let attempt = 1; attempt <= attemptsPerScenario; attempt++) {
           try {
-            await runScenario(browser, scenario, theme, attempt);
+            warnings.push(...(await runScenario(browser, scenario, theme, attempt)));
             console.log(`Captured ${label} from ${consoleUrl}${scenario.route}`);
             break;
           } catch (error) {
@@ -389,6 +409,14 @@ async function main() {
     }
   } finally {
     await browser.close();
+  }
+
+  // Written whatever happened, including empty: scripts/audit-screenshots.mjs treats a
+  // missing file as "the capture never got this far" rather than "the pages were clean".
+  await fs.mkdir(path.dirname(auditFile), { recursive: true });
+  await fs.writeFile(auditFile, `${JSON.stringify({ warnings }, null, 2)}\n`, "utf8");
+  for (const warning of warnings) {
+    console.log(`::warning::${warning.scenario} logged: ${warning.message}`);
   }
 
   if (skipped.length > 0) {
