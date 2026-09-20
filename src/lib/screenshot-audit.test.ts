@@ -13,6 +13,7 @@ import {
   formatComparisonTable,
   formatPercent,
   isBlankFrame,
+  isExpectedPageLog,
   REVIEW_CHANGE_RATIO,
   type CaptureWarning,
   type ScreenshotComparison,
@@ -184,5 +185,42 @@ describe("formatComparisonTable", () => {
   it("labels an image with no baseline instead of printing a percentage for it", () => {
     const table = formatComparisonTable([{ name: "new.png", kind: "new", changedRatio: null }]);
     assert.match(table, /\| `new\.png` \| new file \|/);
+  });
+});
+
+describe("isExpectedPageLog", () => {
+  const notFound = "console.error: Failed to load resource: the server responded with a status of 404 (Not Found)";
+
+  it("ignores the clock shim being blocked in the sandboxed email preview", () => {
+    assert.ok(
+      isExpectedPageLog(
+        "console.error: Blocked script execution in 'about:srcdoc' because the document's frame is sandboxed and the 'allow-scripts' permission is not set. [about:srcdoc]",
+      ),
+    );
+  });
+
+  it("ignores the 404 for a bucket with no lifecycle or website configuration", () => {
+    assert.ok(isExpectedPageLog(`${notFound} [http://localhost:4566/some-bucket?lifecycle&x-id=GetBucketLifecycleConfiguration]`));
+    assert.ok(isExpectedPageLog(`${notFound} [http://some-bucket.localhost.overcast.sh:4566/?website&x-id=GetBucketWebsite]`));
+  });
+
+  it("still flags a 404 for any other request", () => {
+    assert.equal(isExpectedPageLog(`${notFound} [http://localhost:4566/some-bucket/samples/missing.png]`), false);
+    assert.equal(isExpectedPageLog(`${notFound} [http://localhost:4567/api/things?lifecycle-hook=1]`), false);
+  });
+
+  it("flags a 404 that names no request, since nothing shows it is the expected one", () => {
+    assert.equal(isExpectedPageLog(notFound), false);
+  });
+
+  it("still flags a lifecycle request that failed some other way", () => {
+    const serverError = "console.error: Failed to load resource: the server responded with a status of 500 (Internal Server Error)";
+    assert.equal(isExpectedPageLog(`${serverError} [http://localhost:4566/some-bucket?lifecycle]`), false);
+  });
+
+  it("does not swallow other console errors or other blocked scripts", () => {
+    assert.equal(isExpectedPageLog("console.error: Uncaught TypeError: x is not a function"), false);
+    assert.equal(isExpectedPageLog("console.error: Blocked script execution in 'http://localhost:4567/' because it is sandboxed"), false);
+    assert.equal(isExpectedPageLog("requestfailed: http://localhost:4567/x net::ERR_ABORTED"), false);
   });
 });

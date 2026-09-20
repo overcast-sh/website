@@ -64,6 +64,36 @@ export interface CaptureWarning {
 }
 
 /**
+ * Page-log entries that say nothing about the screenshot. Anything else logged by the
+ * console still holds the PR for a human, so each rule here is narrow: it names the exact
+ * message, and for a network error the exact request, rather than a whole class of failure.
+ *
+ * - Playwright's clock shim (`page.clock.install`) is injected into every frame, including
+ *   the sandboxed email preview iframe. That iframe has no `allow-scripts` on purpose, so
+ *   Chrome logs the block. The message comes from the harness; the seeded email has no
+ *   script in it.
+ * - The console asks S3 for a bucket's lifecycle and website configuration on every bucket
+ *   page. A bucket without one gets a 404 (`NoSuchLifecycleConfiguration`,
+ *   `NoSuchWebsiteConfiguration`), which is what real S3 answers and which the console maps
+ *   to "not configured". The page handles it, but Chrome logs any 404 before JS sees it.
+ */
+const SANDBOXED_SRCDOC_BLOCK = /^console\.error: Blocked script execution in 'about:srcdoc' because the document's frame is sandboxed/;
+const RESOURCE_404 = /^console\.error: Failed to load resource: the server responded with a status of 404\b.*\[([^\]]*)\]$/;
+const ABSENT_CONFIG_REQUEST = /[?&](?:lifecycle|website)(?:[=&]|$)/;
+
+/**
+ * Whether a page-log entry from scripts/capture-console.mjs is expected noise. An entry is
+ * `console.error: <text>`, with ` [<url>]` appended when Chrome reported which resource
+ * failed to load (Playwright's `message.location().url`).
+ */
+export function isExpectedPageLog(entry: string): boolean {
+  if (SANDBOXED_SRCDOC_BLOCK.test(entry)) return true;
+
+  const failedResource = RESOURCE_404.exec(entry);
+  return failedResource != null && ABSENT_CONFIG_REQUEST.test(failedResource[1]);
+}
+
+/**
  * The fraction of the image taken by its single most common colour. 1 means every pixel is
  * identical; a real page lands far below the blank threshold.
  */
