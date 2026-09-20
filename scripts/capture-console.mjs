@@ -34,7 +34,7 @@ import path from "node:path";
 import process from "node:process";
 import { chromium } from "playwright";
 import sharp from "sharp";
-import { isBlankFrame } from "../src/lib/screenshot-audit.ts";
+import { isBlankFrame, isExpectedPageLog } from "../src/lib/screenshot-audit.ts";
 
 const cwd = process.cwd();
 const outputDir = path.join(cwd, "public", "console");
@@ -307,7 +307,10 @@ async function runScenario(browser, scenario, theme, attempt) {
   const pageLog = [];
   page.on("pageerror", (error) => pageLog.push(`pageerror: ${error.message}`));
   page.on("console", (message) => {
-    if (message.type() === "error") pageLog.push(`console.error: ${message.text()}`);
+    if (message.type() !== "error") return;
+    // A failed subresource load is reported without saying which one; the location carries it.
+    const { url } = message.location();
+    pageLog.push(`console.error: ${message.text()}${url ? ` [${url}]` : ""}`);
   });
   page.on("requestfailed", (request) => pageLog.push(`requestfailed: ${request.url()} ${request.failure()?.errorText}`));
 
@@ -344,7 +347,10 @@ async function runScenario(browser, scenario, theme, attempt) {
     if (isBlankFrame(data)) throw new Error(`Captured frame is blank or near-blank: ${path.basename(file)}`);
 
     await context.tracing.stop();
-    return pageLog.map((message) => ({ scenario: `${scenario.name}-${theme}`, message }));
+    // Expected noise stays in the debug log written on failure, but is not a reason to hold the PR.
+    return pageLog
+      .filter((message) => !isExpectedPageLog(message))
+      .map((message) => ({ scenario: `${scenario.name}-${theme}`, message }));
   } catch (error) {
     const prefix = path.join(debugDir, `${scenario.name}-${theme}-attempt-${attempt}`);
     await fs.mkdir(debugDir, { recursive: true });
