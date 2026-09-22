@@ -4,7 +4,7 @@ import Callout from "../components/Callout.astro";
 import SearchPromo from "../components/SearchPromo.astro";
 import ServiceIcon from "../components/ServiceIcon.astro";
 import Chip from "../components/Chip.astro";
-import { Search, ShieldCheck } from "@lucide/astro";
+import { Search, ShieldCheck, X } from "@lucide/astro";
 import { getServiceSupport } from "../lib/generated-content";
 
 const support = await getServiceSupport();
@@ -32,6 +32,12 @@ const services = support.services
 
 const completeCount = services.filter((service) => service.gap === 0).length;
 const totalGap = services.reduce((sum, service) => sum + service.gap, 0);
+
+const showOptions: Array<{ value: "all" | "gaps" | "complete"; label: string; count: number }> = [
+  { value: "all", label: "All", count: services.length },
+  { value: "gaps", label: "Has gaps", count: services.length - completeCount },
+  { value: "complete", label: "Complete", count: completeCount },
+];
 ---
 
 <SiteLayout title="Support Matrix" description="Overcast service and operation implementation status." searchTitle="Support matrix">
@@ -77,43 +83,76 @@ const totalGap = services.reduce((sum, service) => sum + service.gap, 0);
       </Callout>
     </div>
 
-    <div class="mt-6 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:gap-4">
+    <div class="mt-6 flex flex-col gap-3 sm:mt-8 lg:flex-row lg:items-center lg:gap-4">
       <div class="relative flex-1">
         {/* A placeholder is not a label: it disappears the moment anything is typed and
             is not what a screen reader reads for the field. The visible design has no
             room for a caption, so the name is carried off-screen. */}
-        <label class="sr-only" for="support-filter">Filter services</label>
+        <label class="sr-only" for="support-filter">Filter by service or operation</label>
         <Search class="icon pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
         <input
           id="support-filter"
           type="text"
-          placeholder="Filter services…"
+          placeholder="Filter by service or operation…"
           autocomplete="off"
           spellcheck="false"
+          enterkeyhint="search"
           aria-describedby="support-count"
-          class="w-full rounded-md border border-oc bg-card py-2.5 pl-10 pr-3 font-mono text-sm text-(--oc-text)"
+          class="w-full rounded-md border border-oc bg-card py-2.5 pl-10 pr-10 font-mono text-sm text-(--oc-text)"
         />
-      </div>
-      <label class="flex items-center gap-2 font-mono text-xs text-muted">
-        <span class="shrink-0 uppercase tracking-[0.16em]">sort</span>
-        <select
-          id="support-sort"
-          class="w-full rounded-md border border-oc bg-card px-3 py-2.5 font-mono text-sm text-(--oc-text) sm:w-auto"
+        <button
+          type="button"
+          id="support-clear-query"
+          class="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center rounded p-1.5 text-muted hover:bg-(--oc-accent-soft) hover:text-(--oc-text)"
+          aria-label="Clear filter text"
+          title="Clear (Esc)"
+          hidden
         >
-          <option value="name">Name (A–Z)</option>
-          <option value="gaps">Biggest gaps first</option>
-          <option value="coverage">Most complete first</option>
-          <option value="size">Most operations first</option>
-        </select>
-      </label>
+          <X class="icon" />
+        </button>
+      </div>
+      <div class="flex flex-wrap items-center justify-between gap-3 lg:justify-end">
+        {/* Toggle buttons rather than radios: each is one press, and the counts on them
+            follow the text filter, so they say what pressing one would leave. */}
+        <div role="group" aria-label="Show services" class="flex gap-1.5">
+          {showOptions.map((option) => (
+            <button
+              type="button"
+              data-show={option.value}
+              aria-pressed={option.value === "all" ? "true" : "false"}
+              class="rounded-md border border-oc px-3 py-2 font-mono text-xs text-muted aria-pressed:border-(--oc-accent) aria-pressed:bg-(--oc-accent-soft) aria-pressed:text-(--oc-text)"
+            >
+              {option.label}<span class="ml-1.5 opacity-70" data-show-count>{option.count}</span>
+            </button>
+          ))}
+        </div>
+        <label class="flex items-center gap-2 font-mono text-xs text-muted">
+          <span class="shrink-0 uppercase tracking-[0.16em]">sort</span>
+          <select
+            id="support-sort"
+            class="rounded-md border border-oc bg-card px-3 py-2 font-mono text-sm text-(--oc-text)"
+          >
+            <option value="name">Name (A–Z)</option>
+            <option value="gaps">Biggest gaps first</option>
+            <option value="coverage">Most complete first</option>
+            <option value="size">Most operations first</option>
+          </select>
+        </label>
+      </div>
     </div>
 
     {/* The count labels the table, so it keeps a `group` gap to it and takes the
         full `block` gap from the filters above — the three used to stack at 12px
-        each and read as one undifferentiated pile. */}
-    <p id="support-count" class="mt-6 font-mono text-xs text-muted sm:mt-8" role="status" aria-live="polite">
-      Showing all {services.length} services
-    </p>
+        each and read as one undifferentiated pile. The reset sits beside it, outside
+        the live region, so it is not read out on every keystroke. */}
+    <div class="mt-6 flex flex-wrap items-baseline gap-x-3 gap-y-1 sm:mt-8">
+      <p id="support-count" class="m-0 font-mono text-xs text-muted" role="status" aria-live="polite">
+        Showing all {services.length} services
+      </p>
+      <button type="button" data-reset class="font-mono text-xs text-accent underline-offset-2 hover:underline" hidden>
+        Clear filters
+      </button>
+    </div>
 
     <div class="surface mt-4 overflow-hidden rounded-lg">
       {/* The column strip is a visual key for sighted readers only: nothing associates
@@ -133,44 +172,66 @@ const totalGap = services.reduce((sum, service) => sum + service.gap, 0);
         {/* One line per service at every width. The meter is the only thing that drops
             on a phone: keeping it stacked each row onto two lines, which made a 50-row
             table half as long again as the one it replaced. The counts beside it carry
-            the same fact exactly. */}
-        {services.map((service) => (
-          <a
-            class="flex items-center gap-3 border-b border-oc px-4 py-3 text-sm no-underline last:border-b-0 hover:bg-(--oc-accent-soft) sm:grid sm:grid-cols-[1fr_130px_110px_96px] sm:items-center sm:gap-4 sm:px-5 sm:py-3.5"
-            href={`/docs/services/${service.docSlug ?? service.service}/`}
+            the same fact exactly.
+
+            Rows are hidden with the `hidden` attribute, which preflight backs with
+            `!important`. Toggling the `hidden` class did nothing: the row's own `flex`
+            and `sm:grid` won the cascade, so the count changed and every row stayed. */}
+        {services.map((service, index) => (
+          <div
+            class="border-b border-oc data-last:border-b-0"
             data-service-row
             data-name={service.displayName.toLowerCase()}
             data-id={service.service}
             data-gap={service.gap}
             data-coverage={service.percent}
             data-size={service.totalOps}
+            data-last={index === services.length - 1 ? "" : undefined}
           >
-            <span class="flex min-w-0 flex-1 items-center gap-3 font-mono text-(--oc-text) sm:flex-none">
-              <ServiceIcon service={service.service} size="sm" />
-              <span class="truncate">{service.displayName}</span>
-            </span>
-            {/* Decorative: the same ratio is the next thing in the row. */}
-            <span class="coverage-meter hidden sm:block" aria-hidden="true" title={`${service.percent}% implemented`}>
-              <span style={`width:${service.percent}%`}></span>
-            </span>
-            {/* Without these, the row reads out as "S3 45/53 8" — three bare numbers
-                whose meaning lives only in a column strip that is never associated with
-                them, and is hidden outright on a phone. */}
-            <span class="shrink-0 font-mono text-xs text-muted sm:text-right sm:text-sm">
-              <span class="text-accent">{service.implementedOps}</span>/{service.totalOps}
-              <span class="sr-only"> listed operations implemented</span>
-            </span>
-            <span class="w-6 shrink-0 text-right font-mono text-xs sm:w-auto sm:text-sm">
-              {service.gap > 0 ? (
-                <span class="text-(--oc-warning)">{service.gap}<span class="sr-only"> not implemented</span></span>
-              ) : (
-                <span class="text-muted"><span class="sr-only">no gaps</span>—</span>
-              )}
-            </span>
-          </a>
+            <a
+              class="flex items-center gap-3 px-4 py-3 text-sm no-underline hover:bg-(--oc-accent-soft) sm:grid sm:grid-cols-[1fr_130px_110px_96px] sm:items-center sm:gap-4 sm:px-5 sm:py-3.5"
+              href={`/docs/services/${service.docSlug ?? service.service}/`}
+            >
+              <span class="flex min-w-0 flex-1 items-center gap-3 font-mono text-(--oc-text) sm:flex-none">
+                <ServiceIcon service={service.service} size="sm" />
+                <span class="truncate" data-label>{service.displayName}</span>
+              </span>
+              {/* Decorative: the same ratio is the next thing in the row. */}
+              <span class="coverage-meter hidden sm:block" aria-hidden="true" title={`${service.percent}% implemented`}>
+                <span style={`width:${service.percent}%`}></span>
+              </span>
+              {/* Without these, the row reads out as "S3 45/53 8" — three bare numbers
+                  whose meaning lives only in a column strip that is never associated with
+                  them, and is hidden outright on a phone. */}
+              <span class="shrink-0 font-mono text-xs text-muted sm:text-right sm:text-sm">
+                <span class="text-accent">{service.implementedOps}</span>/{service.totalOps}
+                <span class="sr-only"> listed operations implemented</span>
+              </span>
+              <span class="w-6 shrink-0 text-right font-mono text-xs sm:w-auto sm:text-sm">
+                {service.gap > 0 ? (
+                  <span class="text-(--oc-warning)">{service.gap}<span class="sr-only"> not implemented</span></span>
+                ) : (
+                  <span class="text-muted"><span class="sr-only">no gaps</span>—</span>
+                )}
+              </span>
+            </a>
+            {/* Filled by the script when the row matched on operation names and not
+                on its own. Indented to the service name: row padding + icon + gap. */}
+            <ul
+              class="m-0 flex list-none flex-wrap gap-1.5 px-4 pb-3 pl-[3.125rem] sm:px-5 sm:pl-[3.375rem]"
+              aria-label={`Matching ${service.displayName} operations`}
+              data-op-hits
+              hidden
+            ></ul>
+          </div>
         ))}
       </div>
-      <p id="support-empty" class="hidden px-5 py-10 text-center text-sm text-muted">No service matches that filter.</p>
+      <div id="support-empty" class="px-5 py-10 text-center text-sm text-muted" hidden>
+        <p class="m-0">No service or operation matches these filters.</p>
+        <button type="button" data-reset class="mt-3 rounded-md border border-oc px-3 py-1.5 font-mono text-xs text-(--oc-text) hover:bg-(--oc-accent-soft)">
+          Clear filters
+        </button>
+      </div>
     </div>
 
     <div class="mt-6 grid gap-4 text-sm text-muted sm:mt-8 lg:grid-cols-[1.4fr_1fr] lg:items-start">
@@ -185,13 +246,95 @@ const totalGap = services.reduce((sum, service) => sum + service.gap, 0);
   </section>
 </SiteLayout>
 <script>
+  type Show = "all" | "gaps" | "complete";
+
   const input = document.getElementById("support-filter") as HTMLInputElement | null;
+  const clearQuery = document.getElementById("support-clear-query");
   const sort = document.getElementById("support-sort") as HTMLSelectElement | null;
   const container = document.getElementById("support-rows");
   const empty = document.getElementById("support-empty");
   const count = document.getElementById("support-count");
+  const showButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-show]"));
+  const resetButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-reset]"));
   const rows = Array.from(document.querySelectorAll<HTMLElement>("[data-service-row]"));
   const total = rows.length;
+
+  const SHOW_VALUES: Show[] = ["all", "gaps", "complete"];
+  const SORT_VALUES = ["name", "gaps", "coverage", "size"];
+  // Below this, an operation match is noise: "ge" is in half the API.
+  const MIN_OPERATION_QUERY = 3;
+  const MAX_HITS_SHOWN = 6;
+
+  // "cloudwatch logs", "cloudwatch-logs" and "CloudWatchLogs" should all find the same
+  // row, so matching also runs on a squashed form with everything but letters and
+  // digits taken out.
+  const squash = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+  // Operation names match only from the start of one of their words, so "tag" finds
+  // TagResource and ListTagsForResource without also finding CreateStage.
+  type Op = { name: string; status: string; key: string; starts: Set<number> };
+  const wordStarts = (name: string) =>
+    new Set(Array.from(name, (char, i) => (i === 0 || /[A-Z0-9]/.test(char) ? i : -1)).filter((i) => i >= 0));
+  const opMatches = (op: Op, word: string) => {
+    for (let at = op.key.indexOf(word); at >= 0; at = op.key.indexOf(word, at + 1)) {
+      if (op.starts.has(at)) return true;
+    }
+    return false;
+  };
+  // Only a few hits show before "+N more", so the ones worth seeing go first: names
+  // that start with what was typed, then anything short of fully supported, since
+  // "will this call work?" is the question being asked. Ties keep upstream's order.
+  const byRelevance = (first: string) => (a: Op, b: Op) =>
+    Number(b.key.startsWith(first)) - Number(a.key.startsWith(first)) ||
+    Number(a.status.startsWith("✅")) - Number(b.status.startsWith("✅"));
+
+  const entries = rows.map((row) => {
+    const name = row.dataset.name ?? "";
+    const id = row.dataset.id ?? "";
+    const label = row.querySelector<HTMLElement>("[data-label]");
+    return {
+      row,
+      id,
+      gap: Number(row.dataset.gap ?? 0),
+      haystack: `${name} ${id}`,
+      squashed: `${squash(name)} ${squash(id)}`,
+      label,
+      displayName: label?.textContent ?? "",
+      href: row.querySelector("a")?.getAttribute("href") ?? "#",
+      hits: row.querySelector<HTMLElement>("[data-op-hits]"),
+      ops: [] as Op[],
+    };
+  });
+
+  // The operation names are ~1,500 strings most visits never touch, so they are
+  // fetched on intent: the first hover or focus on the filter, or straight away when
+  // the page opens with a query in its URL. Service names are in the rows already, so
+  // the filter works on those while this is in flight, and if it fails.
+  let opsState: "idle" | "loading" | "ready" | "failed" = "idle";
+  function loadOperations() {
+    if (opsState === "loading" || opsState === "ready") return;
+    opsState = "loading";
+    fetch("/support/operations.json")
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json() as Promise<Record<string, Array<[string, string]>>>;
+      })
+      .then((index) => {
+        for (const entry of entries) {
+          entry.ops = (index[entry.id] ?? []).map(
+            ([opName, status]): Op => ({ name: opName, status, key: squash(opName), starts: wordStarts(opName) }),
+          );
+        }
+        opsState = "ready";
+      })
+      .catch(() => {
+        // Left retryable: the next focus on the filter tries again.
+        opsState = "failed";
+      })
+      .finally(apply);
+  }
+
+  let show: Show = "all";
 
   const num = (row: HTMLElement, key: string) => Number(row.dataset[key] ?? 0);
 
@@ -202,24 +345,151 @@ const totalGap = services.reduce((sum, service) => sum + service.gap, 0);
     size: (a, b) => num(b, "size") - num(a, "size") || comparators.name(a, b),
   };
 
+  function highlight(label: HTMLElement | null, text: string, query: string) {
+    if (!label) return;
+    const at = query ? text.toLowerCase().indexOf(query) : -1;
+    if (at < 0) {
+      label.textContent = text;
+      return;
+    }
+    const mark = document.createElement("mark");
+    mark.className = "rounded-sm bg-(--oc-accent-soft) text-(--oc-text)";
+    mark.textContent = text.slice(at, at + query.length);
+    label.replaceChildren(text.slice(0, at), mark, text.slice(at + query.length));
+  }
+
+  function renderHits(list: HTMLElement | null, hits: Op[], href: string) {
+    if (!list) return;
+    list.hidden = hits.length === 0;
+    if (!hits.length) {
+      list.replaceChildren();
+      return;
+    }
+    const items = hits.slice(0, MAX_HITS_SHOWN).map((hit) => {
+      const item = document.createElement("li");
+      const link = document.createElement("a");
+      link.href = href;
+      link.className =
+        "inline-flex items-center gap-1.5 rounded border border-oc px-1.5 py-0.5 font-mono text-xs text-(--oc-text) no-underline hover:bg-(--oc-accent-soft)";
+      // The status arrives as "⚠️ Partial": the emoji carries it visually, and the
+      // word stays in the name for a screen reader and in the tooltip for a pointer.
+      const [mark, ...words] = hit.status.split(" ");
+      const status = document.createElement("span");
+      status.textContent = mark;
+      status.setAttribute("aria-hidden", "true");
+      const label = document.createElement("span");
+      label.className = "sr-only";
+      label.textContent = `: ${words.join(" ")}`;
+      link.title = hit.status;
+      link.replaceChildren(hit.name, status, label);
+      item.append(link);
+      return item;
+    });
+    if (hits.length > MAX_HITS_SHOWN) {
+      const more = document.createElement("li");
+      more.className = "self-center";
+      const link = document.createElement("a");
+      link.href = href;
+      link.className = "font-mono text-xs text-muted underline-offset-2 hover:text-(--oc-text) hover:underline";
+      link.textContent = `+${hits.length - MAX_HITS_SHOWN} more`;
+      more.append(link);
+      items.push(more);
+    }
+    list.replaceChildren(...items);
+  }
+
+  function syncUrl(raw: string) {
+    const url = new URL(window.location.href);
+    const set = (key: string, value: string, fallback: string) =>
+      value && value !== fallback ? url.searchParams.set(key, value) : url.searchParams.delete(key);
+    set("q", raw, "");
+    set("show", show, "all");
+    set("sort", sort?.value ?? "name", "name");
+    if (url.href !== window.location.href) history.replaceState(history.state, "", url);
+  }
+
   function apply() {
-    const query = (input?.value ?? "").trim().toLowerCase();
+    const raw = (input?.value ?? "").trim();
+    const query = raw.toLowerCase();
+    // Every word has to match somewhere, so "cloud logs" finds CloudWatch Logs.
+    const words = query.split(/\s+/).filter(Boolean);
+    const squashedWords = words.map(squash);
+    const opWords = squashedWords.filter(Boolean);
+    const searchOps = opWords.join("").length >= MIN_OPERATION_QUERY;
+
+    const counts: Record<Show, number> = { all: 0, gaps: 0, complete: 0 };
     let visible = 0;
-    rows.forEach((row) => {
-      // Match the id too, so "cloudwatch-logs" and "apigateway" find their row even
-      // though the display names are "CloudWatch Logs" and "API Gateway".
-      const haystack = `${row.dataset.name ?? ""} ${row.dataset.id ?? ""}`;
-      const matches = !query || haystack.includes(query);
-      row.classList.toggle("hidden", !matches);
-      if (matches) visible += 1;
+    let byOperation = 0;
+    const shown = new Set<HTMLElement>();
+
+    for (const entry of entries) {
+      const nameMatch =
+        !words.length ||
+        words.every((word, i) => entry.haystack.includes(word) || (squashedWords[i] !== "" && entry.squashed.includes(squashedWords[i])));
+      const hits =
+        !nameMatch && searchOps
+          ? entry.ops.filter((op) => opWords.every((word) => opMatches(op, word))).sort(byRelevance(opWords[0]))
+          : [];
+      const textMatch = nameMatch || hits.length > 0;
+
+      if (textMatch) {
+        counts.all += 1;
+        counts[entry.gap > 0 ? "gaps" : "complete"] += 1;
+      }
+      const visibleRow = textMatch && (show === "all" || (show === "gaps") === entry.gap > 0);
+      entry.row.hidden = !visibleRow;
+      renderHits(entry.hits, visibleRow ? hits : [], entry.href);
+      highlight(entry.label, entry.displayName, visibleRow && nameMatch ? query : "");
+      if (visibleRow) {
+        visible += 1;
+        if (!nameMatch) byOperation += 1;
+        shown.add(entry.row);
+      }
+    }
+
+    // The last visible row drops its rule, so a filtered table does not end on a
+    // double line against the card's own edge.
+    const ordered = Array.from(container?.children ?? []) as HTMLElement[];
+    const last = ordered.filter((row) => shown.has(row)).pop();
+    rows.forEach((row) => row.toggleAttribute("data-last", row === last));
+
+    showButtons.forEach((button) => {
+      const value = button.dataset.show as Show;
+      button.setAttribute("aria-pressed", String(value === show));
+      const badge = button.querySelector("[data-show-count]");
+      if (badge) badge.textContent = String(counts[value]);
     });
 
-    empty?.classList.toggle("hidden", visible > 0);
+    const filtered = Boolean(query) || show !== "all";
+    // Until the operation names arrive, an empty result may only mean "not yet", so
+    // the empty state waits for them.
+    const opsPending = searchOps && opsState === "loading";
+    const nothing = visible === 0 && !opsPending;
+    if (clearQuery) clearQuery.hidden = !raw;
+    resetButtons.forEach((button) => {
+      // With nothing left to show, the one in the empty state stands in for this one.
+      const inEmptyState = button.closest("#support-empty") !== null;
+      button.hidden = !filtered || (!inEmptyState && nothing);
+    });
+    if (empty) empty.hidden = !nothing;
+
     if (count) {
-      count.textContent = query
-        ? `${visible} of ${total} services match "${query}"`
-        : `Showing all ${total} services`;
+      if (!filtered) {
+        count.textContent = `Showing all ${total} services`;
+      } else {
+        const scope = show === "gaps" ? " with gaps" : show === "complete" ? " with no gaps" : "";
+        const matching = raw ? ` matching “${raw}”` : "";
+        const operations = byOperation ? ` (${byOperation} by operation name)` : "";
+        const note = opsPending
+          ? " · searching operations…"
+          : searchOps && opsState === "failed"
+            ? " · operation names did not load, so only service names were searched"
+            : "";
+        count.textContent = `${visible} of ${total} services${scope}${matching}${operations}${note}`;
+      }
     }
+
+    syncUrl(raw);
   }
 
   function reorder() {
@@ -232,9 +502,54 @@ const totalGap = services.reduce((sum, service) => sum + service.gap, 0);
     container.appendChild(fragment);
   }
 
-  input?.addEventListener("input", apply);
+  function clearText() {
+    if (input) input.value = "";
+    apply();
+    input?.focus();
+  }
+
+  // The filter lives in the URL, so a filtered view can be linked to and survives the
+  // back button from a service page.
+  const params = new URLSearchParams(window.location.search);
+  if (input) input.value = params.get("q") ?? "";
+  const initialShow = params.get("show") as Show | null;
+  if (initialShow && SHOW_VALUES.includes(initialShow)) show = initialShow;
+  const initialSort = params.get("sort");
+  if (sort && initialSort && SORT_VALUES.includes(initialSort)) sort.value = initialSort;
+
+  input?.addEventListener("pointerenter", loadOperations, { once: true });
+  input?.addEventListener("focus", loadOperations);
+  input?.addEventListener("input", () => {
+    loadOperations();
+    apply();
+  });
+  input?.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && input.value) {
+      event.preventDefault();
+      clearText();
+    }
+  });
+  clearQuery?.addEventListener("click", clearText);
+  showButtons.forEach((button) =>
+    button.addEventListener("click", () => {
+      const value = button.dataset.show as Show;
+      // Pressing the active filter again goes back to everything.
+      show = value === show ? "all" : value;
+      apply();
+    }),
+  );
+  resetButtons.forEach((button) =>
+    button.addEventListener("click", () => {
+      show = "all";
+      clearText();
+    }),
+  );
   sort?.addEventListener("change", () => {
     reorder();
     apply();
   });
+
+  reorder();
+  if (input?.value) loadOperations();
+  apply();
 </script>
