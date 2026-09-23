@@ -1,0 +1,25 @@
+---
+// An earlier release's report. The newest release lives at /compat/ alone, so every URL here
+// stays put when the next release ships.
+import type { GetStaticPaths } from "astro";
+import SiteLayout from "../../../components/SiteLayout.astro";
+import CompatOverview from "../../../components/CompatOverview.astro";
+import { getCompatIndex, getCompatRelease, getServiceNaming } from "../../../lib/compat-data";
+
+export const getStaticPaths: GetStaticPaths = async () => {
+  const index = await getCompatIndex();
+  return index.slice(1).map((entry) => ({ params: { tag: entry.tag } }));
+};
+
+const { tag } = Astro.params as { tag: string };
+const [release, index, naming] = await Promise.all([getCompatRelease(tag), getCompatIndex(), getServiceNaming()]);
+if (!release) throw new Error(`compat: no report for ${tag}`);
+---
+
+<SiteLayout
+  title={`Compatibility Report ${tag}`}
+  description={`Overcast ${tag} compatibility test results, with the reason for every result that does not pass.`}
+  searchTitle={`Compatibility report ${tag}`}
+>
+  <CompatOverview release={release} naming={naming} index={index} latest={false} />
+</SiteLayout>

@@ -1,0 +1,406 @@
+---
+// The compatibility report's overview for one release: the headline numbers, what changed since
+// the release before, every reason a result did not pass (grouped by who has to act), and the
+// service × suite matrix. /compat/ renders it for the newest release and /compat/history/<tag>/
+// for older ones; `latest` decides whether rows link to the per-service pages, which exist for
+// the newest release only.
+import { ArrowRight, Braces, ClipboardCheck, ListFilter, Search, TrendingDown, TrendingUp, X } from "@lucide/astro";
+import Callout from "./Callout.astro";
+import Chip from "./Chip.astro";
+import ServiceIcon from "./ServiceIcon.astro";
+import { formatDate, toIsoDate } from "../lib/format-date";
+import type { CompatRelease } from "../lib/compat-data";
+import {
+  WHOSE_LABELS,
+  WHOSE_ORDER,
+  WHOSE_TONE,
+  countByWhose,
+  diffReports,
+  isFixed,
+  isRegressed,
+  matrixRow,
+  measured,
+  operationSummaries,
+  percent,
+  rateTone,
+  serviceMeasured,
+  reasonByCode,
+  reasonCount,
+  reasonsInUse,
+  serviceDisplayName,
+  shortCommit,
+  suiteShort,
+  supportServiceId,
+  type CompatReportIndexEntry,
+  type ServiceNaming,
+} from "../lib/compat-report";
+
+interface Props {
+  release: CompatRelease;
+  naming: ServiceNaming;
+  index: CompatReportIndexEntry[];
+  latest: boolean;
+}
+
+const { release, naming, index, latest } = Astro.props;
+const { report, previous, entry } = release;
+const reasons = reasonByCode(report);
+const repoUrl = `https://github.com/${report.issueRepo}`;
+const releaseUrl = entry.source === "release" ? `${repoUrl}/releases/tag/${report.version}` : null;
+const jsonUrl = `/compat/data/${encodeURIComponent(report.version)}.json`;
+const rawUrl = entry.source === "release" ? `${repoUrl}/releases/download/${report.version}/compat-report.json` : null;
+const exploreUrl = (query = "") => `/compat/explore/${latest ? "" : `?release=${encodeURIComponent(report.version)}`}${query ? `${latest ? "?" : "&"}${query}` : ""}`;
+const reasonUrl = (code: string) => (latest ? `/compat/reason/${code}/` : exploreUrl(`outcome=${code}`));
+
+const headline = measured(report.totals, reasons);
+const ops = operationSummaries(report);
+const verified = ops.filter((op) => op.verified).length;
+const whoseCounts = countByWhose(report.totals, reasons);
+const blocked = report.totals.byReason["dependency-failed"] ?? 0;
+const toFix = headline.ran - headline.pass;
+const published = entry.publishedAt ?? report.generatedAt;
+
+const changes = previous ? diffReports(previous, report) : [];
+const fixed = changes.filter(isFixed).length;
+const regressed = changes.filter(isRegressed).length;
+
+const inUse = reasonsInUse(report);
+const byWhose = WHOSE_ORDER.map((whose) => ({ whose, reasons: inUse.filter((reason) => reason.whose === whose) })).filter(
+  (group) => group.reasons.length > 0,
+);
+
+// Services sorted by name, each with its matrix row and its headline numbers.
+const services = report.services
+  .map((service) => {
+    const cells = matrixRow(service, report.suites, reasons);
+    const m = serviceMeasured(service, report.suites, reasons);
+    return { service, name: serviceDisplayName(service.id, naming), cells, pass: m.pass, ran: m.ran, gaps: m.ran - m.pass };
+  })
+  .sort((a, b) => a.name.localeCompare(b.name));
+
+const toneVar = { success: "--oc-success", warning: "--oc-warning", danger: "--oc-danger", muted: "--oc-line", accent: "--oc-accent" } as const;
+---
+
+<section class="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+  <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted">
+    <ClipboardCheck class="icon" />compatibility report
+  </p>
+  <h1 class="mt-2 font-mono text-3xl font-bold">Tested against eight AWS clients, with the reason for every gap.</h1>
+  <p class="mt-4 max-w-3xl leading-7 text-body">
+    Every release runs one shared set of API tests through six AWS SDKs, the AWS CLI and the CDK against Overcast. This is
+    the result for <strong class="font-mono text-(--oc-text)">{report.version}</strong>: what passes, what does not, and why.
+  </p>
+
+  <div class="mt-6 flex flex-col gap-4 sm:mt-8 lg:flex-row lg:items-end lg:justify-between">
+    <dl class="m-0 flex flex-wrap gap-x-6 gap-y-2 font-mono text-xs">
+      <div class="flex gap-2">
+        <dt class="text-muted">release</dt>
+        <dd class="m-0">
+          {releaseUrl ? <a class="text-accent" href={releaseUrl}>{report.version}</a> : <span class="text-(--oc-text)">{report.version}</span>}
+          {!latest && <Chip tone="muted">archived</Chip>}
+        </dd>
+      </div>
+      <div class="flex gap-2">
+        <dt class="text-muted">run</dt>
+        <dd class="m-0 text-(--oc-text)"><time datetime={toIsoDate(published)}>{formatDate(published)}</time></dd>
+      </div>
+      {
+        report.commit && (
+          <div class="flex gap-2">
+            <dt class="text-muted">commit</dt>
+            <dd class="m-0">
+              <a class="text-accent" href={`${repoUrl}/commit/${report.commit}`}>
+                {shortCommit(report.commit)}
+              </a>
+            </dd>
+          </div>
+        )
+      }
+      <div class="flex gap-2">
+        <dt class="text-muted">data</dt>
+        <dd class="m-0">
+          <a class="inline-flex items-center gap-1 text-accent" href={rawUrl ?? jsonUrl}>
+            <Braces class="icon" />compat-report.json
+          </a>
+        </dd>
+      </div>
+    </dl>
+    {
+      index.length > 1 && (
+        <label class="flex flex-col gap-1.5 font-mono text-xs sm:max-w-xs">
+          <span class="uppercase tracking-[0.16em] text-muted">Release</span>
+          <select data-compat-release class="rounded-md border border-oc bg-card px-3 py-2 font-mono text-sm text-(--oc-text)">
+            {index.map((option, i) => (
+              <option value={i === 0 ? "/compat/" : `/compat/history/${encodeURIComponent(option.tag)}/`} selected={option.tag === report.version}>
+                {option.tag}
+                {i === 0 ? " (latest)" : ""}
+                {option.publishedAt ? ` · ${formatDate(option.publishedAt)}` : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+      )
+    }
+  </div>
+
+  {/* The same dt-before-dd, visually reversed, arrangement as the support matrix's tiles. */}
+  <dl class="mt-6 grid gap-4 sm:mt-8 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="surface flex flex-col-reverse rounded-lg p-5">
+      <dt class="mt-2 text-xs text-muted">results passing, of those that measure Overcast</dt>
+      <dd class="m-0 font-mono text-2xl font-bold">
+        {percent(headline.pass, headline.ran)}%<span class="ml-2 text-sm font-normal text-muted">{headline.pass}/{headline.ran}</span>
+      </dd>
+    </div>
+    <div class="surface flex flex-col-reverse rounded-lg p-5">
+      <dt class="mt-2 text-xs text-muted">operations passing in at least one client</dt>
+      <dd class="m-0 font-mono text-2xl font-bold">{verified}<span class="text-muted">/{ops.length}</span></dd>
+    </div>
+    <div class="surface flex flex-col-reverse rounded-lg p-5">
+      <dt class="mt-2 text-xs text-muted">
+        results Overcast has to fix{blocked > 0 && <>, plus {blocked} tests blocked behind them</>}
+      </dt>
+      <dd class="m-0 font-mono text-2xl font-bold text-(--oc-warning)">{toFix}</dd>
+    </div>
+    <div class="surface flex flex-col-reverse rounded-lg p-5">
+      <dt class="mt-2 text-xs text-muted">operations with no test yet</dt>
+      <dd class="m-0 font-mono text-2xl font-bold">{whoseCounts.none}</dd>
+    </div>
+  </dl>
+
+  <div class="mt-4">
+    <Callout kind="note" title="How to read this">
+      A result is one test run through one client. The pass rate counts only results that say something about Overcast:
+      a test not yet written for a language, an operation an SDK cannot call, or a test blocked by an earlier failure is
+      listed under its reason and left out of the rate.
+    </Callout>
+  </div>
+
+  {
+    previous && (
+      <div class="surface mt-6 flex flex-col gap-3 rounded-lg p-5 sm:mt-8 sm:flex-row sm:items-center sm:justify-between">
+        <p class="m-0 font-mono text-sm text-(--oc-text)">Since {previous.version}</p>
+        <div class="flex flex-wrap gap-3">
+          <a class="compat-toggle no-underline" href={exploreUrl("changed=fixed")} data-empty={fixed === 0 ? "" : undefined}>
+            <TrendingUp class="icon text-(--oc-success)" />
+            {fixed} newly passing
+          </a>
+          <a class="compat-toggle no-underline" href={exploreUrl("changed=regressed")} data-empty={regressed === 0 ? "" : undefined}>
+            <TrendingDown class="icon text-(--oc-danger)" />
+            {regressed} no longer passing
+          </a>
+        </div>
+      </div>
+    )
+  }
+
+  <h2 class="mt-12 font-mono text-xl font-bold" id="why">Why results do not pass</h2>
+  <p class="mt-2 max-w-3xl text-sm leading-6 text-body">
+    Every result that does not pass has exactly one reason. They are grouped by who has to act on them.
+  </p>
+  <div class="mt-6 flex flex-col gap-8">
+    {
+      byWhose.map(({ whose, reasons: group }) => (
+        <div>
+          <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h3 class="m-0 font-mono text-base font-bold">{WHOSE_LABELS[whose].title}</h3>
+            <Chip tone={WHOSE_TONE[whose]}>{whoseCounts[whose]}</Chip>
+          </div>
+          <p class="mt-1 max-w-3xl text-sm leading-6 text-muted">{WHOSE_LABELS[whose].blurb}</p>
+          <ul class="m-0 mt-3 grid list-none gap-3 p-0 sm:grid-cols-2 lg:grid-cols-3">
+            {group.map((reason) => (
+              <li>
+                <a class="surface flex h-full flex-col gap-2 rounded-lg p-4 no-underline hover:border-(--oc-accent)" href={reasonUrl(reason.code)}>
+                  <span class="flex items-baseline justify-between gap-3">
+                    <span class="font-mono text-sm font-bold text-(--oc-text)">{reason.label}</span>
+                    <span class="font-mono text-lg font-bold text-(--oc-text)">{reasonCount(report, reason.code)}</span>
+                  </span>
+                  <span class="text-sm leading-6 text-body">{reason.summary}</span>
+                  <span class="mt-auto inline-flex items-center gap-1 font-mono text-xs text-accent">
+                    See them all <ArrowRight class="icon" />
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))
+    }
+  </div>
+
+  <div class="mt-12 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <h2 class="m-0 font-mono text-xl font-bold" id="services">By service and client</h2>
+      <p class="mt-2 max-w-3xl text-sm leading-6 text-body">
+        Each cell is passing results over results that measure Overcast, for that service in that client.
+        {latest ? "Open a service for every test and the reason behind each result." : "Open the explorer for every test in this release."}
+      </p>
+    </div>
+    <a class="compat-toggle shrink-0 no-underline" href={exploreUrl()}>
+      <ListFilter class="icon" />Search every result
+    </a>
+  </div>
+
+  <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+    <div class="relative flex-1 sm:max-w-sm">
+      <label class="sr-only" for="compat-service-filter">Filter services</label>
+      <Search class="icon pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+      <input
+        id="compat-service-filter"
+        type="text"
+        placeholder="Filter services"
+        autocomplete="off"
+        spellcheck="false"
+        aria-describedby="compat-service-count"
+        class="w-full rounded-md border border-oc bg-card py-2 pl-10 pr-10 font-mono text-sm text-(--oc-text)"
+      />
+      <button
+        type="button"
+        data-clear
+        class="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center rounded p-1.5 text-muted hover:bg-(--oc-accent-soft) hover:text-(--oc-text)"
+        aria-label="Clear filter text"
+        hidden
+      >
+        <X class="icon" />
+      </button>
+    </div>
+    <label class="flex items-center gap-2 font-mono text-xs text-muted">
+      <input type="checkbox" data-gaps-only class="accent-(--oc-accent)" />
+      Only services with Overcast gaps
+    </label>
+    <p id="compat-service-count" class="m-0 font-mono text-xs text-muted sm:ml-auto" role="status" aria-live="polite">
+      {services.length} services
+    </p>
+  </div>
+
+  <div class="surface table-scroll relative mt-4 rounded-lg" tabindex="0" role="region" aria-label="Results by service and client">
+    <table class="compat-table">
+      <thead>
+        <tr>
+          <th scope="col">Service</th>
+          <th scope="col" class="text-right">Rate</th>
+          {
+            report.suites.map((suite) => (
+              <th scope="col">
+                <abbr title={suite.label} class="no-underline">
+                  {suiteShort(suite.id)}
+                </abbr>
+              </th>
+            ))
+          }
+        </tr>
+      </thead>
+      <tbody data-compat-services>
+        {
+          services.map(({ service, name, cells, pass, ran, gaps }) => {
+            const href = latest ? `/compat/${service.id}/` : exploreUrl(`q=${encodeURIComponent(service.id)}`);
+            return (
+              <tr data-service-row data-name={`${name} ${service.id}`.toLowerCase()} data-gaps={gaps}>
+                <th scope="row" class="font-normal">
+                  <a class="flex items-center gap-2.5 font-mono text-(--oc-text) no-underline hover:text-accent" href={href}>
+                    <ServiceIcon service={supportServiceId(service.id)} size="sm" />
+                    <span class="whitespace-nowrap">{name}</span>
+                  </a>
+                </th>
+                <td class="text-right font-mono text-xs whitespace-nowrap">
+                  <span class={gaps ? "text-(--oc-text)" : "text-(--oc-success)"}>{percent(pass, ran)}%</span>
+                  <span class="sr-only">
+                    {" "}
+                    of {ran} results passing, {gaps} Overcast {gaps === 1 ? "gap" : "gaps"}
+                  </span>
+                </td>
+                {cells.map((cell, i) => {
+                  const suite = report.suites[i];
+                  const others = Object.entries(cell.byReason)
+                    .map(([code, n]) => `${n} ${reasons.get(code)?.label.toLowerCase() ?? code}`)
+                    .join(", ");
+                  const tone = rateTone(cell.pass, cell.ran);
+                  return (
+                    <td>
+                      {cell.cells === 0 ? (
+                        <span class="font-mono text-xs text-muted">
+                          <span aria-hidden="true">—</span>
+                          <span class="sr-only">{suite.label}: no tests for this service</span>
+                        </span>
+                      ) : (
+                        <a
+                          class="compat-rate"
+                          href={latest ? `/compat/${service.id}/?suite=${suite.id}` : href}
+                          style={`--rate-tone:var(${toneVar[tone]})`}
+                          title={`${suite.label}: ${cell.pass} of ${cell.ran} passing${others ? `; ${others}` : ""}`}
+                        >
+                          <span aria-hidden="true">
+                            {cell.ran ? (
+                              <span class={cell.pass === cell.ran ? "text-(--oc-text)" : "font-bold text-(--oc-text)"}>
+                                {cell.pass}<span class="font-normal text-muted">/{cell.ran}</span>
+                              </span>
+                            ) : (
+                              <span class="text-muted">no test</span>
+                            )}
+                          </span>
+                          <span class="coverage-meter" aria-hidden="true">
+                            <span style={`width:${cell.ran ? (cell.pass / cell.ran) * 100 : 0}%`} />
+                          </span>
+                          <span class="sr-only">
+                            {suite.label}: {cell.pass} of {cell.ran} passing{others ? `; ${others}` : ""}
+                          </span>
+                        </a>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })
+        }
+      </tbody>
+    </table>
+    <p data-compat-empty class="m-0 px-5 py-10 text-center text-sm text-muted" hidden>No service matches this filter.</p>
+  </div>
+</section>
+
+<script>
+  // The release picker navigates; the filter narrows the matrix by service name and, on
+  // request, to services with at least one Overcast gap. Both are enhancements: without
+  // script the matrix is complete and every release has its own URL.
+  const picker = document.querySelector<HTMLSelectElement>("[data-compat-release]");
+  picker?.addEventListener("change", () => {
+    if (picker.value) window.location.assign(picker.value);
+  });
+
+  const input = document.getElementById("compat-service-filter") as HTMLInputElement | null;
+  const gapsOnly = document.querySelector<HTMLInputElement>("[data-gaps-only]");
+  const clear = document.querySelector<HTMLButtonElement>("[data-clear]");
+  const rows = Array.from(document.querySelectorAll<HTMLElement>("[data-service-row]"));
+  const count = document.getElementById("compat-service-count");
+  const empty = document.querySelector<HTMLElement>("[data-compat-empty]");
+  const squash = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+  function apply() {
+    const words = (input?.value ?? "").trim().toLowerCase().split(/\s+/).filter(Boolean).map(squash);
+    let shown = 0;
+    for (const row of rows) {
+      const name = squash(row.dataset.name ?? "");
+      const visible = words.every((word) => name.includes(word)) && (!gapsOnly?.checked || Number(row.dataset.gaps) > 0);
+      row.hidden = !visible;
+      if (visible) shown += 1;
+    }
+    if (count) count.textContent = shown === rows.length ? `${rows.length} services` : `${shown} of ${rows.length} services`;
+    if (empty) empty.hidden = shown > 0;
+    if (clear) clear.hidden = !input?.value;
+  }
+
+  input?.addEventListener("input", apply);
+  input?.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && input.value) {
+      event.preventDefault();
+      input.value = "";
+      apply();
+    }
+  });
+  clear?.addEventListener("click", () => {
+    if (input) input.value = "";
+    apply();
+    input?.focus();
+  });
+  gapsOnly?.addEventListener("change", apply);
+</script>

@@ -766,6 +766,159 @@ kbd {
 }
 
 
+/* Compatibility report (/compat/). A cell is one suite's result for one test: an icon and a
+ * word on a tint, the same colour-mix-into-card pairing as <Chip> so every tone clears 4.5:1
+ * on either theme. CompatCell and the explorer set `data-tone`. */
+.compat-cell {
+  --cell-tone: var(--oc-muted);
+  --cell-bg: color-mix(in srgb, var(--cell-tone) 14%, var(--oc-card));
+  --cell-fg: var(--cell-tone);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 4.25rem;
+  padding: 0.125rem 0.4rem;
+  border-radius: 4px;
+  background: var(--cell-bg);
+  color: var(--cell-fg);
+  font-family: var(--font-mono);
+  font-size: var(--oc-text-2xs);
+  line-height: 1.25rem;
+  white-space: nowrap;
+}
+
+.compat-cell[data-tone="success"] { --cell-tone: var(--oc-success); }
+.compat-cell[data-tone="warning"] { --cell-tone: var(--oc-warning); }
+.compat-cell[data-tone="danger"] { --cell-tone: var(--oc-danger); }
+.compat-cell[data-tone="accent"] { --cell-tone: var(--oc-accent); }
+/* As on <Chip>: the grey tint keeps its hue, and the label steps up to --oc-body to clear 4.5:1. */
+.compat-cell[data-tone="muted"] { --cell-fg: var(--oc-body); }
+
+.compat-cell .icon {
+  width: 0.8125rem;
+  height: 0.8125rem;
+  flex-shrink: 0;
+}
+
+.compat-cell-empty {
+  justify-content: center;
+  background: transparent;
+  color: var(--oc-muted);
+}
+
+/* The matrix and the per-service tables scroll sideways on a phone; the first column (the
+ * service or the test) stays pinned so a row never loses its name. */
+.compat-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.875rem;
+}
+
+.compat-table th,
+.compat-table td {
+  padding: 0.5rem 0.625rem;
+  border-bottom: 1px solid var(--oc-line);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.compat-table thead th {
+  font-family: var(--font-mono);
+  font-size: var(--oc-text-2xs);
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--oc-muted);
+  white-space: nowrap;
+}
+
+.compat-table tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
+.compat-table tbody tr[data-detail] > td {
+  padding-top: 0;
+}
+
+.compat-table :is(th, td):first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--oc-card);
+  box-shadow: 1px 0 0 var(--oc-line);
+}
+
+.compat-table tbody tr:hover > :is(th, td) {
+  background: color-mix(in srgb, var(--oc-accent-soft) 60%, var(--oc-card));
+}
+
+.compat-table tr:target > :is(th, td) {
+  background: var(--oc-accent-soft);
+}
+
+/* A matrix cell: pass/ran over a hairline meter tinted by the rate. */
+.compat-rate {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 3.75rem;
+  font-family: var(--font-mono);
+  font-size: var(--oc-text-2xs);
+  color: var(--oc-body);
+  text-decoration: none;
+}
+
+.compat-rate .coverage-meter > span {
+  background: var(--rate-tone, var(--oc-accent));
+}
+
+/* Facet toggles on the explorer and the service pages: the support matrix's pressed-button
+ * pattern, with a count after the label. */
+.compat-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--oc-line);
+  border-radius: var(--oc-radius-control);
+  background: var(--oc-card);
+  color: var(--oc-body);
+  font-family: var(--font-mono);
+  font-size: var(--oc-text-2xs);
+  cursor: pointer;
+}
+
+.compat-toggle:hover {
+  background: var(--oc-accent-soft);
+}
+
+.compat-toggle[aria-pressed="true"] {
+  border-color: var(--oc-accent);
+  background: var(--oc-accent-soft);
+  color: var(--oc-text);
+}
+
+/* A facet that would leave nothing. Said with a dashed outline rather than by fading: faded
+ * text at 12px falls under 4.5:1 in every theme. */
+.compat-toggle[data-empty] {
+  border-style: dashed;
+  background: transparent;
+}
+
+/* An explorer cell outside the current filter: kept for context, set back the same way. */
+.compat-cell[data-dim] {
+  --cell-bg: transparent;
+  --cell-fg: var(--oc-body);
+  outline: 1px dashed var(--oc-line);
+  outline-offset: -1px;
+}
+
+.compat-toggle .compat-count {
+  opacity: 0.75;
+}
+
+
 @font-face {
   font-family: "JetBrains Mono";
   src: url("/fonts/JetBrainsMono-Regular.ttf") format("truetype");

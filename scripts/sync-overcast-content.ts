@@ -7,6 +7,7 @@ import {
   walk,
   warnMissingAllowlistedDocs,
 } from "../src/lib/overcast-doc-allowlist.ts";
+import { SUPPORTED_SCHEMA as COMPAT_SCHEMA } from "../src/lib/compat-report.ts";
 
 const repo = process.env.OVERCAST_REPO || "overcast-sh/overcast";
 const sourceRef = process.env.OVERCAST_SOURCE_REF || process.env.OVERCAST_TRACKING_REF || "alpha";
@@ -159,6 +160,97 @@ async function syncSupport(sourceRoot: string): Promise<ServiceSupport[]> {
   return services;
 }
 
+// The compatibility report (/compat/). Every Overcast release attaches a compat-report.json,
+// written by `go run ./cmd/compat --publish-report` upstream; this copies one per release into
+// src/generated/compat/<tag>.json and lists them, newest first, in index.json. Older releases
+// stay browsable, and the newest two give the overview its release-over-release changes.
+//
+// Nothing here is allowed to fail the build: a network hiccup, a release without the asset, or
+// a report in a schema this site does not know all degrade to fewer (or no) reports, and the
+// pages render an empty state. A local file wins over the releases, so a report generated from
+// a working copy can be previewed before any release carries one.
+const COMPAT_ASSET = "compat-report.json";
+// Enough history to see a trend, few enough that the build does not grow with every release.
+const COMPAT_RELEASES_KEPT = 12;
+
+type CompatIndexEntry = { tag: string; publishedAt: string | null; prerelease: boolean; source: "release" | "local" };
+
+async function readCompatReport(filePath: string): Promise<{ version?: string; schema?: number } | null> {
+  const report = await readJsonIfExists<{ version?: string; schema?: number } | null>(filePath, null);
+  if (!report || report.schema !== COMPAT_SCHEMA) return null;
+  return report;
+}
+
+async function fetchReleaseCompatReports(outDir: string): Promise<CompatIndexEntry[]> {
+  const headers: Record<string, string> = { Accept: "application/vnd.github+json", "User-Agent": "overcast-website-sync" };
+  if (process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+  const response = await fetch(`https://api.github.com/repos/${repo}/releases?per_page=50`, { headers });
+  if (!response.ok) throw new Error(`GitHub releases: HTTP ${response.status}`);
+  const releases = (await response.json()) as Array<{
+    tag_name: string;
+    published_at: string | null;
+    prerelease: boolean;
+    draft?: boolean;
+    assets: Array<{ name: string; url: string }>;
+  }>;
+
+  const entries: CompatIndexEntry[] = [];
+  for (const release of releases) {
+    if (release.draft || entries.length >= COMPAT_RELEASES_KEPT) continue;
+    const asset = release.assets.find((candidate) => candidate.name === COMPAT_ASSET);
+    if (!asset) continue;
+    // The API URL with an octet-stream Accept, rather than browser_download_url: it takes the
+    // same token, so a private fork or a rate-limited runner still gets the file.
+    const download = await fetch(asset.url, { headers: { ...headers, Accept: "application/octet-stream" } });
+    if (!download.ok) {
+      console.warn(`compat: ${release.tag_name}: ${COMPAT_ASSET} returned HTTP ${download.status}; skipped`);
+      continue;
+    }
+    const text = await download.text();
+    const target = path.join(outDir, `${release.tag_name}.json`);
+    await fs.writeFile(target, text, "utf8");
+    if (!(await readCompatReport(target))) {
+      console.warn(`compat: ${release.tag_name}: ${COMPAT_ASSET} is not schema ${COMPAT_SCHEMA}; skipped`);
+      await fs.rm(target, { force: true });
+      continue;
+    }
+    entries.push({ tag: release.tag_name, publishedAt: release.published_at, prerelease: release.prerelease, source: "release" });
+  }
+  return entries;
+}
+
+async function syncCompat(sourceRoot: string): Promise<number> {
+  const outDir = path.join(generatedDir, "compat");
+  await fs.rm(outDir, { recursive: true, force: true });
+  await fs.mkdir(outDir, { recursive: true });
+
+  // OVERCAST_COMPAT_REPORT takes one path, or several separated by the platform's path
+  // delimiter, newest first — two local reports are enough to preview the release-over-release
+  // changes before two releases carry one.
+  let entries: CompatIndexEntry[] = [];
+  const localPaths = process.env.OVERCAST_COMPAT_REPORT
+    ? process.env.OVERCAST_COMPAT_REPORT.split(path.delimiter).filter(Boolean)
+    : [path.join(sourceRoot, COMPAT_ASSET)];
+  for (const localPath of localPaths) {
+    const local = await readCompatReport(localPath);
+    if (!local?.version || entries.some((entry) => entry.tag === local.version)) continue;
+    await fs.copyFile(localPath, path.join(outDir, `${local.version}.json`));
+    entries.push({ tag: local.version, publishedAt: null, prerelease: false, source: "local" });
+    console.log(`compat: using the local report at ${localPath} (${local.version})`);
+  }
+  if (process.env.OVERCAST_COMPAT_OFFLINE !== "1") {
+    try {
+      const released = await fetchReleaseCompatReports(outDir);
+      entries = [...entries, ...released.filter((entry) => !entries.some((e) => e.tag === entry.tag))];
+    } catch (error) {
+      console.warn(`compat: could not list release reports (${(error as Error).message}); /compat/ shows ${entries.length ? "the local report only" : "an empty state"}`);
+    }
+  }
+
+  await writeJson(path.join(outDir, "index.json"), entries);
+  return entries.length;
+}
+
 // The vendored brand assets: [path inside the branding repo, path inside this repo].
 //
 // These stay *tracked* in git even though a script writes them. The deploy workflow never
@@ -254,6 +346,7 @@ async function main() {
   if (brandingRoot) await syncBranding(brandingRoot);
   const docsCount = await countDocs(sourceRoot);
   const services = await syncSupport(sourceRoot);
+  const compatReports = await syncCompat(sourceRoot);
 
   await writeJson(path.join(generatedDir, "source-manifest.json"), {
     repo,
@@ -263,6 +356,7 @@ async function main() {
     generatedAt: new Date().toISOString(),
     docsCount,
     serviceCount: services.length,
+    compatReports,
   });
 }
 

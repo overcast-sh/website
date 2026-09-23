@@ -83,6 +83,24 @@ Gotchas:
 - Edit-link behavior (`EDIT_LINK_MODE`, `OVERCAST_EDIT_REF`, `WEBSITE_EDIT_REF`, etc.) is
   also driven by env vars in `.env.example` — see `src/lib/github-links.ts`.
 
+### The compatibility report (/compat/)
+
+`syncCompat()` in the same script downloads the `compat-report.json` asset from each of the
+last twelve Overcast releases that have one (GitHub API, `GITHUB_TOKEN` when set) into
+`src/generated/compat/<tag>.json`, with `index.json` listing them newest first. Upstream writes
+the file with `go run ./cmd/compat --publish-report`; its schema is `compat/report.schema.json`
+there, and `src/lib/compat-report.ts` mirrors it. A report in another schema version is skipped.
+Nothing in this step can fail the build: with no report, `/compat/` renders an empty state.
+
+- Pages: `/compat/` (newest release), `/compat/<service>/`, `/compat/reason/<code>/`,
+  `/compat/explore/` and `/compat/history/<tag>/` for older releases. `/compat/data/<tag>.json`
+  is the explorer's compact index, built from the report at build time.
+- Every number on those pages comes from the pure helpers in `src/lib/compat-report.ts`, and the
+  explorer's matching from `src/lib/compat-filter.ts`; both are covered by
+  `src/lib/compat-report.test.ts`. Change a number there, never in a page.
+- Local preview: `OVERCAST_COMPAT_REPORT` (see `.env.example`) points the sync at a report built
+  from a working copy, and `OVERCAST_COMPAT_OFFLINE=1` skips the GitHub listing.
+
 ## Repo layout highlights
 
 - `src/pages/` — route entry points (`index.astro`, `docs/[...slug].astro`,

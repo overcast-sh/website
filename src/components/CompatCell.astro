@@ -1,0 +1,37 @@
+---
+// One suite's result for one test, as a compact chip: an icon and a word, tinted by how much
+// it matters. Colour is never the only signal. The word is always there, and the screen-reader
+// text states the suite and the reason in full. The icon is a <use> of CompatIconSprite, which
+// every page that renders cells includes once.
+import { compatIconKey, reasonShort, reasonTone, type CompatReason, type CompatResult } from "../lib/compat-report";
+
+interface Props {
+  result: CompatResult | undefined;
+  reasons: CompatReason[];
+  /** For the screen-reader text: "AWS SDK for Go v2". */
+  suiteLabel: string;
+}
+
+const { result, reasons, suiteLabel } = Astro.props;
+const code = result?.reason;
+const reason = code ? reasons.find((r) => r.code === code) : undefined;
+const tone = reasonTone(code, reasons);
+const spoken = !result ? `${suiteLabel}: does not run this test` : !code ? `${suiteLabel}: passes` : `${suiteLabel}: ${reason?.label ?? code}`;
+---
+
+{
+  result ? (
+    <span class="compat-cell" data-tone={tone} title={reason?.label}>
+      <svg class="icon" aria-hidden="true">
+        <use href={`#ci-${compatIconKey(code)}`} />
+      </svg>
+      <span aria-hidden="true">{reasonShort(code)}</span>
+      <span class="sr-only">{spoken}</span>
+    </span>
+  ) : (
+    <span class="compat-cell compat-cell-empty">
+      <span aria-hidden="true">—</span>
+      <span class="sr-only">{spoken}</span>
+    </span>
+  )
+}

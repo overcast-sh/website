@@ -1,0 +1,16 @@
+---
+import SiteLayout from "../../components/SiteLayout.astro";
+import CompatOverview from "../../components/CompatOverview.astro";
+import CompatEmpty from "../../components/CompatEmpty.astro";
+import { getCompatIndex, getLatestCompatRelease, getServiceNaming } from "../../lib/compat-data";
+
+const [release, index, naming] = await Promise.all([getLatestCompatRelease(), getCompatIndex(), getServiceNaming()]);
+---
+
+<SiteLayout
+  title="Compatibility Report"
+  description="Overcast's compatibility test results across six AWS SDKs, the AWS CLI and the CDK, with the reason for every result that does not pass."
+  searchTitle="Compatibility report"
+>
+  {release ? <CompatOverview release={release} naming={naming} index={index} latest /> : <CompatEmpty />}
+</SiteLayout>

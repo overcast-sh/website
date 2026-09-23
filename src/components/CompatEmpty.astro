@@ -1,0 +1,15 @@
+---
+// /compat/ before any release has published a report: say so, and point at what does exist.
+import { ClipboardCheck } from "@lucide/astro";
+---
+
+<section class="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
+  <p class="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted">
+    <ClipboardCheck class="icon" />compatibility report
+  </p>
+  <h1 class="mt-2 font-mono text-3xl font-bold">No compatibility report has been published yet.</h1>
+  <p class="mt-4 leading-7 text-body">
+    Each release attaches one once its compatibility run has finished. Until then, the
+    <a class="text-accent" href="/support/">support matrix</a> lists which operations Overcast implements.
+  </p>
+</section>
