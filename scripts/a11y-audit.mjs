@@ -19,8 +19,9 @@
 //                      for a template-driven site at a fraction of the runtime)
 //
 // Exit code is 1 when any violation is found, so CI can gate on it.
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import net from "node:net";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
@@ -116,38 +117,113 @@ async function sitemapUrls(base) {
   return [...new Set(paths)].map((p) => new URL(p, base).toString());
 }
 
+/** True when something already accepts connections on `port` (either loopback family). */
+function portInUse(port) {
+  const probe = (host) =>
+    new Promise((resolve) => {
+      const socket = net.connect({ host, port });
+      socket.setTimeout(1000);
+      socket.once("connect", () => {
+        socket.destroy();
+        resolve(true);
+      });
+      socket.once("timeout", () => {
+        socket.destroy();
+        resolve(false);
+      });
+      socket.once("error", () => resolve(false));
+    });
+  return Promise.all([probe("127.0.0.1"), probe("::1")]).then((hits) => hits.some(Boolean));
+}
+
+/**
+ * Kills the preview and everything it spawned. `child.kill()` alone is not enough on
+ * Windows: it ends only the direct child, and any grandchild keeps the piped stdio
+ * open, which holds this process alive after the report is written.
+ */
+function killTree(child) {
+  if (child.exitCode !== null || child.signalCode !== null) return;
+  if (process.platform === "win32") {
+    spawnSync("taskkill", ["/pid", String(child.pid), "/T", "/F"], { stdio: "ignore" });
+  } else {
+    try {
+      // Spawned detached, so the pid is its process group's id.
+      process.kill(-child.pid, "SIGTERM");
+    } catch {
+      child.kill("SIGTERM");
+    }
+  }
+}
+
 async function startPreview() {
   if (process.env.A11Y_BASE) return { base: process.env.A11Y_BASE.replace(/\/$/, ""), stop: async () => {} };
-  const child = spawn(
-    process.execPath,
-    [path.join(root, "scripts", "run-command.ts"), "astro", "preview", "--port", String(port)],
-    { cwd: root, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env } },
-  );
-  const base = `http://localhost:${port}`;
-  await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error("astro preview did not start in 60s")), 60_000);
-    const check = async () => {
-      try {
-        const response = await fetch(base + "/");
-        if (response.ok) {
-          clearTimeout(timer);
-          resolve();
-          return;
-        }
-      } catch {
-        /* not up yet */
-      }
-      setTimeout(check, 300);
-    };
-    child.on("error", reject);
-    check();
+
+  // astro preview quietly moves to the next free port when this one is taken, so an
+  // orphaned preview from an earlier run would get audited in place of this build.
+  if (await portInUse(port)) {
+    throw new Error(`Port ${port} is already in use (a leftover astro preview?). Stop it or set A11Y_PORT.`);
+  }
+
+  // Run astro's entry point directly with this node, not through run-command.ts and
+  // cmd.exe, so there is one process to stop rather than a tree of wrappers.
+  const child = spawn(process.execPath, [path.join(root, "node_modules", "astro", "astro.js"), "preview", "--port", String(port)], {
+    cwd: root,
+    stdio: ["ignore", "pipe", "pipe"],
+    env: { ...process.env, ASTRO_TELEMETRY_DISABLED: "1" },
+    detached: process.platform !== "win32",
+    windowsHide: true,
   });
-  return {
-    base,
-    stop: async () => {
-      child.kill();
-    },
+
+  const stop = async () => {
+    const exited = child.exitCode !== null || child.signalCode !== null ? Promise.resolve() : new Promise((resolve) => child.once("exit", resolve));
+    killTree(child);
+    await Promise.race([exited, new Promise((resolve) => setTimeout(resolve, 5_000).unref())]);
+    child.stdout.destroy();
+    child.stderr.destroy();
+    child.unref();
   };
+  // A crash or Ctrl-C between here and stop() must not leave the server behind.
+  process.once("exit", () => killTree(child));
+  for (const signal of ["SIGINT", "SIGTERM"]) {
+    process.once(signal, () => {
+      killTree(child);
+      process.exit(130);
+    });
+  }
+
+  // Take the base URL from what astro says it bound, not from what was asked for.
+  let output = "";
+  const base = await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`astro preview did not start in 60s:\n${output}`)), 60_000);
+    const onData = (chunk) => {
+      output += chunk.toString();
+      // eslint-disable-next-line no-control-regex
+      const match = output.replace(/\x1b\[[0-9;]*m/g, "").match(/Local\s+(https?:\/\/[^\s/]+:(\d+))/);
+      if (!match) return;
+      clearTimeout(timer);
+      child.stdout.off("data", onData);
+      child.stderr.off("data", onData);
+      if (Number(match[2]) !== port) reject(new Error(`astro preview bound ${match[1]} instead of port ${port}`));
+      else resolve(match[1]);
+    };
+    child.stdout.on("data", onData);
+    child.stderr.on("data", onData);
+    child.once("error", (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+    child.once("exit", (code) => {
+      clearTimeout(timer);
+      reject(new Error(`astro preview exited with code ${code} before it was ready:\n${output}`));
+    });
+  }).catch(async (error) => {
+    await stop();
+    throw error;
+  });
+  // Keep draining so a chatty server can never fill the pipe and stall.
+  child.stdout.resume();
+  child.stderr.resume();
+  return { base, stop };
 }
 
 // One page class per report row: 60 service pages fail the same way, and listing all
@@ -165,23 +241,25 @@ function pageClass(pathname) {
 
 async function run() {
   const { base, stop } = await startPreview();
-  const browser = await chromium.launch();
-  const urls = (await sitemapUrls(base)).slice(0, limit);
+  let browser;
+  let urls = [];
   const full = process.env.A11Y_FULL === "1";
-
-  // One representative URL per page class — everything else on the site is the
-  // same template with different prose, so those carry the theme × viewport sweep.
-  const representative = new Map();
-  for (const url of urls) {
-    const cls = pageClass(new URL(url).pathname);
-    if (!representative.has(cls)) representative.set(cls, url);
-  }
-  const deepUrls = new Set(representative.values());
-
   const findings = [];
   let checked = 0;
 
   try {
+    browser = await chromium.launch();
+    urls = (await sitemapUrls(base)).slice(0, limit);
+
+    // One representative URL per page class — everything else on the site is the
+    // same template with different prose, so those carry the theme × viewport sweep.
+    const representative = new Map();
+    for (const url of urls) {
+      const cls = pageClass(new URL(url).pathname);
+      if (!representative.has(cls)) representative.set(cls, url);
+    }
+    const deepUrls = new Set(representative.values());
+
     for (const viewport of VIEWPORTS) {
       for (const theme of THEMES) {
         const isBaseline = viewport.name === "desktop" && theme.name === "light-os";
@@ -264,7 +342,7 @@ async function run() {
       }
     }
   } finally {
-    await browser.close();
+    await browser?.close();
     await stop();
   }
 
@@ -329,7 +407,11 @@ function renderMarkdown({ stamp, urls, checked, findings }) {
   return lines.join("\n");
 }
 
-run().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+// Exit explicitly once the report is written: a stray handle (a browser pipe, a
+// keep-alive socket) must not turn a finished audit into one that looks hung.
+run()
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  })
+  .finally(() => process.exit(process.exitCode ?? 0));
