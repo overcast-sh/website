@@ -1,0 +1,145 @@
+---
+// Why a test did not pass in one or more clients that share the same outcome: the reason in
+// words, the evidence (a parsed expected/actual diff when the failure is a generated scenario's,
+// the raw messages otherwise), what it is blocked by, and where it is tracked. Callers group
+// clients by reason, evidence and issue first (groupResults), so "501 in all seven SDKs" reads once.
+//
+// Without a tracking issue, "Report this" opens a prefilled issue carrying the marker that links
+// it back to this result on the next release. It is offered for Overcast's own gaps only: a test
+// not yet written for a language is tracked upstream as parity debt, and an SDK limit is nobody's bug.
+import { ExternalLink } from "@lucide/astro";
+import CompatCell from "./CompatCell.astro";
+import { suiteShort, testAnchor, type CompatReason, type CompatResult } from "../lib/compat-report";
+import { newIssueUrl } from "../lib/compat-issue-link";
+
+interface Props {
+  /** One entry per client, all with the same reason. */
+  entries: { suite: { id: string; label: string }; result: CompatResult }[];
+  reasons: CompatReason[];
+  service: string;
+  serviceName: string;
+  group: string;
+  test: string;
+  op: string;
+  version: string;
+  issueRepo: string;
+}
+
+const { entries, reasons, service, serviceName, group, test, op, version, issueRepo } = Astro.props;
+const first = entries[0].result;
+const reason = reasons.find((r) => r.code === first.reason);
+// A soaking candidate is a real assertion failure that simply does not gate yet: its evidence
+// and a way to report it matter as much as for any other mismatch.
+const ownedByOvercast = (reason?.whose ?? "overcast") === "overcast" || first.reason === "candidate";
+const issue = entries.find((entry) => entry.result.issue)?.result.issue;
+const m = first.mismatch;
+const blockedBy = [...new Set(entries.flatMap((entry) => entry.result.blockedBy ?? []))];
+// The message is evidence for a failure. For a skip it is usually just the skip sentinel
+// restating the reason, so it is shown only where it says something the label does not.
+const showMessages = !blockedBy.length && (ownedByOvercast || first.reason === "other-skip" || first.reason === "needs-environment");
+const messages = showMessages ? entries.filter((entry) => entry.result.error) : [];
+const sameMessage = messages.length > 1 && messages.every((entry) => entry.result.error === messages[0].result.error);
+const clientNames = entries.map((entry) => entry.suite.label);
+const reportUrl =
+  issue || !ownedByOvercast
+    ? null
+    : newIssueUrl({
+        issueRepo,
+        service,
+        serviceName,
+        group,
+        test,
+        op,
+        suites: entries.map((entry) => entry.suite),
+        reasonLabel: reason?.label ?? first.reason ?? "",
+        error: messages[0]?.result.error,
+        version,
+      });
+---
+
+<div class="flex flex-col gap-2 border-l-2 border-oc py-1 pl-3">
+  <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+    <CompatCell result={first} reasons={reasons} suiteLabel={clientNames.join(", ")} />
+    <span class="font-mono text-xs text-(--oc-text)" title={entries.length > 1 ? clientNames.join(", ") : undefined}>
+      {entries.length === 1 ? entries[0].suite.label : entries.map((entry) => suiteShort(entry.suite.id)).join(", ")}
+    </span>
+    {
+      issue ? (
+        <a class="inline-flex items-center gap-1 font-mono text-xs text-accent" href={issue.url}>
+          #{issue.number}
+          {issue.title && <span class="text-muted">{issue.title}</span>}
+          <ExternalLink class="icon" aria-hidden="true" />
+        </a>
+      ) : (
+        reportUrl && (
+          <a class="inline-flex items-center gap-1 font-mono text-xs text-muted underline-offset-2 hover:text-(--oc-text) hover:underline" href={reportUrl}>
+            Report this
+            <ExternalLink class="icon" aria-hidden="true" />
+          </a>
+        )
+      )
+    }
+  </div>
+  {reason && <p class="m-0 text-sm leading-6 text-body">{reason.summary}</p>}
+  {
+    blockedBy.length > 0 && (
+      <p class="m-0 text-sm text-body">
+        Blocked by{" "}
+        {blockedBy.map((name, i) => (
+          <>
+            {i > 0 && ", "}
+            <a class="font-mono text-accent" href={`#${testAnchor(group, name)}`}>
+              {name}
+            </a>
+          </>
+        ))}
+        .
+      </p>
+    )
+  }
+  {
+    m && (
+      <dl class="m-0 grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 font-mono text-xs">
+        <dt class="text-muted">check</dt>
+        <dd class="m-0 text-(--oc-text)">
+          {m.kind}
+          {m.path && (
+            <>
+              {" "}
+              at <code>{m.path}</code>
+            </>
+          )}{" "}
+          on {m.op}
+        </dd>
+        <dt class="text-muted">expected</dt>
+        <dd class="m-0 break-all text-(--oc-success)">{m.expected}</dd>
+        <dt class="text-muted">actual</dt>
+        <dd class="m-0 break-all text-(--oc-danger)">{m.actual}</dd>
+        <dt class="text-muted">scenario</dt>
+        <dd class="m-0 break-all text-muted">
+          {m.scenario} {m.step}
+        </dd>
+      </dl>
+    )
+  }
+  {
+    messages.length > 0 && (
+      <details>
+        <summary class="cursor-pointer font-mono text-xs text-muted hover:text-(--oc-text)">
+          {messages.length === 1 || sameMessage ? "Message" : `Messages (${messages.length})`}
+        </summary>
+        <div class="mt-2 flex flex-col gap-2">
+          {(sameMessage ? messages.slice(0, 1) : messages).map((entry) => (
+            <div>
+              {!sameMessage && messages.length > 1 && <p class="m-0 mb-1 font-mono text-2xs text-muted">{entry.suite.label}</p>}
+              <pre class="m-0 max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-md border border-oc bg-page p-3 font-mono text-xs text-body">
+                {entry.result.error}
+              </pre>
+            </div>
+          ))}
+        </div>
+      </details>
+    )
+  }
+  {first.status === "unimplemented" && messages.length === 0 && <p class="m-0 font-mono text-xs text-muted">HTTP 501 Not Implemented</p>}
+</div>

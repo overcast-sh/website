@@ -1,0 +1,424 @@
+---
+// Every compatibility result for a release, filtered as you type. The data is one compact
+// index per release (/compat/data/<tag>.json, see ExplorerIndex); what matches is decided by
+// src/lib/compat-filter.ts, which is unit-tested, and this page only renders it. Every view is
+// a URL: ?release=&q=&outcome=&whose=&suite=&issue=&changed=.
+import { ArrowLeft, ListFilter, Search, X } from "@lucide/astro";
+import SiteLayout from "../../components/SiteLayout.astro";
+import { getCompatIndex } from "../../lib/compat-data";
+
+const index = await getCompatIndex();
+const releases = index.map((entry) => entry.tag);
+---
+
+<SiteLayout
+  title="Explore Compatibility Results"
+  description="Search and filter every Overcast compatibility test result by operation, client, reason and tracking issue."
+  searchTitle="Explore compatibility results"
+>
+  <section class="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8" data-explorer data-releases={JSON.stringify(releases)}>
+    <a class="inline-flex items-center gap-1.5 font-mono text-xs text-muted no-underline hover:text-(--oc-text)" href="/compat/">
+      <ArrowLeft class="icon" />Compatibility report
+    </a>
+    <h1 class="mt-3 flex items-center gap-3 font-mono text-3xl font-bold"><ListFilter class="icon" />Explore every result</h1>
+    <p class="mt-4 max-w-3xl leading-7 text-body">
+      Search by operation, test, service, error message or issue number, then narrow by outcome, client and owner. Every
+      view is a link: copy the address to share exactly what you are looking at.
+    </p>
+
+    {
+      releases.length === 0 ? (
+        <p class="surface mt-8 rounded-lg px-5 py-10 text-center text-sm text-muted">No compatibility report has been published yet.</p>
+      ) : (
+        <>
+          <div class="mt-8 flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
+            <div class="relative flex-1">
+              <label class="sr-only" for="explore-q">
+                Search compatibility results
+              </label>
+              <Search class="icon pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+              <input
+                id="explore-q"
+                type="text"
+                placeholder="PutObject, sqs, #123, expected 200"
+                autocomplete="off"
+                spellcheck="false"
+                enterkeyhint="search"
+                aria-describedby="explore-count"
+                class="w-full rounded-md border border-oc bg-card py-2.5 pl-10 pr-10 font-mono text-sm text-(--oc-text)"
+              />
+              <button
+                type="button"
+                data-clear-q
+                class="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center rounded p-1.5 text-muted hover:bg-(--oc-accent-soft) hover:text-(--oc-text)"
+                aria-label="Clear search"
+                title="Clear (Esc)"
+                hidden
+              >
+                <X class="icon" />
+              </button>
+            </div>
+            <label class="flex items-center gap-2 font-mono text-xs text-muted">
+              <span class="shrink-0 uppercase tracking-[0.16em]">release</span>
+              <select data-release class="rounded-md border border-oc bg-card px-3 py-2 font-mono text-sm text-(--oc-text)">
+                {releases.map((tag, i) => (
+                  <option value={tag}>
+                    {tag}
+                    {i === 0 ? " (latest)" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div class="mt-4 grid gap-6 lg:grid-cols-[16rem_1fr]">
+            <aside aria-label="Filters" class="flex flex-col gap-5" data-facets>
+              <p class="m-0 font-mono text-xs text-muted">Loading filters…</p>
+            </aside>
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <p id="explore-count" class="m-0 font-mono text-xs text-muted" role="status" aria-live="polite">
+                  Loading results…
+                </p>
+                <button type="button" data-reset class="font-mono text-xs text-accent underline-offset-2 hover:underline" hidden>
+                  Clear filters
+                </button>
+              </div>
+              <div class="mt-3 flex flex-col gap-6" data-results />
+              <button type="button" data-more class="compat-toggle mt-4" hidden>
+                Show more
+              </button>
+            </div>
+          </div>
+        </>
+      )
+    }
+  </section>
+</SiteLayout>
+
+<script>
+  import { EMPTY_STATE, PASS, evaluate, isFiltered, parseState, prepare, serializeState } from "../../lib/compat-filter";
+  import type { Evaluation, FilterState, MatchedRow, PreparedIndex, PreparedUntested } from "../../lib/compat-filter";
+  import { WHOSE_LABELS, WHOSE_ORDER, reasonShort, reasonTone, suiteShort, testAnchor } from "../../lib/compat-report";
+  import type { ExplorerIndex } from "../../lib/compat-report";
+
+  const PAGE = 200;
+  const root = document.querySelector<HTMLElement>("[data-explorer]");
+  const releases: string[] = JSON.parse(root?.dataset.releases ?? "[]");
+  const input = document.getElementById("explore-q") as HTMLInputElement | null;
+  const clearQ = document.querySelector<HTMLButtonElement>("[data-clear-q]");
+  const releaseSelect = document.querySelector<HTMLSelectElement>("[data-release]");
+  const facetsEl = document.querySelector<HTMLElement>("[data-facets]");
+  const resultsEl = document.querySelector<HTMLElement>("[data-results]");
+  const countEl = document.getElementById("explore-count");
+  const resetBtn = document.querySelector<HTMLButtonElement>("[data-reset]");
+  const moreBtn = document.querySelector<HTMLButtonElement>("[data-more]");
+
+  let state: FilterState = parseState(window.location.search);
+  let release = new URLSearchParams(window.location.search).get("release") ?? "";
+  if (!releases.includes(release)) release = releases[0] ?? "";
+  let prepared: PreparedIndex | null = null;
+  let limit = PAGE;
+
+  const isLatest = () => release === releases[0];
+
+  function el<K extends keyof HTMLElementTagNameMap>(tag: K, props: Partial<HTMLElementTagNameMap[K]> & { class?: string } = {}, ...children: (Node | string | null)[]) {
+    const node = document.createElement(tag);
+    const { class: className, ...rest } = props;
+    if (className) node.className = className;
+    Object.assign(node, rest);
+    node.append(...children.filter((child): child is Node | string => child !== null));
+    return node;
+  }
+
+  function chip(outcome: string, index: ExplorerIndex, s: number, dim: boolean) {
+    const suiteLabel = index.suites[s].label;
+    const code = outcome === PASS ? undefined : outcome;
+    const tone = reasonTone(code, index.reasons);
+    const reason = index.reasons.find((r) => r.code === code);
+    const node = el("span", { class: "compat-cell", title: `${suiteLabel}: ${reason?.label ?? "Passes"}` });
+    node.dataset.tone = tone;
+    if (dim) node.dataset.dim = "";
+    // A span with an aria-label is not reliably announced; the words go in as sr-only text.
+    const short = el("span", { class: "font-bold" }, suiteShort(index.suites[s].id));
+    const word = el("span", {}, reasonShort(code));
+    short.setAttribute("aria-hidden", "true");
+    word.setAttribute("aria-hidden", "true");
+    const spoken = `${suiteLabel}: ${reason?.label ?? "passes"}${dim ? " (outside this filter)" : ""}`;
+    node.append(short, word, el("span", { class: "sr-only" }, spoken));
+    return node;
+  }
+
+  // ── Facets ────────────────────────────────────────────────────────────────
+
+  type Option = { value: string; label: string; count: number; title?: string };
+
+  function facetGroup(title: string, options: Option[], selected: (value: string) => boolean, onToggle: (value: string) => void) {
+    const group = el("div", { class: "flex flex-col gap-2" });
+    // A facet with nothing to offer is left out rather than shown as an empty heading.
+    group.hidden = options.length === 0;
+    group.setAttribute("role", "group");
+    group.setAttribute("aria-label", title);
+    group.append(el("p", { class: "m-0 font-mono text-2xs uppercase tracking-[0.16em] text-muted" }, title));
+    const list = el("div", { class: "flex flex-wrap gap-1.5" });
+    for (const option of options) {
+      const button = el("button", { type: "button", class: "compat-toggle", title: option.title ?? "" }, option.label, el("span", { class: "compat-count" }, String(option.count)));
+      button.setAttribute("aria-pressed", String(selected(option.value)));
+      if (option.count === 0 && !selected(option.value)) button.toggleAttribute("data-empty", true);
+      button.addEventListener("click", () => onToggle(option.value));
+      list.append(button);
+    }
+    group.append(list);
+    return group;
+  }
+
+  const toggle = (values: string[], value: string) => (values.includes(value) ? values.filter((v) => v !== value) : [...values, value]);
+
+  function renderFacets(result: Evaluation) {
+    if (!facetsEl || !prepared) return;
+    const { index } = prepared;
+    const c = result.counts;
+    const outcomes: Option[] = [
+      { value: PASS, label: "Passing", count: c.outcome[PASS] ?? 0 },
+      ...index.reasons
+        .filter((reason) => (c.outcome[reason.code] ?? 0) > 0 || state.outcomes.includes(reason.code))
+        .map((reason) => ({ value: reason.code, label: reason.label, count: c.outcome[reason.code] ?? 0, title: reason.summary })),
+    ];
+    const whose: Option[] = WHOSE_ORDER.map((w) => ({ value: w, label: WHOSE_LABELS[w].title, count: c.whose[w] ?? 0, title: WHOSE_LABELS[w].blurb })).filter(
+      (o) => o.count > 0 || state.whose.includes(o.value as never),
+    );
+    const suites: Option[] = index.suites.map((s) => ({ value: s.id, label: suiteShort(s.id), count: c.suite[s.id] ?? 0, title: s.label }));
+
+    const groups = [
+      facetGroup("Outcome", outcomes, (v) => state.outcomes.includes(v), (v) => update({ outcomes: toggle(state.outcomes, v) })),
+      facetGroup("Who has to act", whose, (v) => state.whose.includes(v as never), (v) => update({ whose: toggle(state.whose, v) as FilterState["whose"] })),
+      facetGroup("Client", suites, (v) => state.suites.includes(v), (v) => update({ suites: toggle(state.suites, v) })),
+      facetGroup(
+        "Tracking issue",
+        [
+          { value: "linked", label: "Has an issue", count: c.issue.linked },
+          { value: "unlinked", label: "No issue", count: c.issue.unlinked },
+        ],
+        (v) => state.issue === v,
+        (v) => update({ issue: state.issue === v ? "any" : (v as FilterState["issue"]) }),
+      ),
+    ];
+    if (index.changed) {
+      groups.push(
+        facetGroup(
+          `Since ${index.changed.previous}`,
+          [
+            { value: "fixed", label: "Newly passing", count: c.changed.fixed },
+            { value: "regressed", label: "No longer passing", count: c.changed.regressed },
+          ],
+          (v) => state.changed === v,
+          (v) => update({ changed: state.changed === v ? "any" : (v as FilterState["changed"]) }),
+        ),
+      );
+    }
+    // Keep keyboard focus on the same facet button across the re-render.
+    const active = document.activeElement;
+    const focusKey = active instanceof HTMLButtonElement && facetsEl.contains(active) ? `${active.closest("[role=group]")?.getAttribute("aria-label")}|${active.firstChild?.textContent}` : null;
+    facetsEl.replaceChildren(...groups);
+    if (focusKey) {
+      const [groupLabel, label] = focusKey.split("|");
+      const again = Array.from(facetsEl.querySelectorAll<HTMLButtonElement>(`[role=group][aria-label="${CSS.escape(groupLabel)}"] button`)).find((b) => b.firstChild?.textContent === label);
+      again?.focus();
+    }
+  }
+
+  // ── Results ───────────────────────────────────────────────────────────────
+
+  function rowNode(match: MatchedRow, index: ExplorerIndex) {
+    const p = match.prepared;
+    const [, , , , cells, details] = p.row;
+    const anchor = testAnchor(p.group, p.test);
+    const title = isLatest()
+      ? el("a", { class: "min-w-0 font-mono text-sm text-(--oc-text) no-underline [overflow-wrap:anywhere] hover:text-accent", href: `/compat/${p.service}/#${anchor}` }, p.test)
+      : el("span", { class: "min-w-0 font-mono text-sm text-(--oc-text) [overflow-wrap:anywhere]" }, p.test);
+    const head = el(
+      "div",
+      { class: "flex flex-wrap items-baseline gap-x-3 gap-y-1" },
+      title,
+      p.op !== p.test ? el("span", { class: "font-mono text-xs text-muted" }, p.op) : null,
+      el("span", { class: "font-mono text-xs text-muted" }, p.group),
+    );
+    const chips = el("div", { class: "mt-2 flex flex-wrap gap-1" });
+    cells.forEach((value, s) => {
+      if (value === null) return;
+      const outcome = value === -1 ? PASS : index.reasons[value].code;
+      chips.append(chip(outcome, index, s, !match.mask[s]));
+    });
+    const notes = el("div", { class: "mt-2 flex flex-col gap-1" });
+    cells.forEach((value, s) => {
+      const detail = details[s];
+      if (value === null || value === -1 || !match.mask[s] || !detail) return;
+      const [error, issue, blocked] = detail;
+      const whose = index.reasons[value]?.whose;
+      if (!issue && !blocked && whose !== "overcast") return;
+      notes.append(
+        el(
+          "p",
+          { class: "m-0 flex min-w-0 gap-2 font-mono text-xs text-body" },
+          el("span", { class: "shrink-0 text-muted" }, `${suiteShort(index.suites[s].id)}:`),
+          issue ? el("a", { class: "shrink-0 text-accent", href: `https://github.com/${index.issueRepo}/issues/${issue}` }, `#${issue}`) : null,
+          el("span", { class: "truncate", title: error }, blocked ? `blocked by ${blocked}` : error),
+        ),
+      );
+    });
+    return el("li", { class: "px-4 py-3" }, head, chips, notes.childElementCount ? notes : null);
+  }
+
+  function untestedNode(u: PreparedUntested) {
+    return el(
+      "li",
+      { class: "flex flex-col gap-1 px-4 py-3 sm:flex-row sm:gap-4" },
+      el("span", { class: "shrink-0 font-mono text-sm text-(--oc-text) sm:w-56" }, u.op),
+      el("span", { class: "shrink-0 font-mono text-xs text-muted" }, `not tested · ${u.code}`),
+      el("span", { class: "text-sm leading-6 text-body" }, u.detail),
+    );
+  }
+
+  function renderResults(result: Evaluation) {
+    if (!resultsEl || !prepared) return;
+    const { index } = prepared;
+    const sections: HTMLElement[] = [];
+    let shown = 0;
+    // Grouped by service in first-seen order, which is rank order: an exact operation match
+    // puts its service first.
+    const byService = new Map<string, { name: string; rows: MatchedRow[]; untested: PreparedUntested[] }>();
+    for (const match of result.rows) {
+      const key = match.prepared.service;
+      if (!byService.has(key)) byService.set(key, { name: match.prepared.serviceName, rows: [], untested: [] });
+      byService.get(key)!.rows.push(match);
+    }
+    for (const u of result.untested) {
+      if (!byService.has(u.service)) byService.set(u.service, { name: u.serviceName, rows: [], untested: [] });
+      byService.get(u.service)!.untested.push(u);
+    }
+    for (const [service, group] of byService) {
+      if (shown >= limit) break;
+      const items: HTMLElement[] = [];
+      for (const match of group.rows) {
+        if (shown >= limit) break;
+        items.push(rowNode(match, index));
+        shown += 1;
+      }
+      for (const u of group.untested) {
+        if (shown >= limit) break;
+        items.push(untestedNode(u));
+        shown += 1;
+      }
+      const heading = isLatest()
+        ? el("a", { class: "text-(--oc-text) no-underline hover:text-accent", href: `/compat/${service}/` }, group.name)
+        : el("span", {}, group.name);
+      sections.push(
+        el(
+          "section",
+          {},
+          el("h2", { class: "m-0 font-mono text-base font-bold" }, heading, el("span", { class: "ml-2 font-normal text-muted" }, String(group.rows.length + group.untested.length))),
+          el("ul", { class: "surface m-0 mt-2 list-none divide-y divide-(--oc-line) rounded-lg p-0" }, ...items),
+        ),
+      );
+    }
+    const totalItems = result.rows.length + result.untested.length;
+    if (!sections.length) {
+      const reset = el("button", { type: "button", class: "mt-3 rounded-md border border-oc px-3 py-1.5 font-mono text-xs text-(--oc-text) hover:bg-(--oc-accent-soft)" }, "Clear filters");
+      reset.addEventListener("click", () => update({ ...EMPTY_STATE }, true));
+      sections.push(el("div", { class: "surface rounded-lg px-5 py-10 text-center text-sm text-muted" }, el("p", { class: "m-0" }, "No result matches these filters."), reset));
+    }
+    resultsEl.replaceChildren(...sections);
+    if (moreBtn) {
+      moreBtn.hidden = shown >= totalItems;
+      moreBtn.textContent = `Show more (${totalItems - shown} left)`;
+    }
+    if (countEl) {
+      const tests = `${result.rows.length} ${result.rows.length === 1 ? "test" : "tests"}`;
+      const untested = result.untested.length ? `, ${result.untested.length} untested ${result.untested.length === 1 ? "operation" : "operations"}` : "";
+      countEl.textContent = `${result.total} ${result.total === 1 ? "result" : "results"} · ${tests}${untested} · ${release}`;
+    }
+  }
+
+  // ── State ─────────────────────────────────────────────────────────────────
+
+  function render() {
+    if (!prepared) return;
+    const result = evaluate(prepared, state);
+    renderFacets(result);
+    renderResults(result);
+    if (clearQ) clearQ.hidden = !state.q;
+    if (resetBtn) resetBtn.hidden = !isFiltered(state);
+  }
+
+  function syncUrl(push: boolean) {
+    const query = serializeState(state, release === releases[0] ? undefined : release);
+    const url = `${window.location.pathname}${query}`;
+    if (url === `${window.location.pathname}${window.location.search}`) return;
+    if (push) history.pushState(null, "", url);
+    else history.replaceState(null, "", url);
+  }
+
+  function update(patch: Partial<FilterState>, push = true) {
+    state = { ...state, ...patch };
+    limit = PAGE;
+    syncUrl(push);
+    render();
+  }
+
+  async function load() {
+    if (!release) return;
+    prepared = null;
+    if (countEl) countEl.textContent = `Loading ${release}…`;
+    try {
+      const response = await fetch(`/compat/data/${encodeURIComponent(release)}.json`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      prepared = prepare((await response.json()) as ExplorerIndex);
+      render();
+    } catch (error) {
+      if (countEl) countEl.textContent = `The ${release} results did not load (${(error as Error).message}). Reload to try again.`;
+    }
+  }
+
+  if (input) input.value = state.q;
+  if (releaseSelect) releaseSelect.value = release;
+
+  input?.addEventListener("input", () => update({ q: input.value }, false));
+  input?.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && input.value) {
+      event.preventDefault();
+      input.value = "";
+      update({ q: "" }, false);
+    }
+  });
+  clearQ?.addEventListener("click", () => {
+    if (input) input.value = "";
+    update({ q: "" }, false);
+    input?.focus();
+  });
+  resetBtn?.addEventListener("click", () => {
+    if (input) input.value = "";
+    update({ ...EMPTY_STATE });
+  });
+  moreBtn?.addEventListener("click", () => {
+    limit += PAGE;
+    render();
+  });
+  releaseSelect?.addEventListener("change", () => {
+    release = releaseSelect.value;
+    // A change filter means nothing against another pair of releases.
+    state = { ...state, changed: "any" };
+    syncUrl(true);
+    void load();
+  });
+  window.addEventListener("popstate", () => {
+    const next = new URLSearchParams(window.location.search).get("release") ?? releases[0];
+    state = parseState(window.location.search);
+    if (input) input.value = state.q;
+    if (next !== release && releases.includes(next)) {
+      release = next;
+      if (releaseSelect) releaseSelect.value = release;
+      void load();
+    } else render();
+  });
+  void load();
+</script>

@@ -1,0 +1,433 @@
+---
+// One service's compatibility results for the newest release: every test, every client, and
+// for each result that does not pass, the reason and the evidence. Complete without script;
+// the filter bar only hides rows. Anchors (#<group>--<test>) are stable across releases, so a
+// link to a test keeps working after the next one ships.
+import type { GetStaticPaths } from "astro";
+import { ArrowLeft, BookOpen, ListFilter, Search, ShieldCheck, X } from "@lucide/astro";
+import SiteLayout from "../../components/SiteLayout.astro";
+import ServiceIcon from "../../components/ServiceIcon.astro";
+import Chip from "../../components/Chip.astro";
+import CompatCell from "../../components/CompatCell.astro";
+import CompatIconSprite from "../../components/CompatIconSprite.astro";
+import CompatResultDetail from "../../components/CompatResultDetail.astro";
+import { getLatestCompatRelease, getServiceNaming } from "../../lib/compat-data";
+import {
+  matrixRow,
+  serviceMeasured,
+  percent,
+  rateTone,
+  reasonByCode,
+  serviceDisplayName,
+  serviceDocPath,
+  suiteShort,
+  supportServiceId,
+  groupResults,
+  testAnchor,
+  trimError,
+  whoseOf,
+} from "../../lib/compat-report";
+
+export const getStaticPaths: GetStaticPaths = async () => {
+  const release = await getLatestCompatRelease();
+  return (release?.report.services ?? []).map((service) => ({ params: { service: service.id } }));
+};
+
+const { service: serviceId } = Astro.params as { service: string };
+const [release, naming] = await Promise.all([getLatestCompatRelease(), getServiceNaming()]);
+const report = release!.report;
+const service = report.services.find((s) => s.id === serviceId)!;
+const reasons = reasonByCode(report);
+const name = serviceDisplayName(service.id, naming);
+const docPath = serviceDocPath(service.id, naming);
+const suites = report.suites.filter((suite) => service.groups.some((g) => g.tests.some((t) => t.results[suite.id])));
+const cells = matrixRow(service, suites, reasons);
+const headline = serviceMeasured(service, suites, reasons);
+const testCount = service.groups.reduce((sum, group) => sum + group.tests.length, 0);
+const toneVar = { success: "--oc-success", warning: "--oc-warning", danger: "--oc-danger", muted: "--oc-muted", accent: "--oc-accent" } as const;
+
+// What the filter script needs to know about each reason: only whether it is Overcast's.
+const overcastCodes = report.reasons.filter((reason) => reason.whose === "overcast").map((reason) => reason.code);
+const showOptions = [
+  { value: "all", label: "All results" },
+  { value: "failing", label: "Not passing" },
+  { value: "overcast", label: "Overcast gaps" },
+];
+---
+
+<SiteLayout
+  title={`${name} Compatibility`}
+  description={`${name} compatibility test results for Overcast ${report.version}, per client, with the reason for every result that does not pass.`}
+  searchTitle={`${name} compatibility`}
+>
+  <CompatIconSprite />
+  <section class="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8" data-overcast-codes={overcastCodes.join(",")}>
+    <a class="inline-flex items-center gap-1.5 font-mono text-xs text-muted no-underline hover:text-(--oc-text)" href="/compat/#services">
+      <ArrowLeft class="icon" />Compatibility report {report.version}
+    </a>
+    <h1 class="mt-3 flex items-center gap-3 font-mono text-3xl font-bold" data-pagefind-weight="5">
+      <ServiceIcon service={supportServiceId(service.id)} />
+      {name}
+    </h1>
+    <p class="mt-4 max-w-3xl leading-7 text-body">
+      {testCount} tests across {suites.length} {suites.length === 1 ? "client" : "clients"}. Of the {headline.ran} results that measure
+      Overcast, {headline.pass} pass ({percent(headline.pass, headline.ran)}%).
+    </p>
+    <div class="mt-4 flex flex-wrap gap-x-5 gap-y-2 font-mono text-xs">
+      {
+        docPath && (
+          <a class="inline-flex items-center gap-1.5 text-accent" href={docPath}>
+            <BookOpen class="icon" />
+            {name} reference
+          </a>
+        )
+      }
+      <a class="inline-flex items-center gap-1.5 text-accent" href={`/support/?q=${encodeURIComponent(name)}`}>
+        <ShieldCheck class="icon" />Support matrix
+      </a>
+      <a class="inline-flex items-center gap-1.5 text-accent" href={`/compat/explore/?q=${encodeURIComponent(service.id)}`}>
+        <ListFilter class="icon" />Explore with filters
+      </a>
+    </div>
+
+    <ul class="m-0 mt-6 grid list-none grid-cols-2 gap-3 p-0 sm:mt-8 sm:grid-cols-4 lg:grid-cols-8">
+      {
+        cells.map((cell, i) => (
+          <li class="surface flex flex-col gap-1.5 rounded-lg p-3">
+            <span class="font-mono text-2xs uppercase tracking-[0.14em] text-muted" title={suites[i].label}>
+              {suiteShort(suites[i].id)}
+            </span>
+            <span class="font-mono text-sm text-(--oc-text)">
+              {cell.ran ? (
+                <>
+                  {cell.pass}
+                  <span class="text-muted">/{cell.ran}</span>
+                </>
+              ) : (
+                <span class="text-muted">no test</span>
+              )}
+              <span class="sr-only"> passing in {suites[i].label}</span>
+            </span>
+            <span class="coverage-meter" aria-hidden="true" style={`--rate-tone:var(${toneVar[rateTone(cell.pass, cell.ran)]})`}>
+              <span style={`width:${cell.ran ? (cell.pass / cell.ran) * 100 : 0}%; background:var(--rate-tone)`} />
+            </span>
+          </li>
+        ))
+      }
+    </ul>
+
+    <div class="mt-8 flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
+      <div class="relative flex-1">
+        <label class="sr-only" for="compat-test-filter">Filter by operation, test or message</label>
+        <Search class="icon pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+        <input
+          id="compat-test-filter"
+          type="text"
+          placeholder="Filter by operation, test or message"
+          autocomplete="off"
+          spellcheck="false"
+          aria-describedby="compat-test-count"
+          class="w-full rounded-md border border-oc bg-card py-2.5 pl-10 pr-10 font-mono text-sm text-(--oc-text)"
+        />
+        <button
+          type="button"
+          data-clear
+          class="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center rounded p-1.5 text-muted hover:bg-(--oc-accent-soft) hover:text-(--oc-text)"
+          aria-label="Clear filter text"
+          title="Clear (Esc)"
+          hidden
+        >
+          <X class="icon" />
+        </button>
+      </div>
+      <div role="group" aria-label="Show" class="flex flex-wrap gap-1.5">
+        {
+          showOptions.map((option) => (
+            <button type="button" class="compat-toggle" data-show={option.value} aria-pressed={option.value === "all" ? "true" : "false"}>
+              {option.label}
+              <span class="compat-count" data-show-count />
+            </button>
+          ))
+        }
+      </div>
+      <label class="flex items-center gap-2 font-mono text-xs text-muted">
+        <span class="shrink-0 uppercase tracking-[0.16em]">client</span>
+        <select data-suite class="rounded-md border border-oc bg-card px-3 py-2 font-mono text-sm text-(--oc-text)">
+          <option value="">All clients</option>
+          {suites.map((suite) => <option value={suite.id}>{suite.label}</option>)}
+        </select>
+      </label>
+    </div>
+    <p id="compat-test-count" class="mt-4 font-mono text-xs text-muted" role="status" aria-live="polite">
+      {testCount} tests
+    </p>
+
+    {
+      service.groups.map((group) => (
+        <section class="mt-6" data-group>
+          <h2 class="flex flex-wrap items-center gap-2 font-mono text-base font-bold" id={group.id}>
+            <a class="text-(--oc-text) no-underline hover:text-accent" href={`#${group.id}`}>
+              {group.id}
+            </a>
+            {group.generated && <Chip tone="muted">generated from the AWS model</Chip>}
+            {group.state === "candidate" && <Chip tone="warning">soaking</Chip>}
+          </h2>
+          <div class="surface table-scroll relative mt-3 rounded-lg" tabindex="0" role="region" aria-label={`${group.id} results`}>
+            <table class="compat-table">
+              <thead>
+                <tr>
+                  <th scope="col">Test</th>
+                  {suites.map((suite) => (
+                    <th scope="col" data-suite-col={suite.id}>
+                      <abbr title={suite.label} class="no-underline">
+                        {suiteShort(suite.id)}
+                      </abbr>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {group.tests.map((test) => {
+                  const anchor = testAnchor(group.id, test.name);
+                  const failing = suites.filter((suite) => test.results[suite.id]?.reason);
+                  const cellsAttr = suites.map((suite) => `${suite.id}=${test.results[suite.id] ? (test.results[suite.id].reason ?? "pass") : ""}`).join(";");
+                  const errors = Object.values(test.results)
+                    .map((r) => [trimError(r.error), r.issue ? `#${r.issue.number}` : ""].join(" "))
+                    .join(" ");
+                  const overcastFailing = failing.filter((suite) => whoseOf(test.results[suite.id].reason!, reasons) === "overcast").length;
+                  return (
+                    <>
+                      <tr id={anchor} data-test-row data-anchor={anchor} data-cells={cellsAttr} data-text={`${test.name} ${test.op} ${group.id} ${errors}`.toLowerCase()}>
+                        <th scope="row" class="font-normal">
+                          <a class="font-mono text-sm text-(--oc-text) no-underline hover:text-accent" href={`#${anchor}`}>
+                            {test.name}
+                          </a>
+                          {test.op !== test.name && <span class="ml-2 font-mono text-xs text-muted">{test.op}</span>}
+                          {test.requires?.length ? <span class="ml-2 font-mono text-xs text-muted">needs {test.requires.join(", ")}</span> : null}
+                        </th>
+                        {suites.map((suite) => (
+                          <td data-suite-col={suite.id}>
+                            <CompatCell result={test.results[suite.id]} reasons={report.reasons} suiteLabel={suite.label} />
+                          </td>
+                        ))}
+                      </tr>
+                      {failing.length > 0 && (
+                        <tr data-detail={anchor}>
+                          <td colspan={suites.length + 1}>
+                            <details data-open-when-filtered={overcastFailing > 0 ? "" : undefined}>
+                              <summary class="cursor-pointer font-mono text-xs text-muted hover:text-(--oc-text)">
+                                Why {failing.length === 1 ? "1 result does" : `${failing.length} results do`} not pass
+                                {overcastFailing > 0 && <span class="text-(--oc-warning)"> · {overcastFailing} on Overcast</span>}
+                              </summary>
+                              <div class="mt-3 flex flex-col gap-4 pb-2">
+                                {groupResults(test, suites, reasons).map((shared) => (
+                                  <div data-detail-suite={shared.entries.map((entry) => entry.suite.id).join(" ")}>
+                                    <CompatResultDetail
+                                      entries={shared.entries}
+                                      reasons={report.reasons}
+                                      service={service.id}
+                                      serviceName={name}
+                                      group={group.id}
+                                      test={test.name}
+                                      op={test.op}
+                                      version={report.version}
+                                      issueRepo={report.issueRepo}
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </details>
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ))
+    }
+
+    <p data-compat-empty class="surface mt-6 rounded-lg px-5 py-10 text-center text-sm text-muted" hidden>
+      No test matches these filters.
+    </p>
+
+    {
+      service.untested?.length ? (
+        <section class="mt-12" data-untested>
+          <h2 class="font-mono text-xl font-bold" id="untested">
+            Not tested <span class="font-normal text-muted">({service.untested.length})</span>
+          </h2>
+          <p class="mt-2 max-w-3xl text-sm leading-6 text-body">
+            Operations with no test at all. The test generator declined to write one, for the reason given.
+          </p>
+          <div class="surface table-scroll relative mt-4 rounded-lg" tabindex="0" role="region" aria-label="Operations with no test">
+            <table class="compat-table">
+              <thead>
+                <tr>
+                  <th scope="col">Operation</th>
+                  <th scope="col">Reason</th>
+                  <th scope="col">Detail</th>
+                </tr>
+              </thead>
+              <tbody>
+                {service.untested.map((gap) => (
+                  <tr data-untested-row data-text={`${gap.op} ${gap.code} ${gap.detail}`.toLowerCase()}>
+                    <th scope="row" class="font-mono text-sm font-normal text-(--oc-text)">
+                      {gap.op}
+                    </th>
+                    <td class="whitespace-nowrap">
+                      <Chip tone="muted">{gap.code}</Chip>
+                      {gap.issue && (
+                        <a class="ml-2 font-mono text-xs text-accent" href={gap.issue.url}>
+                          #{gap.issue.number}
+                        </a>
+                      )}
+                    </td>
+                    <td class="min-w-[20rem] text-sm leading-6 text-body">{gap.detail}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null
+    }
+  </section>
+</SiteLayout>
+
+<script>
+  // Filters the rows already on the page: text, which results to show, and one client. The
+  // state is kept in the URL (?q=&show=&suite=), so a filtered view is a link, and the overview
+  // matrix links straight to one client's column.
+  type Show = "all" | "failing" | "overcast";
+  const SHOWS: Show[] = ["all", "failing", "overcast"];
+
+  const root = document.querySelector<HTMLElement>("[data-overcast-codes]");
+  const overcast = new Set((root?.dataset.overcastCodes ?? "").split(",").filter(Boolean));
+  const input = document.getElementById("compat-test-filter") as HTMLInputElement | null;
+  const clear = document.querySelector<HTMLButtonElement>("[data-clear]");
+  const suiteSelect = document.querySelector<HTMLSelectElement>("[data-suite]");
+  const showButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-show]"));
+  const count = document.getElementById("compat-test-count");
+  const empty = document.querySelector<HTMLElement>("[data-compat-empty]");
+  const groups = Array.from(document.querySelectorAll<HTMLElement>("[data-group]"));
+  const untestedRows = Array.from(document.querySelectorAll<HTMLElement>("[data-untested-row]"));
+  const untestedSection = document.querySelector<HTMLElement>("[data-untested]");
+  const squash = (value: string) => value.toLowerCase().replace(/[^a-z0-9#]/g, "");
+
+  const rows = Array.from(document.querySelectorAll<HTMLElement>("[data-test-row]")).map((row) => ({
+    row,
+    detail: document.querySelector<HTMLElement>(`[data-detail="${row.dataset.anchor}"]`),
+    text: squash(row.dataset.text ?? ""),
+    cells: Object.fromEntries((row.dataset.cells ?? "").split(";").map((pair) => pair.split("=") as [string, string])),
+  }));
+
+  let show: Show = "all";
+
+  function apply() {
+    const raw = (input?.value ?? "").trim();
+    const words = raw.split(/\s+/).map(squash).filter(Boolean);
+    const suite = suiteSelect?.value ?? "";
+    const counts: Record<Show, number> = { all: 0, failing: 0, overcast: 0 };
+    let visible = 0;
+
+    for (const entry of rows) {
+      const considered = Object.entries(entry.cells).filter(([id, outcome]) => outcome && (!suite || id === suite));
+      const textOk = words.every((word) => entry.text.includes(word));
+      const inScope = considered.length > 0 && textOk;
+      const failing = considered.some(([, outcome]) => outcome !== "pass");
+      const onOvercast = considered.some(([, outcome]) => overcast.has(outcome));
+      if (inScope) {
+        counts.all += 1;
+        if (failing) counts.failing += 1;
+        if (onOvercast) counts.overcast += 1;
+      }
+      const shown = inScope && (show === "all" || (show === "failing" ? failing : onOvercast));
+      entry.row.hidden = !shown;
+      if (entry.detail) {
+        entry.detail.hidden = !shown || (Boolean(suite) && !(entry.cells[suite] && entry.cells[suite] !== "pass"));
+        // Narrowed to the gaps, the reasons are the point: open them.
+        const details = entry.detail.querySelector("details");
+        if (details && show !== "all" && details.hasAttribute("data-open-when-filtered")) details.open = true;
+        entry.detail.querySelectorAll<HTMLElement>("[data-detail-suite]").forEach((item) => {
+          item.hidden = Boolean(suite) && !(item.dataset.detailSuite ?? "").split(" ").includes(suite);
+        });
+      }
+      if (shown) visible += 1;
+    }
+
+    document.querySelectorAll<HTMLElement>("[data-suite-col]").forEach((cell) => {
+      cell.hidden = Boolean(suite) && cell.dataset.suiteCol !== suite;
+    });
+    for (const group of groups) group.hidden = !group.querySelector("[data-test-row]:not([hidden])");
+
+    let untestedVisible = 0;
+    for (const row of untestedRows) {
+      row.hidden = !words.every((word) => squash(row.dataset.text ?? "").includes(word));
+      if (!row.hidden) untestedVisible += 1;
+    }
+    if (untestedSection) untestedSection.hidden = untestedVisible === 0 || Boolean(suite) || show !== "all";
+
+    showButtons.forEach((button) => {
+      const value = button.dataset.show as Show;
+      button.setAttribute("aria-pressed", String(value === show));
+      const badge = button.querySelector("[data-show-count]");
+      if (badge) badge.textContent = String(counts[value]);
+      button.toggleAttribute("data-empty", counts[value] === 0);
+    });
+
+    if (clear) clear.hidden = !raw;
+    if (empty) empty.hidden = visible > 0;
+    if (count) {
+      const filtered = raw || suite || show !== "all";
+      count.textContent = filtered ? `${visible} of ${rows.length} tests` : `${rows.length} tests`;
+    }
+
+    const url = new URL(window.location.href);
+    const set = (key: string, value: string) => (value ? url.searchParams.set(key, value) : url.searchParams.delete(key));
+    set("q", raw);
+    set("show", show === "all" ? "" : show);
+    set("suite", suite);
+    if (url.href !== window.location.href) history.replaceState(history.state, "", url);
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  if (input) input.value = params.get("q") ?? "";
+  const initialShow = params.get("show") as Show | null;
+  if (initialShow && SHOWS.includes(initialShow)) show = initialShow;
+  const initialSuite = params.get("suite");
+  if (suiteSelect && initialSuite && Array.from(suiteSelect.options).some((o) => o.value === initialSuite)) suiteSelect.value = initialSuite;
+
+  input?.addEventListener("input", apply);
+  input?.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && input.value) {
+      event.preventDefault();
+      input.value = "";
+      apply();
+    }
+  });
+  clear?.addEventListener("click", () => {
+    if (input) input.value = "";
+    apply();
+    input?.focus();
+  });
+  suiteSelect?.addEventListener("change", apply);
+  showButtons.forEach((button) =>
+    button.addEventListener("click", () => {
+      const value = button.dataset.show as Show;
+      show = value === show ? "all" : value;
+      apply();
+    }),
+  );
+
+  apply();
+  // A #hash to a test inside a filtered-out row would land nowhere; open its reasons instead.
+  const hashRow = window.location.hash && document.getElementById(decodeURIComponent(window.location.hash.slice(1)));
+  if (hashRow instanceof HTMLTableRowElement) {
+    const detail = document.querySelector<HTMLDetailsElement>(`[data-detail="${hashRow.id}"] details`);
+    if (detail) detail.open = true;
+  }
+</script>

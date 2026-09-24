@@ -1,0 +1,157 @@
+---
+// Every result with one reason, for the newest release, grouped by service. The overview's
+// reason cards link here, so each "See them all" is a complete static list that works without
+// script and that site search can index. The explorer does the same with any combination of
+// filters; this is the fixed, linkable answer to "which ones, and why".
+import type { GetStaticPaths } from "astro";
+import { ArrowLeft, ListFilter } from "@lucide/astro";
+import SiteLayout from "../../../components/SiteLayout.astro";
+import ServiceIcon from "../../../components/ServiceIcon.astro";
+import Chip from "../../../components/Chip.astro";
+import CompatIconSprite from "../../../components/CompatIconSprite.astro";
+import CompatResultDetail from "../../../components/CompatResultDetail.astro";
+import { getLatestCompatRelease, getServiceNaming } from "../../../lib/compat-data";
+import {
+  WHOSE_LABELS,
+  WHOSE_TONE,
+  groupResults,
+  reasonByCode,
+  reasonCount,
+  reasonsInUse,
+  serviceDisplayName,
+  suiteShort,
+  supportServiceId,
+  testAnchor,
+} from "../../../lib/compat-report";
+
+export const getStaticPaths: GetStaticPaths = async () => {
+  const release = await getLatestCompatRelease();
+  return release ? reasonsInUse(release.report).map((reason) => ({ params: { code: reason.code } })) : [];
+};
+
+const { code } = Astro.params as { code: string };
+const [release, naming] = await Promise.all([getLatestCompatRelease(), getServiceNaming()]);
+const report = release!.report;
+const reason = report.reasons.find((r) => r.code === code)!;
+const total = reasonCount(report, code);
+const withEvidence = reason.whose === "overcast";
+const reasons = reasonByCode(report);
+
+// Tests that have this reason in at least one suite, by service.
+const services = report.services
+  .map((service) => {
+    const name = serviceDisplayName(service.id, naming);
+    const tests = service.groups.flatMap((group) =>
+      group.tests
+        .map((test) => ({ group: group.id, test, suites: report.suites.filter((suite) => test.results[suite.id]?.reason === code) }))
+        .filter((row) => row.suites.length > 0),
+    );
+    const untested = code === "untested" ? (service.untested ?? []) : [];
+    return { service, name, tests, untested };
+  })
+  .filter((entry) => entry.tests.length > 0 || entry.untested.length > 0)
+  .sort((a, b) => a.name.localeCompare(b.name));
+---
+
+<SiteLayout
+  title={`${reason.label} | Compatibility Report`}
+  description={`Every Overcast ${report.version} compatibility result reported as "${reason.label}". ${reason.summary}`}
+  searchTitle={`Compatibility: ${reason.label}`}
+>
+  <CompatIconSprite />
+  <section class="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+    <a class="inline-flex items-center gap-1.5 font-mono text-xs text-muted no-underline hover:text-(--oc-text)" href="/compat/#why">
+      <ArrowLeft class="icon" />Compatibility report {report.version}
+    </a>
+    <h1 class="mt-3 font-mono text-3xl font-bold">{reason.label}</h1>
+    <p class="mt-4 max-w-3xl leading-7 text-body">{reason.summary}</p>
+    <div class="mt-4 flex flex-wrap items-center gap-3">
+      <Chip tone={WHOSE_TONE[reason.whose]}>{WHOSE_LABELS[reason.whose].title}</Chip>
+      <span class="font-mono text-sm text-(--oc-text)">
+        {total} {code === "untested" ? "operations" : "results"} in {services.length} {services.length === 1 ? "service" : "services"}
+      </span>
+      <a class="compat-toggle ml-auto no-underline" href={`/compat/explore/?outcome=${code}`}>
+        <ListFilter class="icon" />Narrow this down
+      </a>
+    </div>
+
+    <nav aria-label="Services" class="mt-6 flex flex-wrap gap-1.5">
+      {
+        services.map((entry) => (
+          <a class="compat-toggle no-underline" href={`#${entry.service.id}`}>
+            {entry.name}
+            <span class="compat-count">{entry.tests.reduce((sum, row) => sum + row.suites.length, 0) || entry.untested.length}</span>
+          </a>
+        ))
+      }
+    </nav>
+
+    {
+      services.map(({ service, name, tests, untested }) => (
+        <section class="mt-10" id={service.id}>
+          <h2 class="flex items-center gap-2.5 font-mono text-lg font-bold">
+            <ServiceIcon service={supportServiceId(service.id)} size="sm" />
+            <a class="text-(--oc-text) no-underline hover:text-accent" href={`/compat/${service.id}/`}>
+              {name}
+            </a>
+          </h2>
+          {tests.length > 0 && (
+            <ul class="surface m-0 mt-3 list-none divide-y divide-(--oc-line) rounded-lg p-0">
+              {tests.map(({ group, test, suites }) => (
+                <li class="px-4 py-3">
+                  <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <a class="min-w-0 font-mono text-sm text-(--oc-text) no-underline [overflow-wrap:anywhere] hover:text-accent" href={`/compat/${service.id}/#${testAnchor(group, test.name)}`}>
+                      {test.name}
+                    </a>
+                    {test.op !== test.name && <span class="font-mono text-xs text-muted">{test.op}</span>}
+                    <span class="font-mono text-xs text-muted">{group}</span>
+                    <span class="ml-auto flex flex-wrap gap-1">
+                      {suites.map((suite) => (
+                        <span class="rounded border border-oc px-1.5 font-mono text-2xs text-body" title={suite.label}>
+                          {suiteShort(suite.id)}
+                        </span>
+                      ))}
+                    </span>
+                  </div>
+                  {withEvidence && (
+                    <details class="mt-2">
+                      <summary class="cursor-pointer font-mono text-xs text-muted hover:text-(--oc-text)">Evidence</summary>
+                      <div class="mt-3 flex flex-col gap-4">
+                        {groupResults(test, suites, reasons).map((shared) => (
+                          <CompatResultDetail
+                            entries={shared.entries}
+                            reasons={report.reasons}
+                            service={service.id}
+                            serviceName={name}
+                            group={group}
+                            test={test.name}
+                            op={test.op}
+                            version={report.version}
+                            issueRepo={report.issueRepo}
+                          />
+                        ))}
+                      </div>
+                    </details>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          {untested.length > 0 && (
+            <ul class="surface m-0 mt-3 list-none divide-y divide-(--oc-line) rounded-lg p-0">
+              {untested.map((gap) => (
+                <li class="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:gap-4">
+                  <span class="shrink-0 font-mono text-sm text-(--oc-text) [overflow-wrap:anywhere] sm:w-56">{gap.op}</span>
+                  <span class="shrink-0">
+                    <Chip tone="muted">{gap.code}</Chip>
+                  </span>
+                  <span class="text-sm leading-6 text-body">{gap.detail}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ))
+    }
+  </section>
+</SiteLayout>

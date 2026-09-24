@@ -37,6 +37,17 @@ export const SITE_PAGES: readonly SitePage[] = [
     description: "Overcast service and operation implementation status.",
   },
   {
+    path: "/compat/",
+    title: "Compatibility report",
+    description:
+      "Overcast's compatibility test results across six AWS SDKs, the AWS CLI and the CDK, with the reason for every result that does not pass.",
+  },
+  {
+    path: "/compat/explore/",
+    title: "Explore compatibility results",
+    description: "Search and filter every Overcast compatibility test result by operation, client, reason and tracking issue.",
+  },
+  {
     path: "/downloads/",
     title: "Downloads",
     description: "Download Overcast Docker images and native binaries.",

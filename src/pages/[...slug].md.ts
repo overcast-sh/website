@@ -24,7 +24,13 @@ import { getServiceSupport } from "../lib/generated-content";
 import { repositoryUrl, websiteGitHubRepo } from "../lib/github-links";
 import { newestReleaseWithAssets, sortReleasesNewestFirst } from "../lib/releases";
 import { LLMS_SECTION_ORDER } from "../lib/llms-txt";
+import { getCompatIndex, getCompatReport, getServiceNaming } from "../lib/compat-data";
+import { reasonsInUse } from "../lib/compat-report";
 import {
+  compatExploreMarkdown,
+  compatOverviewMarkdown,
+  compatReasonMarkdown,
+  compatServiceMarkdown,
   consoleMarkdown,
   contributingMarkdown,
   docsIndexMarkdown,
@@ -144,7 +150,34 @@ export const getStaticPaths: GetStaticPaths = async () => {
     },
   ];
 
-  return [...docPaths, ...sitePaths];
+  // The compatibility report: the newest release at /compat/ with its service and reason
+  // pages, and each older one at /compat/history/<tag>/ — the same set the .astro routes build.
+  const compatIndex = await getCompatIndex();
+  const naming = await getServiceNaming();
+  const compatPaths: typeof sitePaths = [];
+  for (const [i, entry] of compatIndex.entries()) {
+    const report = await getCompatReport(entry.tag);
+    if (!report) continue;
+    const compat = { ...options, report, naming, latest: i === 0 };
+    if (i > 0) {
+      compatPaths.push({ params: { slug: `compat/history/${entry.tag}/index` }, props: { body: compatOverviewMarkdown(compat) } });
+      continue;
+    }
+    compatPaths.push(
+      { params: { slug: "compat/index" }, props: { body: compatOverviewMarkdown(compat) } },
+      { params: { slug: "compat/explore/index" }, props: { body: compatExploreMarkdown(options) } },
+      ...report.services.map((service) => ({
+        params: { slug: `compat/${service.id}/index` },
+        props: { body: compatServiceMarkdown(service.id, compat) },
+      })),
+      ...reasonsInUse(report).map((reason) => ({
+        params: { slug: `compat/reason/${reason.code}/index` },
+        props: { body: compatReasonMarkdown(reason.code, compat) },
+      })),
+    );
+  }
+
+  return [...docPaths, ...sitePaths, ...compatPaths];
 };
 
 export const GET: APIRoute = ({ props }) => {

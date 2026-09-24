@@ -1,6 +1,6 @@
 ---
 import "../styles/global.css";
-import { BookOpen, Download, FileText, GitCompare, Menu, Monitor, PencilLine, RotateCcwClock, Search, ShieldCheck, Star, SunMoon, X } from "@lucide/astro";
+import { BookOpen, ClipboardCheck, Download, FileText, GitCompare, Menu, Monitor, PencilLine, RotateCcwClock, Search, ShieldCheck, Star, SunMoon, X } from "@lucide/astro";
 import GitHubIcon from "./GitHubIcon.astro";
 import { repositoryUrl, starsUrl, websiteEditUrlFromRoute } from "../lib/github-links";
 import { getSourceManifest } from "../lib/generated-content";
@@ -65,6 +65,7 @@ const primaryNav = [
   { href: "/downloads/", label: "Downloads", footerLabel: "Downloads", Icon: Download },
   { href: "/releases/", label: "Releases", footerLabel: "Releases", Icon: RotateCcwClock },
   { href: "/support/", label: "Support Matrix", footerLabel: "Support Matrix", Icon: ShieldCheck },
+  { href: "/compat/", label: "Compatibility", footerLabel: "Compatibility Report", Icon: ClipboardCheck },
   { href: "/docs/migration-from-localstack/", label: "LocalStack Migration", footerLabel: "LocalStack Migration", Icon: GitCompare },
 ];
 // `aria-current="page"` is the only thing that tells a screen reader which nav entry is
